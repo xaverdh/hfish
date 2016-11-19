@@ -1,0 +1,398 @@
+{-# language LambdaCase, Rank2Types, OverloadedStrings, BangPatterns #-}
+module Fish.Interpreter.Interpreter where
+
+import Fish.Lang.Lang
+
+import Fish.Interpreter.Core
+import Fish.Interpreter.Status
+import Fish.Interpreter.Var
+import Fish.Interpreter.Cwd
+import Fish.Interpreter.Globbed
+import Fish.Interpreter.Pid.Pid
+import Fish.Interpreter.Pid.Dangerous (phGetPid)
+import Fish.Interpreter.Concurrent
+import Fish.Interpreter.Slice
+import Fish.Interpreter.Util
+
+import Data.Bifunctor
+import Data.Monoid
+import Data.Maybe
+import Data.Bool
+import Data.List (intercalate)
+import Text.Read (readMaybe)
+import qualified Data.Map as M
+import qualified Data.Text as T
+import qualified Data.Text.IO as TextIO
+import Control.Lens
+import Control.Monad
+import Control.Monad.State
+import Control.Monad.Reader
+import Control.Monad.Cont
+import Control.Applicative
+import Control.Concurrent
+import Control.Concurrent.MVar
+
+import System.Process
+import System.IO
+import System.IO.Temp
+import System.Exit
+import System.Environment
+import System.FilePath
+
+progA :: Prog t -> Fish ()
+progA (Prog _ cstmts) = forM_ cstmts compStmtA
+
+compStmtA :: CompStmt t -> Fish ()
+compStmtA cst =
+  case cst of
+    Simple _ st -> simpleStmtA st
+    Piped _ d st cst -> pipedStmtA d st cst
+    Forked _ st -> stmtA True st
+
+simpleStmtA :: Stmt t -> Fish ()
+simpleStmtA = stmtA False
+
+pipedStmtA :: OutFd -> Stmt t -> CompStmt t -> Fish ()
+pipedStmtA d st cst = pipeFish
+  (\wE -> local (setwH d wE) (stmtA True st))
+  (\rE -> local (hin .~ rE) (compStmtA cst))
+  where
+    setwH = \case
+      StdOutFd -> (hout .~)
+      StdErrFd -> (herr .~)
+
+stmtA :: Bool -> Stmt t -> Fish ()
+stmtA fork = \case
+  CmdSt _ i args ->
+    cmdStA fork i args
+  SetSt _ mvdef -> 
+    setStA mvdef
+  FunctionSt _ i args prog ->
+    functionStA i args prog
+  WhileSt _ st prog ->
+    whileStA st prog
+  ForSt _ i args prog ->
+    forStA i args prog
+  IfSt _ branches elBranch ->
+    ifStA branches elBranch
+  SwitchSt _ e branches -> 
+    switchStA e branches
+  BeginSt _ prog -> 
+    beginStA prog
+  AndSt _ st ->
+    andStA st
+  OrSt _ st ->
+    orStA st
+  NotSt _ st ->
+    notStA st
+  RedirectedSt _ st redirects ->
+    redirectedStmtA fork st redirects
+  CommentSt _ _ -> return ()
+
+cmdStA :: Bool -> CmdIdent t -> Args t -> Fish ()
+cmdStA fork (CmdIdent _ ident) args = do
+  let ident' = T.unpack ident
+  ts <- evalArgs args
+  bn <- preview (builtins . ix ident)
+  fn <- preuse (functions . ix ident)
+  case (bn,fn) of
+    (Just b,_) -> b fork ts
+    (_,Just f) -> f ts
+    (Nothing,Nothing) -> do
+      inH <- view hin
+      outH <- view hout
+      errH <- view herr
+      vars <- map (second $ T.unwords . _value) <$> exportVars
+      wdir <- use cwdir
+      (_,_,_,ph) <- liftIO $
+        createProcess_ "" (proc ident' $ map T.unpack ts){
+          close_fds = True
+          ,delegate_ctlc = not fork
+          ,std_in = UseHandle inH
+          ,std_out = UseHandle outH
+          ,std_err = UseHandle errH
+          ,cwd = Just wdir
+          ,env = Just $ map (bimap T.unpack T.unpack) vars
+        }
+      mpid <- liftIO (phGetPid ph)
+      lastPid .= mpid
+      unless fork 
+        ( liftIO (waitForProcess ph)
+          >>= setStatus )
+
+setStA :: Maybe (VarDef t, Args t) -> Fish ()
+setStA = maybe getStA
+  $ \(VarDef _ (VarIdent _ ident) ref,args) -> do
+    ro <- isReadOnlyVar ident
+    when ro (errork readOnlyErr)
+    if isNothing ref 
+      then setF ident args
+      else getVarMaybe ident >>= \case
+        Nothing -> errork uninitErr
+        Just (Var exp vs) -> do
+          ts <- evalArgs args
+          slcs <- evalRef ref (length vs)
+          let !vs' = writeSlices slcs vs ts
+          setVarSafe flocalEnv ident (Var exp vs')
+  where
+    setF ident args = do
+      vs <- evalArgs args
+      setVarSafe flocalEnv ident (Var False vs)
+
+    uninitErr = "set: Trying to set parts of uninitialised variable"
+    doesNotMatchErr = "set: number of arguments does not match"
+    readOnlyErr = "set: Will not set or shadow readonly variable"    
+
+getStA :: Fish ()
+getStA = do
+  outH <- view hout
+  fe <- use flocalEnv
+  le <- use localEnv
+  ge <- use globalEnv
+  ro <- use readOnlyEnv
+  liftIO . TextIO.hPutStr outH
+    $ showVars le
+    <> showVars fe
+    <> showVars ge
+    <> showVars ro
+
+
+{- This is _very_ rudimentary atm. -}
+functionStA :: FunIdent t -> Args t -> Prog t -> Fish ()
+functionStA (FunIdent _ ident) args prog = 
+  modify (functions . at ident .~ Just f)
+  where
+    f args' = do
+      setVar flocalEnv "argv" (Var False args')
+      progA prog
+
+whileStA :: Stmt t -> Prog t -> Fish ()
+whileStA st prog = setBreakK loop
+  where
+    body = progA prog
+    loop = do
+      simpleStmtA st
+      use status >>= \case
+        ExitSuccess -> do
+          setContinueK body
+          loop
+        _ -> return ()
+
+forStA :: VarIdent t -> Args t -> Prog t -> Fish ()
+forStA (VarIdent _ varIdent) args prog = do
+  xs <- evalArgs args
+  setBreakK (loop xs)
+  where
+    lbind x f = localise localEnv
+      (setVarSafe localEnv varIdent (Var False [x]) >> f)
+    
+    body = progA prog
+    
+    loop [] = return ()
+    loop (x:xs) = do
+      lbind x $ setContinueK body
+      loop xs
+
+ifStA :: [(Stmt t,Prog t)] -> Maybe (Prog t) -> Fish ()
+ifStA [] (Just prog) = progA prog
+ifStA [] Nothing = return ()
+ifStA ((st,prog):blks) elblk = do
+  simpleStmtA st
+  use status >>= \case
+    ExitSuccess -> progA prog >> setStatus ExitSuccess
+    _ -> ifStA blks elblk
+    
+switchStA :: Expr t -> [(Expr t,Prog t)] -> Fish ()
+switchStA e branches = do
+  xs <- evalArg e
+  loop xs branches
+  where
+    loop _ [] = return ()
+    loop xs ((e,prog):branches) = do
+      xs' <- evalArg e -- todo: use own glob expansion
+      if xs == xs'
+        then progA prog
+        else loop xs branches
+
+beginStA :: Prog t -> Fish ()
+beginStA prog =
+  localise localEnv
+  $ progA prog
+
+andStA :: Stmt t -> Fish ()
+andStA st =
+  getStatus >>= \case
+    ExitSuccess -> simpleStmtA st
+    ExitFailure _ -> return ()
+  
+orStA :: Stmt t -> Fish ()
+orStA st =
+  getStatus >>= \case
+    ExitSuccess -> return ()
+    ExitFailure _ -> simpleStmtA st
+
+notStA :: Stmt t -> Fish ()
+notStA st = do
+  simpleStmtA st
+  modifyStatus $ \case
+    ExitSuccess -> ExitFailure 1
+    ExitFailure _ -> ExitSuccess
+
+redirectedStmtA :: Bool -> Stmt t -> [Redirect t] -> Fish ()
+redirectedStmtA fork st redirects =
+  void (setupAll (stmtA fork st))
+  where
+    withTh s t f = case t of
+      Left fd -> view (asLens fd) >>= f
+      Right (app,e) -> do
+        [name] <- evalArg e
+        th <- liftIO $ openFile (T.unpack name) (calcIOMode app s)
+        r <- f th
+        liftIO (hClose th)
+        return r
+    
+    calcIOMode :: Append -> Fd -> IOMode
+    calcIOMode b s = case b of
+      True -> AppendMode
+      False -> case s of
+        Left StdInFd -> ReadMode
+        Right _ -> WriteMode
+      
+    setup (Redirect s t) f =
+      withTh s t $ \th ->
+        local (asLens s .~ th) f
+    
+    setupAll = foldr ((.) . setup) id redirects
+
+
+{- Expression evaluation -}
+evalArgs :: Args t -> Fish [T.Text]
+evalArgs (Args _ es) = join <$> forM es evalArg
+{-globs <- join <$> forM es evalExpr
+  vs <- forM globs globExpand
+  return $ join vs-}
+
+evalArg :: Expr t -> Fish [T.Text]
+evalArg arg = do
+  globs <- evalExpr arg
+  vs <- forM globs globExpand
+  return (join vs)
+
+evalExpr :: Expr t -> Fish [Globbed]
+evalExpr = \case
+  GlobE _ g -> return [Globbed [Left g]]
+  ProcE _ e -> evalProcE e
+  HomeDirE _ -> evalHomeDirE
+  StringE _ t -> return [fromText t]
+  VarRefE _ q vref -> evalVarRefE q vref
+  BracesE _ es -> evalBracesE es
+  CmdSubstE _ cmdref -> evalCmdSubstE cmdref
+  ConcatE _ e1 e2 -> evalConcatE e1 e2
+
+evalProcE :: Expr t -> Fish [Globbed]
+evalProcE e = 
+  evalArg e >>= (getPID . T.intercalate "")
+
+evalHomeDirE :: Fish [Globbed]
+evalHomeDirE = do
+  home <- getHOME
+  return [fromString home]
+
+evalBracesE :: [Expr t] -> Fish [Globbed]
+evalBracesE es = 
+  join <$> forM es evalExpr
+
+evalCmdSubstE :: CmdRef t -> Fish [Globbed]
+evalCmdSubstE (CmdRef _ prog ref) = do
+  (mvar,wH) <- createHandleMVarPair
+  stMVar <- local (hout .~ wH) (forkFish $ progA prog)
+  spliceInState stMVar
+  liftIO (hClose wH)
+  text <- liftIO $ takeMVar mvar
+  let ts = T.lines text
+  map fromText
+    <$> case ref of
+    Nothing -> return ts
+    Just _ -> do
+      slcs <- evalRef ref (length ts)
+      return (readSlices slcs ts)
+  
+evalVarRefE :: Bool -> VarRef t -> Fish [Globbed]
+evalVarRefE q vref = do
+  vs <- evalVarRef vref
+  return $ map fromText (ser vs)
+  where
+    ser = if q then pure . T.unwords else id
+
+evalVarRef :: VarRef t -> Fish [T.Text]
+evalVarRef (VarRef _ name ref) = do
+  varIdents <- evalName name
+  vs <- forM varIdents lookupVar
+  return (join vs)
+  where
+    lookupVar ident = do
+      ts <- getVarValue ident
+      if isNothing ref
+        then return ts
+        else do
+          slcs <- evalRef ref (length ts)
+          return (readSlices slcs ts)
+    evalName = \case
+      Left vref -> evalVarRef vref
+      Right (VarIdent _ i) -> return [i]
+    
+
+evalRef :: Ref (Expr t) -> Int -> Fish Slices
+evalRef ref l = do
+    ijs <- forM (onMaybe ref [] id) indices
+    makeSlices l (join ijs)
+  where
+    indices = \case
+      Index a -> (\xs -> zip xs xs) <$> evalInt a
+      Range a b -> liftA2 (,) <$> evalInt a <*> evalInt b  
+  
+evalConcatE :: Expr t -> Expr t -> Fish [Globbed]
+evalConcatE e1 e2 = do
+  gs1 <- evalExpr e1
+  gs2 <- evalExpr e2
+  return $ map Globbed (cartesian (map unGlob gs1) (map unGlob gs2))
+  where
+    cartesian = liftA2 (<>)
+
+{- Try to interpret Expression as an Int -}
+
+evalInt :: Expr t -> Fish [Int]
+evalInt e = do
+  vs <- evalArg e
+  forM (T.words =<< vs) f
+  where
+    f v = case readTextMaybe v of
+      Just x -> return x
+      Nothing -> errork
+        $ "failed to interpret expression "
+          <> "as integer: " <> v
+
+
+{- Restore given scope after fish action exits. -}
+localise ::
+  ( forall f. Functor f => (b -> f b) -> FishState -> f FishState )
+  -> Fish a -> Fish a
+localise l f = do
+  memory <- use l
+  r <- f
+  modify (l .~ memory)
+  return r
+    
+
+{- Translate Fd to h* lenses -}
+asLens ::
+  Fd
+  -> forall f. Functor f =>
+    (Handle -> f Handle)
+    -> FishReader
+    -> f FishReader
+asLens fd = case fd of
+  Left StdInFd -> hin
+  Right StdOutFd -> hout
+  Right StdErrFd -> herr
+

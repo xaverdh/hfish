@@ -9,7 +9,7 @@ import Fish.Interpreter.Var
 import Fish.Interpreter.Cwd
 import Fish.Interpreter.Globbed
 import Fish.Interpreter.Pid.Pid
-import Fish.Interpreter.Pid.Dangerous (phGetPid)
+import Fish.Interpreter.Pid.Unsafe (phGetPid)
 import Fish.Interpreter.Concurrent
 import Fish.Interpreter.Slice
 import Fish.Interpreter.Util

@@ -21,7 +21,7 @@ getPID = \case
   "last" ->
     use lastPid >>= \case
       Just pid -> return [fromString $ show pid]
-      Nothing -> error "Cannot obtain pid of last process."
+      Nothing -> errork "Cannot obtain pid of last process."
   x -> case readMaybe $ T.unpack x of
     Just i -> do  
       gpid <- liftIO (getProcessGroupIDOf i)

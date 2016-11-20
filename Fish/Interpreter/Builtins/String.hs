@@ -23,7 +23,8 @@ import Options.Applicative.Builder
 import Options.Applicative
 import Text.Read (readMaybe)
 
-{- TODO: sub,escape,match,replace -}
+{- TODO: escape -> wait for UnParser,
+         match, replace, -q/--quiet option and status -}
 
 stringF :: Bool -> [T.Text] -> Fish ()
 stringF _ ts = 
@@ -37,6 +38,7 @@ stringF _ ts =
     parser = info opts idm
     opts = subparser $ mconcat
       [ cmd "length" lengthOpt
+       ,cmd "sub" subOpt
        ,cmd "join" joinOpt
        ,cmd "split" splitOpt
        ,cmd "trim" trimOpt ]
@@ -45,6 +47,10 @@ stringF _ ts =
     rest = many $ argument text (metavar "STRINGS...")
     
     lengthOpt = lengthF <$> rest
+    subOpt = subF
+      <$> option auto (short 's' <> long "start" <> metavar "START" <> value 1)
+      <*> option (Just <$> auto) (short 'l' <> long "length" <> metavar "LENGTH" <> value Nothing)
+      <*> rest
     joinOpt = joinF
       <$> argument text (metavar "SEP")
       <*> rest
@@ -65,17 +71,24 @@ lengthF ts = do
   forM_ ts (echo . T.pack . show . T.length)
   ok
 
+subF :: Int -> Maybe Int -> [T.Text] -> Fish ()
+subF start mlen ts = do
+  echo (T.unlines $ map sub ts)
+  ok
+  where
+    sub = (maybe id T.take mlen) . T.drop (start-1)    
+
 joinF :: T.Text -> [T.Text] -> Fish ()
 joinF sep ts = do
   echo (T.intercalate sep ts)
   ok
 
 trimF :: Bool -> Bool -> T.Text -> [T.Text] -> Fish ()
-trimF l r c ts = do
-  echo (trim l r c ts)
+trimF l r cs ts = do
+  echo trimmed
   ok
   where
-    trim l r cs ts = f r l (`inText` cs) (T.unwords ts)
+    trimmed = f r l (`inText` cs) (T.unwords ts)
     f True False = T.dropWhileEnd
     f False True = T.dropWhile
     f _ _ = T.dropAround

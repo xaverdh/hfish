@@ -8,11 +8,7 @@ import Data.Monoid
 import Data.Maybe
 import Data.List as L
 import Control.Exception (try)
--- import qualified Text.Trifecta.Parser as Tri
--- import qualified Text.Trifecta.Result as TriR
 import qualified Data.Text as T
--- import qualified Text.PrettyPrint.ANSI.Leijen as Pretty
--- import qualified Fish.Parser.Trifecta.Parser as TriP
 import Fish.Interpreter.Interpreter
 import Fish.Interpreter.Core
 import Fish.Interpreter.Init
@@ -21,6 +17,7 @@ import Fish.Lang.Lang
 
 import System.Console.Haskeline
 import System.Environment (getArgs)
+
 
 main = do
   args <- getArgs
@@ -48,7 +45,7 @@ simpleInterpreterLoop r s =
   getInputLine (prompt s) >>= \case
     Nothing -> return ()
     Just l -> do
-      ms' <- withProg (parseFishInteractive l) (runProgram r s)
+      ms' <- withProg (parseFishInteractive $ l ++ "\n") (runProgram r s)
       simpleInterpreterLoop r (fromMaybe s ms')
 
 coerce :: IO (Either SomeException a) -> IO (Either SomeException a)

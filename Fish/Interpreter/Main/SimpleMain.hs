@@ -28,7 +28,7 @@ main = do
       defaultSettings
       (simpleInterpreterLoop r s)
     "-c":rest -> do
-      withProg (parseFishInteractive (L.unwords rest)) (runProgram r s)
+      withProg (parseFishInteractive (L.unwords rest <> "\n")) (runProgram r s)
       return ()
     path:rest -> do
       res <- parseFish path

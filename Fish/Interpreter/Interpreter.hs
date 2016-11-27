@@ -43,6 +43,8 @@ import System.Exit
 import System.Environment
 import System.FilePath
 
+-- import Debug.Trace (trace)
+
 progA :: Prog t -> Fish ()
 progA (Prog _ cstmts) = forM_ cstmts compStmtA
 
@@ -219,7 +221,7 @@ notStA st = do
 redirectedStmtA :: Bool -> Stmt t -> [Redirect t] -> Fish ()
 redirectedStmtA fork st redirects =
   void (setupAll (stmtA fork st))
-  where      
+  where
     setupAll = foldr ((.) . setup) id redirects
 
     setup red f = case red of

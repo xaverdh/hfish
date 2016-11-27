@@ -31,6 +31,8 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as TextIO
 import qualified Data.Map as M
 
+import Debug.Trace (trace)
+
 -- | Execute an IO action in an environment
 --   where the interal fd state has been translated
 --   into OS calls.
@@ -94,7 +96,7 @@ withFileW fpath mode fd k =
   where
     accessMode = 
       foldr unionFileModes nullFileMode
-      [ ownerModes, groupReadMode, otherReadMode ]
+      [ ownerReadMode, ownerWriteMode, groupReadMode, otherReadMode ]
 
 readFrom :: L.Fd -> Fish T.Text
 readFrom fd = do
@@ -119,6 +121,7 @@ writeTo text fd = do
   w <- liftIO (hIsWritable h)
   unless w $ notWriteableErr fd
   liftIO (TextIO.hPutStr h text)
+  return () -- this has to be here for reasons I do not yet fully understand, likely related to lazyness
 
 echo :: T.Text -> Fish ()
 echo t = writeTo t L.Fd1

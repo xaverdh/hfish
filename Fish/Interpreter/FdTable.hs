@@ -8,8 +8,6 @@ import qualified System.Posix.Types as PT
 import Control.Lens
 import Control.Monad.Reader.Class
 
-import Debug.Trace (trace)
-
 -- | A global table, holding all file descriptors.
 --
 --   Implemented as a map from /abstract/ fds to the underlying
@@ -55,7 +53,7 @@ lookupFd fd = do
 
 -- | Insert an (abstract fd,OS fd) pair into the 'FdTable'.
 insert :: HasFdTable m => L.Fd -> PT.Fd -> m a -> m a
-insert fd pfd = 
+insert fd pfd =
   localFdTable (closedStatus %~ M.insert pfd False)
   . localFdTable (mainTable %~ M.insert fd pfd)
 
@@ -69,14 +67,12 @@ close fd k = lookupFd fd >>= \case
   Nothing -> k
   Just pfd -> localFdTable (closedStatus . ix pfd .~ True) k
 
-instance Monoid Bool where
-  mempty = False
-  mappend a b = a || b
-
 isOpen :: HasFdTable m => PT.Fd -> m Bool
 isOpen pfd = do
-  closed <- withFdTable ( return . view (closedStatus . ix pfd) )
-  return $ not closed
+  table <- askFdTable
+  return $ case table ^. closedStatus . at pfd of
+    Nothing -> False
+    Just closed -> not closed
 
 -- | The initial FdTable stdin / -out / -err.
 --

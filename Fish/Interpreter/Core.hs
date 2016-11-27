@@ -121,12 +121,12 @@ reThrow lensK cleanup f =
 
 -- | Run cleanup even if jumping out of context via some
 --   continuation and resume the jump afterwards.
-finally :: Fish b -> Fish () -> Fish ()
-finally cleanup = 
-  reThrow continueK cleanup
+finally :: Fish () -> Fish b  -> Fish ()
+finally f cleanup = 
+  ( reThrow continueK cleanup
   . reThrow breakK cleanup
   . reThrow returnK cleanup
-  . reThrow errorK cleanup
+  . reThrow errorK cleanup ) f
 
 -- | Clearing all continuations,
 --   calls to them will be silently ignored.

@@ -5,6 +5,7 @@ module Fish.Interpreter.Builtins.Random (
 
 
 import Fish.Interpreter.Core
+import Fish.Interpreter.IO
 import Fish.Interpreter.Status
 
 import qualified Data.Text as T

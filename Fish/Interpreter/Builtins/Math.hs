@@ -4,6 +4,7 @@ module Fish.Interpreter.Builtins.Math (
 ) where
 
 import Fish.Interpreter.Core
+import Fish.Interpreter.IO
 import Fish.Interpreter.Util
 import Fish.Interpreter.Concurrent
 import Fish.Interpreter.Status

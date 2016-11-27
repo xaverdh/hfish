@@ -4,7 +4,9 @@ module Fish.Interpreter.Builtins.Echo (
 ) where
 
 import Fish.Interpreter.Core
+import Fish.Interpreter.IO
 import Fish.Interpreter.Status
+import Fish.Lang.Lang
 
 import qualified Data.Text as T
 import Data.Text.IO as TextIO
@@ -16,12 +18,8 @@ import System.IO
 
 echoF :: Bool -> [T.Text] -> Fish ()
 echoF _ = \case
-  ("-n":args) -> do
-    outH <- view hout
-    liftIO . TextIO.hPutStr outH $ T.unwords args
-    ok
-  args -> do
-    outH <- view hout
-    liftIO . TextIO.hPutStrLn outH $ T.unwords args
-    ok
+  ("-n":args) -> echo (T.unwords args) >> ok
+  args -> 
+    echoLn (T.unwords args) >> ok
+
 

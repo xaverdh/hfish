@@ -4,12 +4,14 @@ module Fish.Interpreter.Interpreter where
 import Fish.Lang.Lang
 
 import Fish.Interpreter.Core
+import Fish.Interpreter.FdTable as FDT
+import Fish.Interpreter.IO
 import Fish.Interpreter.Status
 import Fish.Interpreter.Var
 import Fish.Interpreter.Cwd
 import Fish.Interpreter.Globbed
-import Fish.Interpreter.Pid.Pid
-import Fish.Interpreter.Pid.Unsafe (phGetPid)
+import Fish.Interpreter.Process.Process
+import Fish.Interpreter.Process.Pid
 import Fish.Interpreter.Concurrent
 import Fish.Interpreter.Slice
 import Fish.Interpreter.Util
@@ -20,6 +22,7 @@ import Data.Maybe
 import Data.Bool
 import Data.List (intercalate)
 import Text.Read (readMaybe)
+import qualified Data.List.NonEmpty as N
 import qualified Data.Map as M
 import qualified Data.Text as T
 import qualified Data.Text.IO as TextIO
@@ -34,6 +37,7 @@ import Control.Concurrent.MVar
 
 import System.Process
 import System.IO
+import System.Posix.IO as P
 import System.IO.Temp
 import System.Exit
 import System.Environment
@@ -52,14 +56,10 @@ compStmtA cst =
 simpleStmtA :: Stmt t -> Fish ()
 simpleStmtA = stmtA False
 
-pipedStmtA :: OutFd -> Stmt t -> CompStmt t -> Fish ()
-pipedStmtA d st cst = pipeFish
-  (\wE -> local (setwH d wE) (stmtA True st))
-  (\rE -> local (hin .~ rE) (compStmtA cst))
-  where
-    setwH = \case
-      StdOutFd -> (hout .~)
-      StdErrFd -> (herr .~)
+pipedStmtA :: Fd -> Stmt t -> CompStmt t -> Fish ()
+pipedStmtA fd st cst = pipeFish
+  (\wE -> FDT.insert fd wE (stmtA True st))
+  (\rE -> FDT.insert Fd0 rE (compStmtA cst))
 
 stmtA :: Bool -> Stmt t -> Fish ()
 stmtA fork = \case
@@ -74,9 +74,9 @@ stmtA fork = \case
   ForSt _ i args prog ->
     forStA i args prog
   IfSt _ branches elBranch ->
-    ifStA branches elBranch
+    ifStA (N.toList branches) elBranch
   SwitchSt _ e branches -> 
-    switchStA e branches
+    switchStA e (N.toList branches)
   BeginSt _ prog -> 
     beginStA prog
   AndSt _ st ->
@@ -86,39 +86,18 @@ stmtA fork = \case
   NotSt _ st ->
     notStA st
   RedirectedSt _ st redirects ->
-    redirectedStmtA fork st redirects
+    redirectedStmtA fork st (N.toList redirects)
   CommentSt _ _ -> return ()
 
 cmdStA :: Bool -> CmdIdent t -> Args t -> Fish ()
 cmdStA fork (CmdIdent _ ident) args = do
-  let ident' = T.unpack ident
   ts <- evalArgs args
   bn <- preview (builtins . ix ident)
   fn <- preuse (functions . ix ident)
   case (bn,fn) of
     (Just b,_) -> b fork ts
-    (_,Just f) -> f ts
-    (Nothing,Nothing) -> do
-      inH <- view hin
-      outH <- view hout
-      errH <- view herr
-      vars <- map (second $ T.unwords . _value) <$> exportVars
-      wdir <- use cwdir
-      (_,_,_,ph) <- liftIO $
-        createProcess_ "" (proc ident' $ map T.unpack ts){
-          close_fds = True
-          ,delegate_ctlc = not fork
-          ,std_in = UseHandle inH
-          ,std_out = UseHandle outH
-          ,std_err = UseHandle errH
-          ,cwd = Just wdir
-          ,env = Just $ map (bimap T.unpack T.unpack) vars
-        }
-      mpid <- liftIO (phGetPid ph)
-      lastPid .= mpid
-      unless fork 
-        ( liftIO (waitForProcess ph)
-          >>= setStatus )
+    (_,Just f) -> setReturnK $ f ts
+    (Nothing,Nothing) -> fishCreateProcess fork ident ts
 
 setStA :: Maybe (VarDef t, Args t) -> Fish ()
 setStA = maybe getStA
@@ -145,12 +124,11 @@ setStA = maybe getStA
 
 getStA :: Fish ()
 getStA = do
-  outH <- view hout
   fe <- use flocalEnv
   le <- use localEnv
   ge <- use globalEnv
   ro <- use readOnlyEnv
-  liftIO . TextIO.hPutStr outH
+  echo 
     $ showVars le
     <> showVars fe
     <> showVars ge
@@ -241,28 +219,21 @@ notStA st = do
 redirectedStmtA :: Bool -> Stmt t -> [Redirect t] -> Fish ()
 redirectedStmtA fork st redirects =
   void (setupAll (stmtA fork st))
-  where
-    withTh s t f = case t of
-      Left fd -> view (asLens fd) >>= f
-      Right (app,e) -> do
-        [name] <- evalArg e
-        th <- liftIO $ openFile (T.unpack name) (calcIOMode app s)
-        r <- f th
-        liftIO (hClose th)
-        return r
-    
-    calcIOMode :: Append -> Fd -> IOMode
-    calcIOMode b s = case b of
-      True -> AppendMode
-      False -> case s of
-        Left StdInFd -> ReadMode
-        Right _ -> WriteMode
-      
-    setup (Redirect s t) f =
-      withTh s t $ \th ->
-        local (asLens s .~ th) f
-    
+  where      
     setupAll = foldr ((.) . setup) id redirects
+
+    setup red f = case red of
+      RedirectClose fd -> close fd f
+      RedirectIn fd t -> case t of
+        Left fd2 -> duplicate fd2 fd f
+        Right e -> do
+          [name] <- evalArg e
+          withFileR name fd f
+      RedirectOut fd t -> case t of
+        Left fd2 -> duplicate fd2 fd f
+        Right (mode,e) -> do
+          [name] <- evalArg e
+          withFileW name mode fd f
 
 
 {- Expression evaluation -}
@@ -304,10 +275,10 @@ evalBracesE es =
 
 evalCmdSubstE :: CmdRef t -> Fish [Globbed]
 evalCmdSubstE (CmdRef _ prog ref) = do
-  (mvar,wH) <- createHandleMVarPair
-  stMVar <- local (hout .~ wH) (forkFish $ progA prog)
+  (mvar,wE) <- createHandleMVarPair
+  stMVar <- FDT.insert Fd1 wE (forkFish $ progA prog)
   spliceInState stMVar
-  liftIO (hClose wH)
+  liftIO (P.closeFd wE)
   text <- liftIO $ takeMVar mvar
   let ts = T.lines text
   map fromText
@@ -383,16 +354,3 @@ localise l f = do
   modify (l .~ memory)
   return r
     
-
-{- Translate Fd to h* lenses -}
-asLens ::
-  Fd
-  -> forall f. Functor f =>
-    (Handle -> f Handle)
-    -> FishReader
-    -> f FishReader
-asLens fd = case fd of
-  Left StdInFd -> hin
-  Right StdOutFd -> hout
-  Right StdErrFd -> herr
-

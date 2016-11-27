@@ -3,7 +3,10 @@ module Fish.Interpreter.Builtins.Read (
   readF
 ) where
 
+import Fish.Lang.Lang
+
 import Fish.Interpreter.Core
+import Fish.Interpreter.IO
 import Fish.Interpreter.Var
 import Fish.Interpreter.Status
 
@@ -20,8 +23,7 @@ readF :: Bool -> [T.Text] -> Fish ()
 readF _ = \case
   [] -> errork "read: no arguments given"
   args -> do
-    inH <- view hin
-    l <- liftIO (TextIO.hGetLine inH)
+    l <- readLineFrom Fd0
     loop args (T.words l)
     ok
   where

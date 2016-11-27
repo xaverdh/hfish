@@ -13,6 +13,10 @@ import Control.Lens
 import Control.Monad
 import System.Exit
 
+instance Show Var where
+  show (Var False vs) = show vs
+  show (Var True vs) = "(exported) " ++ show vs
+
 showVars :: Env Var -> T.Text
 showVars env = T.unlines $ map show' (M.toList env)
   where

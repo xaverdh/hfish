@@ -1,7 +1,8 @@
 {-# language LambdaCase, OverloadedStrings #-} 
-module Fish.Interpreter.Builtins.Loop (
+module Fish.Interpreter.Builtins.Flow (
   continueF
   ,breakF
+  ,returnF
 ) where
 
 import Fish.Interpreter.Core
@@ -9,7 +10,6 @@ import Fish.Interpreter.Status
 import Fish.Interpreter.Util
 
 import qualified Data.Text as T
-import Text.Read (readMaybe)
 import Data.Monoid
 import Control.Lens
 import System.Exit
@@ -45,4 +45,19 @@ breakF _ = \case
     jump
   where
     jump = impl breakK "break:"
+
+returnF :: Bool -> [T.Text] -> Fish a
+returnF _ = \case
+  [] -> ret
+  [t] -> maybe
+           (noIntErr t)
+           (setStatus . toEnum)
+           (readTextMaybe t)
+         >> ret
+  _ -> errork "return: too many arguments given"
+  where
+    noIntErr t = errork ("return: expected integer, got: " <> t)
+    ret = do
+      k:_ <- view returnK
+      k () >> return undefined
 

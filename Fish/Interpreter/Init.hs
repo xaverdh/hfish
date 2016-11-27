@@ -5,6 +5,7 @@ module Fish.Interpreter.Init (
 ) where
 
 import Fish.Interpreter.Core
+import Fish.Interpreter.FdTable (initialFdTable)
 import Fish.Interpreter.Var
 import Fish.Interpreter.Builtins (allBuiltins)
 
@@ -52,15 +53,15 @@ mkInitialFishState = do
 mkInitialFishReader :: IO FishReader
 mkInitialFishReader =
   return FishReader {
-    _hin   = stdin
-    ,_hout = stdout
-    ,_herr = stderr
+    _fdTable = initialFdTable
     ,_builtins = allBuiltins
     ,_breakK = [const warnB]
     ,_continueK = [const warnC]
+    ,_returnK = [const warnR]
     ,_errorK = [error . T.unpack]
   }
   where
     warnB = error "no loop left to break"
     warnC = error "no loop left to continue"
+    warnR = error "no function to return from"
                     

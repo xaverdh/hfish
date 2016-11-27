@@ -27,6 +27,9 @@ setStatus exCode = do
   readOnlyEnv . at "status" .= Just
     (Var False [T.pack . show $ fromEnum exCode])
 
+bad :: Fish ()
+bad = setStatus (ExitFailure 1)
+
 ok :: Fish ()
 ok = setStatus ExitSuccess
 

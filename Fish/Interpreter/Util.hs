@@ -29,3 +29,4 @@ readTextsMaybe = readTextMaybe . T.unwords
 
 showText :: Show a => a -> T.Text
 showText = T.pack . show
+

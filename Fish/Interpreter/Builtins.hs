@@ -17,22 +17,25 @@ import System.IO
 import System.Exit
 import qualified Data.Text as T
 
-import Fish.Interpreter.Builtins.Loop
+import Fish.Interpreter.Builtins.Flow
 import Fish.Interpreter.Builtins.Exit
 import Fish.Interpreter.Builtins.Cd
 import Fish.Interpreter.Builtins.Dirstack
 import Fish.Interpreter.Builtins.Echo
+import Fish.Interpreter.Builtins.Bool
 import Fish.Interpreter.Builtins.Read
 import Fish.Interpreter.Builtins.String
 import Fish.Interpreter.Builtins.Random
 import Fish.Interpreter.Builtins.Seq
+import Fish.Interpreter.Builtins.Contains
 import Fish.Interpreter.Builtins.Source
 import Fish.Interpreter.Builtins.Math
 
 allBuiltins :: Env (Bool -> [T.Text] -> Fish ())
 allBuiltins =
   M.fromList [
-    ("break",breakF)
+    ("return",returnF)
+    ,("break",breakF)
     ,("continue",continueF)
     ,("exit",exitF)
     ,("cd",cdF)
@@ -44,7 +47,10 @@ allBuiltins =
     ,("string",stringF)
     ,("random",randomF)
     ,("seq",seqF)
+    ,("contains",containsF)
     ,("source",sourceF)
+    ,("true",trueF)
+    ,("false",falseF)
     ,("math",mathF)
   ]
 

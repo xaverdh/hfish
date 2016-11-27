@@ -3,7 +3,9 @@ module Fish.Interpreter.Builtins.Seq (
   seqF
 ) where
 
+import Fish.Lang.Lang
 import Fish.Interpreter.Core
+import Fish.Interpreter.IO
 import Fish.Interpreter.Concurrent
 import Fish.Interpreter.Status
 import Fish.Interpreter.Util
@@ -32,15 +34,12 @@ seqFWorker :: Bool -> Maybe (Int,Int,Int) -> Fish ()
 seqFWorker fork = \case
     Nothing -> errork "seq: invalid argument(s) given"
     Just (a,b,c) -> do
-      outH <- view hout
       if fork
-        then liftIO (forkIO $ writeList outH a b c) >> ok
-        else liftIO (writeList outH a b c) >> ok
+        then forkFish (writeList a b c) >> ok
+        else writeList a b c >> ok
 
-writeList :: Handle -> Int -> Int -> Int -> IO ()
-writeList outH a b c =
-  TextIO.hPutStr outH . T.unlines
-  $ createList a b c
+writeList :: Int -> Int -> Int -> Fish ()
+writeList a b c = (echo . T.unlines) $ createList a b c
 
 createList :: Int -> Int -> Int -> [T.Text]
 createList a b c

@@ -4,6 +4,7 @@ module Fish.Interpreter.Builtins.String (
 ) where
 
 import Fish.Interpreter.Core hiding (value)
+import Fish.Interpreter.IO
 import Fish.Interpreter.Concurrent
 import Fish.Interpreter.Status
 
@@ -21,7 +22,6 @@ import System.Environment
 
 import Options.Applicative.Builder
 import Options.Applicative
-import Text.Read (readMaybe)
 
 {- TODO: escape -> wait for UnParser,
          match, replace, -q/--quiet option and status -}

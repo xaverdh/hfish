@@ -1,5 +1,5 @@
 {-# language LambdaCase, OverloadedStrings #-}
-module Fish.Interpreter.Pid.Pid where
+module Fish.Interpreter.Process.Pid where
 
 import Fish.Lang.Lang
 import Fish.Interpreter.Core

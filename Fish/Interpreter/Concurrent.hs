@@ -13,22 +13,24 @@ import Control.Concurrent.MVar
 import System.Process
 import System.Exit
 import System.IO
+import qualified System.Posix.IO as P
+import qualified System.Posix.Types as PT
 import Data.Functor
 import Data.Text.IO as TextIO
 import Data.Text as T
 
-createHandleMVarPair :: Fish (MVar T.Text,Handle)
+createHandleMVarPair :: Fish (MVar T.Text,PT.Fd)
 createHandleMVarPair =
   liftIO $ do
-    (rE,wE) <- createPipe
+    (rE,wE) <- P.createPipe
     mvar <- newEmptyMVar
     forkOS
-      ( TextIO.hGetContents rE >>= putMVar mvar )
+      ( P.fdToHandle rE >>= TextIO.hGetContents >>= putMVar mvar )
     return (mvar,wE)
 
-pipeFish :: (Handle -> Fish ()) -> (Handle -> Fish ()) -> Fish ()
+pipeFish :: (PT.Fd -> Fish ()) -> (PT.Fd -> Fish ()) -> Fish ()
 pipeFish f1 f2 = do
-  (rE,wE) <- liftIO createPipe
+  (rE,wE) <- liftIO P.createPipe
   forkFish (f1 wE)
   f2 rE
 

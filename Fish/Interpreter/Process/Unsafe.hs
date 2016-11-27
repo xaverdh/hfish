@@ -1,5 +1,5 @@
 {-# language LambdaCase #-}
-module Fish.Interpreter.Pid.Unsafe (
+module Fish.Interpreter.Process.Unsafe (
   phGetPid
 ) where
 

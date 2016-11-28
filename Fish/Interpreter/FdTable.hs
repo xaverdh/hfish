@@ -7,6 +7,9 @@ import qualified System.Posix.IO as P
 import qualified System.Posix.Types as PT
 import Control.Lens
 import Control.Monad.Reader.Class
+import Control.Monad.IO.Class
+
+import Debug.Trace (trace)
 
 -- | A global table, holding all file descriptors.
 --
@@ -89,6 +92,10 @@ initialFdTable = FdTable fds stat
         ,(P.stdError, False) ]
 
 
+traceFdTable :: (MonadIO m,HasFdTable m) => m ()
+traceFdTable = do
+  table <- askFdTable
+  trace (show table) $ return ()
 
 
 

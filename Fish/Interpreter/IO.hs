@@ -34,8 +34,6 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as TextIO
 import qualified Data.Map as M
 
-import Debug.Trace (trace)
-
 -- | Execute an IO action in an environment
 --   where the interal fd state has been translated
 --   into OS calls.
@@ -80,7 +78,7 @@ withFileR fpath fd k = do
     Nothing
     P.defaultFileFlags
   insert fd pfd
-    ( k `finally` liftIO (P.closeFd pfd) )
+    ( k `finally` P.closeFd pfd )
 
 
 withFileW :: T.Text -> L.FileMode -> L.Fd -> Fish () -> Fish ()
@@ -96,7 +94,7 @@ withFileW fpath mode fd k =
         P.defaultFileFlags { P.exclusive = True }
     case mpfd of
       Just pfd -> insert fd pfd
-        ( k `finally` liftIO (P.closeFd pfd) )
+        ( k `finally` P.closeFd pfd )
       Nothing -> return ()
   where
     accessMode = 
@@ -140,7 +138,10 @@ readLineFrom fd = do
 writeTo :: L.Fd -> T.Text -> Fish ()
 writeTo fd text = do
   pfd <- lookupFd' fd
-  liftIO $ P.fdWrite pfd (T.unpack text) -- inefficient, but currently the only thing that works reliably
+  let s = T.unpack text
+  when (s/="") $ liftIO ( void $ P.fdWrite pfd s )
+  -- inefficient, but currently the only thing that works reliably
+  
   -- h <- liftIO (P.fdToHandle pfd)
   -- liftIO (hSetBinaryMode h False)
   -- w <- liftIO (hIsWritable h)

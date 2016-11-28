@@ -27,6 +27,8 @@ main = do
     [] -> runInputT
       defaultSettings
       (simpleInterpreterLoop r s)
+    "-p":rest -> void $
+      withProg (parseFishInteractive (L.unwords rest <> "\n")) print
     "-c":rest -> do
       withProg (parseFishInteractive (L.unwords rest <> "\n")) (runProgram r s)
       return ()

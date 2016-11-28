@@ -11,6 +11,7 @@ import Data.Monoid
 import Control.Monad.IO.Class
 import Text.Read
 import System.Exit
+import System.Posix.Process
 
 exitF :: Bool -> [T.Text] -> Fish ()
 exitF _ = \case

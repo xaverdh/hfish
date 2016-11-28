@@ -52,7 +52,6 @@ lookupFd fd = do
       isOpen pfd >>= \case
         True -> return (Just pfd)
         False -> return Nothing
-    
 
 -- | Insert an (abstract fd,OS fd) pair into the 'FdTable'.
 insert :: HasFdTable m => L.Fd -> PT.Fd -> m a -> m a

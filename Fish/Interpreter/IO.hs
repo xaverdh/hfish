@@ -27,6 +27,8 @@ import Data.Bool
 import System.IO
 import System.IO.Error as IOE
 import System.Posix.Files
+import System.Posix.Resource
+
 import qualified System.Posix.Types as PT
 import qualified System.Posix.IO as P
 import qualified Fish.Lang.Lang as L
@@ -34,26 +36,56 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as TextIO
 import qualified Data.Map as M
 
+import Debug.Trace (trace)
+
+-- | Get the maximum number of allowed file descriptors.
+--
+getMaxNumFds :: Fish Int
+getMaxNumFds =
+  liftIO (softLimit <$> getResourceLimit ResourceOpenFiles)
+  >>= return . \case
+    ResourceLimitUnknown -> 2^8 -- conservative guess (ghc guesses the same when closing all handles in createProcess).
+    ResourceLimitInfinity -> 2^12 -- random high number
+    ResourceLimit i -> fromInteger i
+
 -- | Execute an IO action in an environment
 --   where the interal fd state has been translated
 --   into OS calls.
 --   
 forkWithFileDescriptors :: IO () -> Fish ThreadId
 forkWithFileDescriptors action = do
+  max_num_fds <- getMaxNumFds
   FdTable fdescs closedStat <- askFdTable
   liftIO . forkOS $ do
     -- get a list of all os fds in use
     let pfds = M.keys closedStat
+    
+    -- offset to move fds to the (hopefully unused) end of the allowed range
+    offset <- compOffset pfds max_num_fds
+    
     -- save copies of all fds to avoid conflicts
-    forM_ pfds $ \i -> P.dupTo i (i+10)
+    forM_ pfds $ \i -> P.dupTo i ( toEnum $ offset + fromEnum i )
+    
     -- set up redirections
-    forM_ (M.toList fdescs) $ \(fd,pfd) ->
-      P.dupTo (toEnum $ fromEnum pfd + 10) (toEnum $ fromEnum fd)
+    forM_ ( M.toList fdescs ) $ \(fd,pfd) ->
+      P.dupTo ( toEnum $ offset + fromEnum pfd ) ( toEnum . fromEnum $ fd )
+    
     -- close all fds marked closed:
-    forM_ (M.toList closedStat) $ \(pfd,closed) ->
+    forM_ ( M.toList closedStat ) $ \(pfd,closed) ->
       when closed ( P.closeFd pfd )
+    
     -- run the action
     action
+  where
+    tr j i = toEnum ( fromEnum i + j )
+    
+    -- compute offset to move fds to the (hopefully unused) end of the allowed range
+    compOffset pfds max_num_fds = do
+      let m = maximum $ map fromEnum pfds
+      let offset = max_num_fds - m - 1
+      if offset <= m -- sanity check
+        then error "not enough free file descriptors"
+        else return offset
 
 
 -- | Make an abstract fd a duplicate of another abstract fd, i.e. a fd pointing

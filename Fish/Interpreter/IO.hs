@@ -76,9 +76,7 @@ forkWithFileDescriptors action = do
     
     -- run the action
     action
-  where
-    tr j i = toEnum ( fromEnum i + j )
-    
+  where   
     -- compute offset to move fds to the (hopefully unused) end of the allowed range
     compOffset pfds max_num_fds = do
       let m = maximum $ map fromEnum pfds

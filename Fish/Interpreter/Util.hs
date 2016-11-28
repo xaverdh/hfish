@@ -3,8 +3,14 @@ module Fish.Interpreter.Util where
 
 import Data.Bifunctor
 import Text.Read
-import Data.Text as T
+import qualified Data.Text as T
+import Data.Foldable (foldr1)
+import Data.Monoid
 
+mintcal :: Monoid m => m -> [m] -> m
+mintcal m = \case
+  [] -> mempty
+  ms -> foldr1 (\x y -> x <> m <> y) ms
 
 onMaybe :: Maybe a -> b -> (a -> b) -> b
 onMaybe ma b f = maybe b f ma

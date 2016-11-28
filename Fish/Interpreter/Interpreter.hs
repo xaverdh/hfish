@@ -43,8 +43,6 @@ import System.Exit
 import System.Environment
 import System.FilePath
 
--- import Debug.Trace (trace)
-
 progA :: Prog t -> Fish ()
 progA (Prog _ cstmts) = forM_ cstmts compStmtA
 
@@ -182,17 +180,30 @@ ifStA ((st,prog):blks) elblk = do
     ExitSuccess -> progA prog >> setStatus ExitSuccess
     _ -> ifStA blks elblk
     
+
+-- | Match a string against a number of glob patterns.
+--
+--   The implementation deviates strongly from the original fish:
+--
+--   If given an array instead of a string, it will match against
+--   the arrays serialisation.
+--
+--   Arguments to the /case/ branches are serialised as well
+--   and then interpreted as glob patterns.
+--
+--   These glob patterns are matched directly against the string,
+--   superseding the usual glob pattern expansion.
 switchStA :: Expr t -> [(Expr t,Prog t)] -> Fish ()
 switchStA e branches = do
-  xs <- evalArg e
-  loop xs branches
+  t <- T.unwords <$> evalArg e
+  loop t branches
   where
     loop _ [] = return ()
-    loop xs ((e,prog):branches) = do
-      xs' <- evalArg e -- todo: use own glob expansion
-      if xs == xs'
+    loop t ((e,prog):branches) = do
+      glob <- mintcal " " <$> evalExpr e
+      if isJust ( matchGlobbed glob t )
         then progA prog
-        else loop xs branches
+        else loop t branches
 
 beginStA :: Prog t -> Fish ()
 beginStA prog =

@@ -4,6 +4,7 @@ module Fish.Interpreter.Globbed (
   ,fromText
   ,fromString
   ,globExpand
+  ,matchGlobbed
 ) where
 
 import Fish.Lang.Lang
@@ -26,6 +27,10 @@ data Globbed = Globbed {
   }
   deriving (Eq,Ord,Show)
 
+instance Monoid Globbed where
+  mempty = Globbed []
+  mappend a b = Globbed (unGlob a <> unGlob b)
+
 fromText :: T.Text -> Globbed
 fromText t = Globbed [Right t]
 
@@ -41,6 +46,7 @@ showGlobbed =
       DiStarGl -> "**"
       QMarkGl -> "?"
     Right s -> s
+
 
 globExpand :: Globbed -> Fish [T.Text]
 globExpand globbed = 
@@ -65,6 +71,11 @@ optimisticCast (Globbed g) = work g
       (mg:mgs) -> case mg of
         Left _ -> Nothing
         Right s -> (<>) <$> Just s <*> work mgs
+
+matchGlobbed :: Globbed -> T.Text -> Maybe String
+matchGlobbed globbed text = 
+  let re = genParser globbed
+   in (T.unpack text) =~ re
 
 genParser :: Globbed -> RE Char String
 genParser (Globbed g) = work g

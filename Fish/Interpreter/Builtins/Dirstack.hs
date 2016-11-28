@@ -41,7 +41,7 @@ dirsF _ = \case
   [] -> do
     dirs <- map T.pack <$> use dirstack
     wdir <- T.pack <$> getCWD
-    flip writeTo Fd1 $ T.unwords (wdir:dirs)
+    writeTo Fd1 $ T.unwords (wdir:dirs)
     {- Adding the current working directory to the stack
        does not make a lot of sense to my mind, but since
        fish does that ... here we go -}

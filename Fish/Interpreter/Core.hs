@@ -14,6 +14,7 @@ import Control.Monad.State
 import Control.Monad.Reader
 import Control.Monad.Cont
 import Control.Lens
+import Control.Exception as E
 import System.Process
 import System.IO
 import System.Exit
@@ -33,9 +34,34 @@ import System.Posix.Types (CPid)
 newtype Fish a = Fish ((ReaderT FishReader) (StateT FishState (ContT FishState IO)) a)
   deriving (Applicative,Functor,Monad,MonadIO,MonadState FishState,MonadReader FishReader,MonadCont)
 
+-- | Run a fish action with given reader and state, returning
+--   the final state.
 runFish :: Fish a -> FishReader -> FishState -> IO FishState
 runFish (Fish f) r s =
   ((f `runReaderT` r) `execStateT` s) `runContT` return
+
+-- | Ruturn an IO action, running the given fish action
+--   in the IO Monad with and returning the new / final state.
+--
+--   The fish action will be run with the state (and reader) from
+--   the time of the call to projectIO,
+--
+--   i.e. projectIO captures this state when called.
+--
+projectIO :: Fish () -> Fish (IO FishState)
+projectIO f = do
+  r <- ask
+  s <- get
+  return (runFish f r s)
+
+
+-- | Takes a fish action and a continuation and passes an IO
+--
+--   version of the fish action as an argument to the continuation.
+--
+asIO :: Fish () -> (IO FishState -> Fish a) -> Fish a
+asIO f g = projectIO f >>= g
+
 
 -- | The type of a fish /variable/
 data Var = Var {
@@ -104,29 +130,45 @@ errork t = do
   return undefined
 
 -- | Takes a lens to one of the continuation stacks,
---   a cleanup routine and a fish action.
+--   an interrupt routine and a fish action.
 --
 --   It then executes this action and, should a jump occur,
---   runs the cleanup routine before continuing the jump.
-reThrow :: Lens' FishReader [a -> Fish ()]
+--   runs the interrupt routine before continuing the jump.
+interruptK :: Lens' FishReader [a -> Fish ()]
   -- ^ The lens to the continuation stack.
   -> Fish b
-  -- ^ A cleanup routine, its return value gets ignored.
+  -- ^ An interrupt routine, its return value gets ignored.
   -> Fish ()
   -- ^ The fish action to execute.
   -> Fish ()
-reThrow lensK cleanup f = 
+interruptK lensK interrupt f = 
   callCC $ \k -> flip local f
-    ( lensK %~ map (\k' x -> cleanup >> k' x) )
+    ( lensK %~ map (\k' x -> interrupt >> k' x) )
 
 -- | Run cleanup even if jumping out of context via some
 --   continuation and resume the jump afterwards.
-finally :: Fish () -> Fish b  -> Fish ()
+finallyFish :: Fish () -> Fish b  -> Fish ()
+finallyFish f cleanup = 
+  (f `onContinuationFish` cleanup)
+  >> void cleanup
+
+-- | Like 'finallyFish' but only run cleanup if a
+--   continuation is called
+onContinuationFish :: Fish () -> Fish b  -> Fish ()
+onContinuationFish f cleanup = 
+  ( interruptK continueK cleanup
+  . interruptK breakK cleanup
+  . interruptK returnK cleanup
+  . interruptK errorK cleanup ) f
+
+-- | Make sure cleanup is run regardless of continuation jumping
+--   or errors (IO or pure).
+finally :: Fish () -> IO b  -> Fish ()
 finally f cleanup = 
-  ( reThrow continueK cleanup
-  . reThrow breakK cleanup
-  . reThrow returnK cleanup
-  . reThrow errorK cleanup ) f
+  asIO
+    ( f `onContinuationFish` liftIO cleanup )
+    ( liftIO . (`E.finally` cleanup) )
+  >>= put
 
 -- | Clearing all continuations,
 --   calls to them will be silently ignored.

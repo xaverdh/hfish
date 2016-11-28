@@ -1,5 +1,4 @@
-{-# LANGUAGE LambdaCase, OverloadedStrings #-}
-module Fish.Interpreter.IO (
+{-# LANGUAGE LambdaCase, OverloadedStrings, Strict #-} module Fish.Interpreter.IO (
   forkWithFileDescriptors
   ,duplicate
   ,withFileR
@@ -15,14 +14,17 @@ module Fish.Interpreter.IO (
 import Fish.Interpreter.Util
 import Fish.Interpreter.FdTable
 import Fish.Interpreter.Core
+import Fish.Interpreter.Status
 
 import Control.Monad
 import Control.Applicative
 import Control.Monad.IO.Class
+import Control.Concurrent
+import qualified Control.Exception as E
 import Data.Monoid
 import Data.Bool
-import Control.Concurrent
 import System.IO
+import System.IO.Error as IOE
 import System.Posix.Files
 import qualified System.Posix.Types as PT
 import qualified System.Posix.IO as P
@@ -82,21 +84,41 @@ withFileR fpath fd k = do
 
 withFileW :: T.Text -> L.FileMode -> L.Fd -> Fish () -> Fish ()
 withFileW fpath mode fd k =
-  let popen m f = liftIO $ P.openFd (T.unpack fpath) P.WriteOnly m f
+  let popen m f = P.openFd (T.unpack fpath) P.WriteOnly m f
    in do
-    pfd <- case mode of
+    mpfd <- treatExceptions $ case mode of
       L.FModeWrite -> popen (Just accessMode)
         P.defaultFileFlags { P.trunc = True }
       L.FModeApp -> popen (Just accessMode)
         P.defaultFileFlags { P.append = True }
-      L.FModeNoClob -> popen Nothing
+      L.FModeNoClob -> popen (Just accessMode)
         P.defaultFileFlags { P.exclusive = True }
-    insert fd pfd
-      ( k `finally` liftIO (P.closeFd pfd) )
+    case mpfd of
+      Just pfd -> insert fd pfd
+        ( k `finally` liftIO (P.closeFd pfd) )
+      Nothing -> return ()
   where
     accessMode = 
       foldr unionFileModes nullFileMode
       [ ownerReadMode, ownerWriteMode, groupReadMode, otherReadMode ]
+    
+    treatExceptions :: IO PT.Fd -> Fish (Maybe PT.Fd)
+    treatExceptions f =  liftIO
+      ( E.tryJust 
+        ( bool Nothing (Just ()) . IOE.isAlreadyExistsError ) f )
+      >>= \case
+        Right pfd -> return (Just pfd)
+        Left () -> do
+          writeTo L.Fd2
+            $ "File \"" <> fpath <> "\" aready exists.\n"
+          bad
+          return Nothing
+    
+    {-
+    mkErr err = errork
+      $ "failed to open file "
+      <> fpath <> " due to: "
+      <> showText err -}
 
 readFrom :: L.Fd -> Fish T.Text
 readFrom fd = do
@@ -114,17 +136,20 @@ readLineFrom fd = do
   unless r $ notReadableErr fd
   liftIO (TextIO.hGetLine h)
 
-writeTo :: T.Text -> L.Fd -> Fish ()
-writeTo text fd = do
+writeTo :: L.Fd -> T.Text -> Fish ()
+writeTo fd text = do
   pfd <- lookupFd' fd
-  h <- liftIO (P.fdToHandle pfd)
-  w <- liftIO (hIsWritable h)
-  unless w $ notWriteableErr fd
-  liftIO (TextIO.hPutStr h text)
-  return () -- this has to be here for reasons I do not yet fully understand, likely related to lazyness
+  liftIO $ P.fdWrite pfd (T.unpack text) -- inefficient, but currently the only thing that works reliably
+  -- h <- liftIO (P.fdToHandle pfd)
+  -- liftIO (hSetBinaryMode h False)
+  -- w <- liftIO (hIsWritable h)
+  -- unless w $ notWriteableErr fd
+  -- liftIO $ hPutStr h (T.unpack text) >> hFlush h -- seems to work ok?
+  -- liftIO (TextIO.hPutStr h text >> hFlush h) -- flush seems to take very long
+  return ()
 
 echo :: T.Text -> Fish ()
-echo t = writeTo t L.Fd1
+echo = writeTo L.Fd1
 
 echoLn :: T.Text -> Fish ()
 echoLn t = echo (t <> "\n")
@@ -133,11 +158,12 @@ echoLn t = echo (t <> "\n")
 --
 --   and writes directly to stderr. Use for debugging only.
 warn :: T.Text -> Fish ()
-warn t = liftIO (TextIO.hPutStrLn stderr $ "Warning: " <> t)
+warn t = liftIO (TextIO.hPutStrLn stderr t)
 
 lookupFd' :: L.Fd -> Fish PT.Fd
 lookupFd' fd = lookupFd fd >>=
   maybe (notOpenErr fd) return
+
 
 -- Errors:
 

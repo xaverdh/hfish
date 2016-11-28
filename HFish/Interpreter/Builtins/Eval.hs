@@ -27,7 +27,5 @@ evalF _ ts = void (onArgs ts progA)
 execF :: Builtin
 execF _ ts = 
   let name:args = map T.unpack ts
-   in liftIO
-    ( executeFile name True args Nothing
-      >> exitImmediately ExitSuccess )
+   in liftIO $ executeFile name True args Nothing
 

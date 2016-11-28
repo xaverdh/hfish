@@ -30,6 +30,7 @@ import Fish.Interpreter.Builtins.Seq
 import Fish.Interpreter.Builtins.Contains
 import Fish.Interpreter.Builtins.Source
 import Fish.Interpreter.Builtins.Math
+import Fish.Interpreter.Builtins.Eval
 
 allBuiltins :: Env (Bool -> [T.Text] -> Fish ())
 allBuiltins =
@@ -52,5 +53,7 @@ allBuiltins =
     ,("true",trueF)
     ,("false",falseF)
     ,("math",mathF)
+    ,("eval",evalF)
+    ,("exec",execF)
   ]
 

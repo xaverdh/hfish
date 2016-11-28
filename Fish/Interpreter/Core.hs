@@ -89,12 +89,23 @@ data FishState = FishState {
     ,_lastPid :: Maybe CPid
   }
 
+
+-- | The type of a builtin.
+type Builtin = 
+  Bool
+  -- ^ whether the builtin is forked (executed in background)
+  --
+  --   builtins may or may not honour this hint. Most don't.
+  -> [T.Text]
+  -- ^ The arguments to the call, already evaluated.
+  -> Fish ()
+
 -- | The /readonly/ state of the interpreter.
 --   Readonly means that it will not propagate the
 --   stack upwards, only downwards.
 data FishReader = FishReader {
     _fdTable :: FDT.FdTable
-    ,_builtins :: Env (Bool -> [T.Text] -> Fish ())
+    ,_builtins :: Env Builtin
     ,_breakK :: [() -> Fish ()]
     ,_continueK :: [() -> Fish ()]
     ,_returnK :: [() -> Fish ()]

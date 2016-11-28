@@ -241,9 +241,6 @@ redirectedStmtA fork st redirects =
 {- Expression evaluation -}
 evalArgs :: Args t -> Fish [T.Text]
 evalArgs (Args _ es) = join <$> forM es evalArg
-{-globs <- join <$> forM es evalExpr
-  vs <- forM globs globExpand
-  return $ join vs-}
 
 evalArg :: Expr t -> Fish [T.Text]
 evalArg arg = do

@@ -14,10 +14,10 @@ import System.Exit
 
 exitF :: Bool -> [T.Text] -> Fish ()
 exitF _ = \case
-  [] -> getStatus >>= (liftIO . exitWith)
+  [] -> getStatus >>= (liftIO . exitImmediately) -- exitWith
   [arg] -> case readMaybe $ T.unpack arg of
     Just i -> do
-      liftIO . exitWith $ toEnum i
+      liftIO . exitImmediately $ toEnum i
       ok
     Nothing -> errork $ "exit: invalid argument: " <> arg
   _ -> errork "exit: too many arguments given"

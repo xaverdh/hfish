@@ -50,8 +50,8 @@ mkInitialFishState = do
     initStatus = M.insert "status" (Var False ["0"])
 
 
-mkInitialFishReader :: IO FishReader
-mkInitialFishReader =
+mkInitialFishReader :: Fish () -> IO FishReader
+mkInitialFishReader atBreakpoint =
   return FishReader {
     _fdTable = initialFdTable
     ,_builtins = allBuiltins
@@ -59,6 +59,7 @@ mkInitialFishReader =
     ,_continueK = [const warnC]
     ,_returnK = [const warnR]
     ,_errorK = [error . T.unpack]
+    ,_breakpoint = atBreakpoint
   }
   where
     warnB = error "no loop left to break"

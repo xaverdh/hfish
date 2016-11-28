@@ -4,6 +4,8 @@ module HFish.Interpreter.Main.SimpleMain where
 import Control.Lens
 import Control.Monad
 import Control.Monad.IO.Class
+import Control.Monad.State.Class
+import Control.Monad.Reader.Class
 import Data.Monoid
 import Data.Maybe
 import Data.List as L
@@ -22,11 +24,11 @@ import System.Environment (getArgs)
 main = do
   args <- getArgs
   s <- mkInitialFishState
-  r <- mkInitialFishReader
+  r <- mkInitialFishReader atBreakpoint
   case args of
-    [] -> runInputT
-      defaultSettings
-      (simpleInterpreterLoop r s)
+    [] -> runInterpreterLoop r s
+    "-n":paths -> void $
+      forM_ paths parseFish
     "-p":rest -> void $
       withProg (parseFishInteractive (L.unwords rest <> "\n")) print
     "-c":rest -> do
@@ -42,13 +44,17 @@ prompt :: FishState -> String
 prompt s =
   "~" ++ (show . fromEnum) (s ^. status) ++ "> "
 
-simpleInterpreterLoop :: FishReader -> FishState -> InputT IO ()
-simpleInterpreterLoop r s =
+runInterpreterLoop :: FishReader -> FishState -> IO ()
+runInterpreterLoop r s =
+  runInputT defaultSettings (interpreterLoop r s)
+
+interpreterLoop :: FishReader -> FishState -> InputT IO ()
+interpreterLoop r s =
   getInputLine (prompt s) >>= \case
     Nothing -> return ()
     Just l -> do
       ms' <- withProg (parseFishInteractive $ l ++ "\n") (runProgram r s)
-      simpleInterpreterLoop r (fromMaybe s ms')
+      interpreterLoop r (fromMaybe s ms')
 
 coerce :: IO (Either SomeException a) -> IO (Either SomeException a)
 coerce = id
@@ -68,5 +74,9 @@ runProgram r s p =
       return s
     Right s' -> return s'
 
-
+atBreakpoint :: Fish ()
+atBreakpoint = do
+  r <- ask
+  s <- get
+  liftIO $ runInterpreterLoop r s
 

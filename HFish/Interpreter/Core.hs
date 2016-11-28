@@ -110,6 +110,7 @@ data FishReader = FishReader {
     ,_continueK :: [() -> Fish ()]
     ,_returnK :: [() -> Fish ()]
     ,_errorK :: [T.Text -> Fish ()]
+    ,_breakpoint :: Fish ()
   }
 
 makeLenses ''Var
@@ -119,6 +120,11 @@ makeLenses ''FishState
 instance HasFdTable Fish where
   askFdTable = view fdTable
   localFdTable = local . (fdTable %~)
+
+-- | Set a breakpoint.
+setBreakpoint :: Fish ()
+setBreakpoint =
+  view breakpoint >>= id
 
 -- | Sets a breakpoint which is jumped to by a call to /continue/.
 setContinueK f = callCC (\k -> local (continueK %~ (k:)) f)

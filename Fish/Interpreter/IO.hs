@@ -1,4 +1,5 @@
-{-# LANGUAGE LambdaCase, OverloadedStrings, Strict #-} module Fish.Interpreter.IO (
+{-# LANGUAGE LambdaCase, OverloadedStrings #-}
+module Fish.Interpreter.IO (
   forkWithFileDescriptors
   ,duplicate
   ,withFileR

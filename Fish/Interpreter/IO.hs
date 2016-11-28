@@ -138,8 +138,7 @@ readLineFrom fd = do
 writeTo :: L.Fd -> T.Text -> Fish ()
 writeTo fd text = do
   pfd <- lookupFd' fd
-  let s = T.unpack text
-  when (s/="") $ liftIO ( void $ P.fdWrite pfd s )
+  liftIO (P.fdWrite pfd $ T.unpack text)
   -- inefficient, but currently the only thing that works reliably
   
   -- h <- liftIO (P.fdToHandle pfd)

@@ -32,6 +32,7 @@ import HFish.Interpreter.Builtins.Source
 import HFish.Interpreter.Builtins.Math
 import HFish.Interpreter.Builtins.Eval
 import HFish.Interpreter.Builtins.Breakpoint
+import HFish.Interpreter.Builtins.Test
 
 allBuiltins :: Env (Bool -> [T.Text] -> Fish ())
 allBuiltins =
@@ -57,5 +58,6 @@ allBuiltins =
     ,("eval",evalF)
     ,("exec",execF)
     ,("breakpoint",breakpointF)
+    ,("test",testF)
   ]
 

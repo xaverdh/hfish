@@ -75,6 +75,11 @@ data Var = Var {
 --   their values.
 type Env a = M.Map T.Text a
 
+-- | The type of a (fish) function.
+type Function =
+  [T.Text] -- ^ The arguments to the function call, already evaluated.
+  -> Fish ()
+
 -- | The /mutable/ state of the interpreter.
 data FishState = FishState {
     -- _universalEnv :: Env
@@ -82,13 +87,12 @@ data FishState = FishState {
     ,_flocalEnv :: Env Var
     ,_localEnv :: Env Var
     ,_readOnlyEnv :: Env Var
-    ,_functions :: Env ([T.Text] -> Fish ())
+    ,_functions :: Env Function
     ,_status :: ExitCode
     ,_cwdir :: FilePath
     ,_dirstack :: [FilePath]
     ,_lastPid :: Maybe CPid
   }
-
 
 -- | The type of a builtin.
 type Builtin = 

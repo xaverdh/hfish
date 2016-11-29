@@ -26,7 +26,7 @@ main = do
   s <- mkInitialFishState
   r <- mkInitialFishReader atBreakpoint
   case args of
-    [] -> runInterpreterLoop r s
+    [] -> runInterpreterLoop False r s
     "-n":paths -> void $
       forM_ paths parseFish
     "-p":rest -> void $
@@ -40,21 +40,25 @@ main = do
       return ()
 
 
-prompt :: FishState -> String
-prompt s =
-  "~" ++ (show . fromEnum) (s ^. status) ++ "> "
+mkPrompt :: Bool -> FishState -> String
+mkPrompt isbrkpt s
+  | isbrkpt = insStatus <> ": "
+  | otherwise = "~" <> insStatus <> "> "
+  where
+    insStatus = (show . fromEnum) (s ^. status)
 
-runInterpreterLoop :: FishReader -> FishState -> IO ()
-runInterpreterLoop r s =
-  runInputT defaultSettings (interpreterLoop r s)
+runInterpreterLoop :: Bool -> FishReader -> FishState -> IO ()
+runInterpreterLoop isbrkpt r s =
+  runInputT defaultSettings
+    ( interpreterLoop (mkPrompt isbrkpt s) r s )
 
-interpreterLoop :: FishReader -> FishState -> InputT IO ()
-interpreterLoop r s =
-  getInputLine (prompt s) >>= \case
+interpreterLoop :: String -> FishReader -> FishState -> InputT IO ()
+interpreterLoop prompt r s =
+  getInputLine prompt >>= \case
     Nothing -> return ()
     Just l -> do
       ms' <- withProg (parseFishInteractive $ l ++ "\n") (runProgram r s)
-      interpreterLoop r (fromMaybe s ms')
+      interpreterLoop prompt r (fromMaybe s ms')
 
 coerce :: IO (Either SomeException a) -> IO (Either SomeException a)
 coerce = id
@@ -78,5 +82,5 @@ atBreakpoint :: Fish ()
 atBreakpoint = do
   r <- ask
   s <- get
-  liftIO $ runInterpreterLoop r s
+  liftIO $ runInterpreterLoop True r s
 

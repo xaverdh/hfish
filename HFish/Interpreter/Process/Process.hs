@@ -5,6 +5,7 @@ import qualified Data.Text as T
 import Data.Bifunctor
 import Data.Monoid
 import System.Process
+import System.Posix.Process
 import System.IO
 import System.IO.Error
 import Control.Monad
@@ -20,40 +21,30 @@ import HFish.Interpreter.Status
 import HFish.Interpreter.Var
 import HFish.Interpreter.Cwd
 import HFish.Interpreter.Process.Pid
-import HFish.Interpreter.Process.Unsafe (phGetPid)
 
 fishCreateProcess :: Bool -> T.Text -> [T.Text] -> Fish ()
 fishCreateProcess forked name args = do
-  wdir <- use cwdir
-  vars <- map (second $ T.unwords . _value) <$> exportVars
-  phmvar <- liftIO newEmptyMVar
-  forkWithFileDescriptors $
-    -- createProcess_ throws an exception, which we really
-    -- should catch, but unfortunately we dont know which one
-    -- due to lack of documentation in System.Process.
-    -- ... So we just catch all IO errors.
-    tryIOError
-      ( createProcess_ "createProcessWithRedirections"
-        (proc nameText argsText){
-          close_fds = False
-          ,delegate_ctlc = not forked
-          ,std_in = Inherit
-          ,std_out = Inherit
-          ,std_err = Inherit
-          ,cwd = Just wdir
-          ,env = Just $ map (bimap T.unpack T.unpack) vars } )
-    >>= \case
-      Left e -> putMVar phmvar (Left e)
-      Right (_,_,_,ph) -> putMVar phmvar (Right ph)
-  
-  liftIO (takeMVar phmvar) >>= \case
-    Left ex -> errork $ "could not create process \"" <> name <> "\" due to:\n" <> showText ex
-    Right ph -> do
-      mpid <- liftIO ( phGetPid ph )
-      lastPid .= mpid
-      unless forked
-        ( liftIO ( waitForProcess ph )
-          >>= setStatus )
+  env <- currentEnvironment
+  pid <- forkWithFileDescriptors $
+    executeFile nameString True argsStrings ( Just env )
+  lastPid .= Just pid
+  if forked then return ()
+    else do
+      liftIO ( getProcessStatus True{-block-} False pid )
+      >>= \case
+        Nothing -> errork $ "could not retrieve status of command \"" <> name <> "\""
+        Just stat -> case stat of
+          Exited exCode -> setStatus exCode
+          Terminated sig _ -> errork $ "\"" <> name <> "\" was terminated by signal: " <> showText sig
+          Stopped sig -> errork $ "\"" <> name <> "\" was stopped by signal: " <> showText sig        
   where
-    nameText = T.unpack name
-    argsText = map T.unpack args
+    nameString = T.unpack name
+    argsStrings = map T.unpack args
+
+currentEnvironment :: Fish [(String,String)]
+currentEnvironment = 
+  fmap (map $ bimap l r) exportVars
+  where
+    r = T.unpack . T.unwords . _value
+    l = T.unpack
+

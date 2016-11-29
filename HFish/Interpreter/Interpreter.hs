@@ -140,9 +140,10 @@ functionStA :: FunIdent t -> Args t -> Prog t -> Fish ()
 functionStA (FunIdent _ ident) args prog = 
   modify (functions . at ident .~ Just f)
   where
-    f args' = do
-      setVar flocalEnv "argv" (Var False args')
-      progA prog
+    f args' =
+      localise flocalEnv $ do
+        setVar flocalEnv "argv" (Var False args')
+        progA prog
 
 whileStA :: Stmt t -> Prog t -> Fish ()
 whileStA st prog = setBreakK loop

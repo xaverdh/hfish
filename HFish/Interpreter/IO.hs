@@ -28,6 +28,7 @@ import System.IO
 import System.IO.Error as IOE
 import System.Posix.Files
 import System.Posix.Resource
+import System.Posix.Process
 
 import qualified System.Posix.Types as PT
 import qualified System.Posix.IO as P
@@ -52,11 +53,11 @@ getMaxNumFds =
 --   where the interal fd state has been translated
 --   into OS calls.
 --   
-forkWithFileDescriptors :: IO () -> Fish ThreadId
+forkWithFileDescriptors :: IO () -> Fish PT.ProcessID
 forkWithFileDescriptors action = do
   max_num_fds <- getMaxNumFds
   FdTable fdescs closedStat <- askFdTable
-  liftIO . forkOS $ do
+  liftIO . forkProcess $ do
     -- get a list of all os fds in use
     let pfds = M.keys closedStat
     
@@ -64,11 +65,15 @@ forkWithFileDescriptors action = do
     offset <- compOffset pfds max_num_fds
     
     -- save copies of all fds to avoid conflicts
-    forM_ pfds $ \i -> P.dupTo i ( toEnum $ offset + fromEnum i )
+    forM_ pfds $ \i ->
+      let j = ( toEnum $ offset + fromEnum i )
+       in P.dupTo i j
     
     -- set up redirections
     forM_ ( M.toList fdescs ) $ \(fd,pfd) ->
-      P.dupTo ( toEnum $ offset + fromEnum pfd ) ( toEnum . fromEnum $ fd )
+      let i = ( toEnum $ offset + fromEnum pfd )
+          j = ( toEnum . fromEnum $ fd ) 
+       in P.dupTo i j
     
     -- close all fds marked closed:
     forM_ ( M.toList closedStat ) $ \(pfd,closed) ->
@@ -76,7 +81,7 @@ forkWithFileDescriptors action = do
     
     -- run the action
     action
-  where   
+  where
     -- compute offset to move fds to the (hopefully unused) end of the allowed range
     compOffset pfds max_num_fds = do
       let m = maximum $ map fromEnum pfds

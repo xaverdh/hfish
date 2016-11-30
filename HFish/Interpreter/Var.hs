@@ -13,6 +13,8 @@ import Control.Lens
 import Control.Monad
 import System.Exit
 
+-- TODO: catch errors thrown by read functions and rethrow as errork
+
 instance Show Var where
   show (Var False vs) = show vs
   show (Var True vs) = "(exported) " ++ show vs
@@ -73,9 +75,8 @@ setVarSafe env ident var =
     False -> setVar env ident var
 
 withTextVar :: (T.Text -> a) -> Var -> a
-withTextVar f var = f
-  $ T.intercalate " "
-  (var ^. value)
+withTextVar f var =
+  f $ T.unwords (var ^. value)
 
 readVar :: Read a => Var -> a
 readVar = withTextVar readText
@@ -83,4 +84,6 @@ readVar = withTextVar readText
 readVarMaybe :: Read a => Var -> Maybe a
 readVarMaybe = withTextVar readTextMaybe
 
+mapSerialVar :: (Read a,Show b) => (a -> b) -> Var -> Var
+mapSerialVar f = value %~ map (showText . f . readText)
 

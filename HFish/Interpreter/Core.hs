@@ -94,6 +94,16 @@ data FishState = FishState {
     ,_lastPid :: Maybe CPid
   }
 
+
+-- | Restore given scope after fish action exits.
+localise :: Lens' FishState b -> Fish a -> Fish a
+localise l f = do
+  memory <- use l
+  r <- f
+  modify (l .~ memory)
+  return r
+
+
 -- | The type of a builtin.
 type Builtin = 
   Bool

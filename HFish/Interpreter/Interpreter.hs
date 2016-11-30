@@ -1,4 +1,4 @@
-{-# language LambdaCase, Rank2Types, OverloadedStrings, BangPatterns #-}
+{-# language LambdaCase, OverloadedStrings, BangPatterns #-}
 module HFish.Interpreter.Interpreter where
 
 import HFish.Lang.Lang
@@ -357,14 +357,4 @@ evalInt e = do
         $ "failed to interpret expression "
           <> "as integer: " <> v
 
-
-{- Restore given scope after fish action exits. -}
-localise ::
-  ( forall f. Functor f => (b -> f b) -> FishState -> f FishState )
-  -> Fish a -> Fish a
-localise l f = do
-  memory <- use l
-  r <- f
-  modify (l .~ memory)
-  return r
     

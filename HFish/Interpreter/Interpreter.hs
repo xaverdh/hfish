@@ -31,9 +31,8 @@ import Control.Monad.State
 import Control.Applicative
 import Control.Concurrent
 import Control.Concurrent.MVar
-
 import qualified System.Posix.IO as PIO
-import System.Exit
+
 
 progA :: Prog t -> Fish ()
 progA (Prog _ cstmts) = forM_ cstmts compStmtA
@@ -146,11 +145,8 @@ whileStA st prog = setBreakK loop
     body = progA prog
     loop = do
       simpleStmtA st
-      use status >>= \case
-        ExitSuccess -> do
-          setContinueK body
-          loop
-        _ -> return ()
+      ifOk ( setContinueK body
+             >> loop )
 
 forStA :: VarIdent t -> Args t -> Prog t -> Fish ()
 forStA (VarIdent _ varIdent) args prog = do
@@ -172,10 +168,9 @@ ifStA [] (Just prog) = progA prog
 ifStA [] Nothing = return ()
 ifStA ((st,prog):blks) elblk = do
   simpleStmtA st
-  use status >>= \case
-    ExitSuccess -> progA prog >> setStatus ExitSuccess
-    _ -> ifStA blks elblk
-    
+  onStatus
+    (const $ ifStA blks elblk)
+    (progA prog >> ok)    
 
 -- | Match a string against a number of glob patterns.
 --
@@ -207,23 +202,14 @@ beginStA prog =
   $ progA prog
 
 andStA :: Stmt t -> Fish ()
-andStA st =
-  getStatus >>= \case
-    ExitSuccess -> simpleStmtA st
-    ExitFailure _ -> return ()
+andStA st = ifOk $ simpleStmtA st
   
 orStA :: Stmt t -> Fish ()
-orStA st =
-  getStatus >>= \case
-    ExitSuccess -> return ()
-    ExitFailure _ -> simpleStmtA st
+orStA st = unlessOk $ simpleStmtA st
 
 notStA :: Stmt t -> Fish ()
-notStA st = do
-  simpleStmtA st
-  modifyStatus $ \case
-    ExitSuccess -> ExitFailure 1
-    ExitFailure _ -> ExitSuccess
+notStA st = 
+  simpleStmtA st >> invertStatus
 
 redirectedStmtA :: Bool -> Stmt t -> [Redirect t] -> Fish ()
 redirectedStmtA fork st redirects =

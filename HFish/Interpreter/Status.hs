@@ -27,16 +27,38 @@ setStatus exCode = do
   readOnlyEnv . at "status" .= Just
     (Var False [T.pack . show $ fromEnum exCode])
 
+modifyStatus :: (ExitCode -> ExitCode) -> Fish ()
+modifyStatus f = do
+  status %= f
+  exCode <- use status
+  readOnlyEnv . at "status" .= Just
+    (Var False [T.pack . show $ fromEnum exCode])
+
+invertStatus :: Fish ()
+invertStatus =
+  modifyStatus $ \case
+    ExitSuccess -> ExitFailure 1
+    ExitFailure _ -> ExitSuccess
+
+onStatus ::
+  (Int -> Fish a) -- ^ ExitFailure _ continuation
+  -> Fish a -- ^ ExitSuccess continuation
+  -> Fish a
+onStatus onErr onSucc = 
+  getStatus >>= \case
+    ExitSuccess -> onSucc
+    ExitFailure i -> onErr i
+
+isOk :: Fish Bool
+isOk = onStatus
+  (const $ return False)
+  (return True)
+
 bad :: Fish ()
 bad = setStatus (ExitFailure 1)
 
 ok :: Fish ()
 ok = setStatus ExitSuccess
-
-isOk :: Fish Bool
-isOk = getStatus >>= \case
-  ExitSuccess -> return True
-  _ -> return False
 
 ifOk :: Fish () -> Fish ()
 ifOk f = isOk >>= flip when f
@@ -44,10 +66,4 @@ ifOk f = isOk >>= flip when f
 unlessOk :: Fish () -> Fish ()
 unlessOk f = isOk >>= flip unless f
 
-modifyStatus :: (ExitCode -> ExitCode) -> Fish ()
-modifyStatus f = do
-  status %= f
-  exCode <- use status
-  readOnlyEnv . at "status" .= Just
-    (Var False [T.pack . show $ fromEnum exCode])
 

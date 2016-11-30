@@ -152,7 +152,7 @@ setReturnK f = callCC (\k -> local (returnK %~ (k:)) f)
 -- | Sets a breakpoint which is jumped to by a call to 'errork'.
 setErrorK f = callCC (\k -> local (errorK %~ (k:)) f)
 
--- | Callins the top '_errorK' continuation.
+-- | Calls the top '_errorK' continuation.
 --   Use this instead of 'error'
 errork :: T.Text -> Fish a
 errork t = do

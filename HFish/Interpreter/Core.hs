@@ -195,10 +195,12 @@ finally f cleanup =
 --   calls to them will be silently ignored.
 disallowK :: Fish a -> Fish a
 disallowK =
-  let noA = const $ return ()
+  let noA = repeat ( const $ return () )
    in local
-    ( ( breakK .~ [noA] )
-    . ( continueK .~ [noA] ) )
+    ( ( breakK .~ noA    )
+    . ( continueK .~ noA )
+    . ( returnK .~ noA   )
+    . ( errorK .~ noA    ) )
 
 -- | An empty FishState
 emptyFishState =

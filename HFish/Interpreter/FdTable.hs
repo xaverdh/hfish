@@ -90,11 +90,3 @@ initialFdTable = FdTable fds stat
         ,(P.stdOutput, False)
         ,(P.stdError, False) ]
 
-
-traceFdTable :: (MonadIO m,HasFdTable m) => m ()
-traceFdTable = do
-  table <- askFdTable
-  trace (show table) $ return ()
-
-
-

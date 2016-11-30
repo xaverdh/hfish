@@ -44,7 +44,7 @@ import Debug.Trace (trace)
 getMaxNumFds :: Fish Int
 getMaxNumFds =
   liftIO (softLimit <$> getResourceLimit ResourceOpenFiles)
-  >>= return . \case
+  <$$> \case
     ResourceLimitUnknown -> 2^8 -- conservative guess (ghc guesses the same when closing all handles in createProcess).
     ResourceLimitInfinity -> 2^12 -- random high number
     ResourceLimit i -> fromInteger i

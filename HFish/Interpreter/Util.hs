@@ -14,6 +14,11 @@ mintcal m = \case
   [] -> mempty
   ms -> foldr1 (\x y -> x <> m <> y) ms
 
+infixl 4 <$$>
+(<$$>) :: Functor f => f a -> (a -> b) -> f b
+(<$$>) = flip (<$>)
+-- ^ A flipped version of (<$>)
+
 onMaybe :: Maybe a -> b -> (a -> b) -> b
 onMaybe ma b f = maybe b f ma
 

@@ -58,8 +58,11 @@ simpleStmtA = stmtA False
 
 pipedStmtA :: Fd -> Stmt t -> CompStmt t -> Fish ()
 pipedStmtA fd st cst = pipeFish
-  (\wE -> FDT.insert fd wE (stmtA True st))
-  (\rE -> FDT.insert Fd0 rE (compStmtA cst))
+  ( \wE ->
+      FDT.insert fd wE (stmtA True st)
+      `finally` (P.closeFd wE) )
+  ( \rE ->
+      FDT.insert Fd0 rE (compStmtA cst) )
 
 stmtA :: Bool -> Stmt t -> Fish ()
 stmtA fork = \case

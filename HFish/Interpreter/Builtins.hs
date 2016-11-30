@@ -17,6 +17,7 @@ import System.IO
 import System.Exit
 import qualified Data.Text as T
 
+import HFish.Interpreter.Builtins.Debug
 import HFish.Interpreter.Builtins.Flow
 import HFish.Interpreter.Builtins.Exit
 import HFish.Interpreter.Builtins.Cd
@@ -37,7 +38,8 @@ import HFish.Interpreter.Builtins.Test
 allBuiltins :: Env (Bool -> [T.Text] -> Fish ())
 allBuiltins =
   M.fromList [
-    ("return",returnF)
+    ("debug",debugF)
+    ,("return",returnF)
     ,("break",breakF)
     ,("continue",continueF)
     ,("exit",exitF)

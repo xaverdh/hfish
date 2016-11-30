@@ -42,7 +42,7 @@ forkFish f = do
   s <- get
   liftIO $ do
     mvar <- newEmptyMVar
-    forkOS $ do
+    forkIO $ do
       s' <- runFish f r s
       putMVar mvar s'
     return mvar

@@ -290,7 +290,25 @@ evalBracesE es =
 evalCmdSubstE :: CmdRef t -> Fish [Globbed]
 evalCmdSubstE (CmdRef _ prog ref) = do
   (mvar,wE) <- createHandleMVarPair
+  FDT.insert Fd1 wE (progA prog)
+  liftIO (P.closeFd wE)
+  text <- liftIO $ takeMVar mvar
+  let ts = T.lines text
+  map fromText
+    <$> case ref of
+    Nothing -> return ts
+    Just _ -> do
+      slcs <- evalRef ref (length ts)
+      return (readSlices slcs ts)
+
+{-
+Old version:
+
+evalCmdSubstE :: CmdRef t -> Fish [Globbed]
+evalCmdSubstE (CmdRef _ prog ref) = do
+  (mvar,wE) <- createHandleMVarPair
   stMVar <- FDT.insert Fd1 wE (forkFish $ progA prog)
+  FDT.insert Fd1 wE (progA prog)
   spliceInState stMVar
   liftIO (P.closeFd wE)
   text <- liftIO $ takeMVar mvar
@@ -301,7 +319,8 @@ evalCmdSubstE (CmdRef _ prog ref) = do
     Just _ -> do
       slcs <- evalRef ref (length ts)
       return (readSlices slcs ts)
-  
+-}
+
 evalVarRefE :: Bool -> VarRef t -> Fish [Globbed]
 evalVarRefE q vref = do
   vs <- evalVarRef vref

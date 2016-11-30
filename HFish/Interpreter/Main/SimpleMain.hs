@@ -50,11 +50,13 @@ mkPrompt isbrkpt s
 runInterpreterLoop :: Bool -> FishReader -> FishState -> IO ()
 runInterpreterLoop isbrkpt r s =
   runInputT defaultSettings
-    ( interpreterLoop (mkPrompt isbrkpt s) r s )
+    ( interpreterLoop (mkPrompt isbrkpt) r s )
 
-interpreterLoop :: String -> FishReader -> FishState -> InputT IO ()
+interpreterLoop ::
+  (FishState -> String) -- The prompt
+  -> FishReader -> FishState -> InputT IO ()
 interpreterLoop prompt r s =
-  getInputLine prompt >>= \case
+  getInputLine (prompt s) >>= \case
     Nothing -> return ()
     Just l -> do
       ms' <- withProg (parseFishInteractive $ l ++ "\n") (runProgram r s)

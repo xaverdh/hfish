@@ -16,32 +16,24 @@ import HFish.Interpreter.Concurrent
 import HFish.Interpreter.Slice
 import HFish.Interpreter.Util
 
-import Data.Bifunctor
+-- import Data.Bifunctor
+-- import Data.Bool
 import Data.Monoid
 import Data.Maybe
-import Data.Bool
-import Data.List (intercalate)
-import Text.Read (readMaybe)
+
 import qualified Data.List.NonEmpty as N
-import qualified Data.Map as M
 import qualified Data.Text as T
-import qualified Data.Text.IO as TextIO
 import Control.Lens
 import Control.Monad
 import Control.Monad.State
-import Control.Monad.Reader
-import Control.Monad.Cont
+-- import Control.Monad.Reader
+-- import Control.Monad.Cont
 import Control.Applicative
 import Control.Concurrent
 import Control.Concurrent.MVar
 
-import System.Process
-import System.IO
-import System.Posix.IO as P
-import System.IO.Temp
+import qualified System.Posix.IO as PIO
 import System.Exit
-import System.Environment
-import System.FilePath
 
 progA :: Prog t -> Fish ()
 progA (Prog _ cstmts) = forM_ cstmts compStmtA
@@ -60,7 +52,7 @@ pipedStmtA :: Fd -> Stmt t -> CompStmt t -> Fish ()
 pipedStmtA fd st cst = pipeFish
   ( \wE ->
       FDT.insert fd wE (stmtA True st)
-      `finally` (P.closeFd wE) )
+      `finally` (PIO.closeFd wE) )
   ( \rE ->
       FDT.insert Fd0 rE (compStmtA cst) )
 
@@ -291,7 +283,7 @@ evalCmdSubstE :: CmdRef t -> Fish [Globbed]
 evalCmdSubstE (CmdRef _ prog ref) = do
   (mvar,wE) <- createHandleMVarPair
   FDT.insert Fd1 wE (progA prog)
-  liftIO (P.closeFd wE)
+  liftIO (PIO.closeFd wE)
   text <- liftIO $ takeMVar mvar
   let ts = T.lines text
   map fromText
@@ -310,7 +302,7 @@ evalCmdSubstE (CmdRef _ prog ref) = do
   stMVar <- FDT.insert Fd1 wE (forkFish $ progA prog)
   FDT.insert Fd1 wE (progA prog)
   spliceInState stMVar
-  liftIO (P.closeFd wE)
+  liftIO (PIO.closeFd wE)
   text <- liftIO $ takeMVar mvar
   let ts = T.lines text
   map fromText

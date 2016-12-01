@@ -52,18 +52,19 @@ getMaxNumFds =
 -- | Execute an IO action in an environment
 --   where the interal fd state has been translated
 --   into OS calls.
---   
+--
 forkWithFileDescriptors :: IO () -> Fish PT.ProcessID
 forkWithFileDescriptors action = do
   max_num_fds <- getMaxNumFds
   FdTable fdescs closedStat <- askFdTable
+  
+  -- get a list of all os fds in use
+  let pfds = M.keys closedStat
+  
+  -- offset to move fds to the (hopefully unused) end of the allowed range
+  offset <- compOffset pfds max_num_fds
+  
   liftIO . forkProcess $ do
-    -- get a list of all os fds in use
-    let pfds = M.keys closedStat
-    
-    -- offset to move fds to the (hopefully unused) end of the allowed range
-    offset <- compOffset pfds max_num_fds
-    
     -- save copies of all fds to avoid conflicts
     forM_ pfds $ \i ->
       let j = ( toEnum $ offset + fromEnum i )
@@ -87,7 +88,7 @@ forkWithFileDescriptors action = do
       let m = maximum $ map fromEnum pfds
       let offset = max_num_fds - m - 1
       if offset <= m -- sanity check
-        then error "not enough free file descriptors"
+        then errork "not enough free file descriptors"
         else return offset
 
 

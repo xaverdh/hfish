@@ -7,7 +7,6 @@ import HFish.Interpreter.FdTable as FDT
 
 import qualified Data.Map as M
 import qualified Data.Text as T
-import qualified Data.Text.IO as TextIO
 import Data.Monoid
 import Control.Monad
 import Control.Monad.State
@@ -15,10 +14,7 @@ import Control.Monad.Reader
 import Control.Monad.Cont
 import Control.Lens
 import Control.Exception as E
-import System.Process
-import System.IO
 import System.Exit
-import System.Environment
 import System.Posix.Types (CPid)
 
 -- | The Fish 'Monad', it holds both mutable and unmutable (reader)

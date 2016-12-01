@@ -19,15 +19,12 @@ import HFish.Interpreter.Status
 import Control.Monad
 import Control.Applicative
 import Control.Monad.IO.Class
-import Control.Concurrent
 import qualified Control.Exception as E
 import Data.Monoid
 import Data.Bool
 import System.IO
 import System.IO.Error as IOE
 import System.Posix.Files
-
--- import System.Posix.Process
 
 import qualified System.Posix.Types as PT
 import qualified System.Posix.IO as P

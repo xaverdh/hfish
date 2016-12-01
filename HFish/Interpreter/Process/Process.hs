@@ -1,5 +1,7 @@
 {-# language LambdaCase, OverloadedStrings #-}
-module HFish.Interpreter.Process.Process where
+module HFish.Interpreter.Process.Process (
+  fishCreateProcess
+) where
 
 import qualified Data.Text as T
 import Data.Bifunctor
@@ -21,6 +23,8 @@ import HFish.Interpreter.Status
 import HFish.Interpreter.Var
 import HFish.Interpreter.Cwd
 import HFish.Interpreter.Process.Pid
+import HFish.Interpreter.Process.FdSetup
+
 
 fishCreateProcess :: Bool -> T.Text -> [T.Text] -> Fish ()
 fishCreateProcess forked name args = do
@@ -32,14 +36,27 @@ fishCreateProcess forked name args = do
     else do
       liftIO ( getProcessStatus True{-block-} False pid )
       >>= \case
-        Nothing -> errork $ "could not retrieve status of command \"" <> name <> "\""
+        Nothing -> errNoStatus
         Just stat -> case stat of
           Exited exCode -> setStatus exCode
-          Terminated sig _ -> errork $ "\"" <> name <> "\" was terminated by signal: " <> showText sig
-          Stopped sig -> errork $ "\"" <> name <> "\" was stopped by signal: " <> showText sig        
+          Terminated sig _ -> errTerm sig
+          Stopped sig -> errStop sig
   where
     nameString = T.unpack name
     argsStrings = map T.unpack args
+    
+    errNoStatus = errork
+      $ "could not retrieve status of command \""
+      <> name <> "\""
+    errTerm sig = errork
+      $ "\"" <> name
+       <> "\" was terminated by signal: "
+       <> showText sig
+    errStop sig = errork
+      $ "\"" <> name
+       <> "\" was stopped by signal: "
+       <> showText sig
+
 
 currentEnvironment :: Fish [(String,String)]
 currentEnvironment = 

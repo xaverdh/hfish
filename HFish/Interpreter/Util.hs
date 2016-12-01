@@ -19,6 +19,11 @@ infixl 4 <$$>
 (<$$>) = flip (<$>)
 -- ^ A flipped version of (<$>)
 
+whenJust :: Applicative f
+  => Maybe a -> (a -> f ()) -> f ()
+whenJust = flip $ maybe (pure ())
+
+
 onMaybe :: Maybe a -> b -> (a -> b) -> b
 onMaybe ma b f = maybe b f ma
 

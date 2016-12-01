@@ -18,7 +18,7 @@ import Debug.Trace (trace)
 --   Posix file descriptors (OS fds from 'System.Posix.Types.Fd').
 data FdTable = FdTable {
     _mainTable :: M.Map L.Fd PT.Fd
-    ,_closedStatus :: M.Map PT.Fd Bool
+    ,_closed :: [PT.Fd]
   } deriving (Show)
 makeLenses ''FdTable
 
@@ -45,19 +45,12 @@ withFdTable = (askFdTable >>=)
 --   (if any) in the current 'FdTable'.
 lookupFd :: HasFdTable m => L.Fd -> m (Maybe PT.Fd)
 lookupFd fd = do
-  mpfd <- withFdTable (return . (^. mainTable . at fd))
-  case mpfd of
-    Nothing -> return Nothing
-    Just pfd -> 
-      isOpen pfd >>= \case
-        True -> return (Just pfd)
-        False -> return Nothing
+  withFdTable (return . (^. mainTable . at fd))
 
 -- | Insert an (abstract fd,OS fd) pair into the 'FdTable'.
 insert :: HasFdTable m => L.Fd -> PT.Fd -> m a -> m a
 insert fd pfd =
-  localFdTable (closedStatus %~ M.insert pfd False)
-  . localFdTable (mainTable %~ M.insert fd pfd)
+  localFdTable (mainTable %~ M.insert fd pfd)
 
 -- | Mark the OS fd corresponding to this (abstract) fd as closed.
 --
@@ -67,26 +60,19 @@ insert fd pfd =
 close :: HasFdTable m => L.Fd -> m a -> m a
 close fd k = lookupFd fd >>= \case
   Nothing -> k
-  Just pfd -> localFdTable (closedStatus . ix pfd .~ True) k
-
-isOpen :: HasFdTable m => PT.Fd -> m Bool
-isOpen pfd = do
-  table <- askFdTable
-  return $ case table ^. closedStatus . at pfd of
-    Nothing -> False
-    Just closed -> not closed
+  Just pfd -> 
+    flip localFdTable k
+      (  ( closed %~ (pfd:) )
+       . ( mainTable %~ M.mapMaybe (erase pfd) ) )
+  where
+    erase y x = if x == y then Nothing else Just x
 
 -- | The initial FdTable stdin / -out / -err.
 --
 initialFdTable :: FdTable
-initialFdTable = FdTable fds stat
+initialFdTable = FdTable fds []
   where
     fds = M.fromList
       [ ( L.Fd0, P.stdInput )
         ,( L.Fd1, P.stdOutput )
         ,( L.Fd2, P.stdError ) ]
-    stat = M.fromList
-      [ (P.stdInput, False)
-        ,(P.stdOutput, False)
-        ,(P.stdError, False) ]
-

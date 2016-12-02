@@ -348,7 +348,7 @@ evalInt e = do
   vs <- evalArg e
   forM (T.words =<< vs) f
   where
-    f v = case readTextMaybe v of
+    f v = case readTextIntegralMaybe v of
       Just x -> return x
       Nothing -> errork
         $ "failed to interpret expression "

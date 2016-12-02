@@ -15,8 +15,12 @@ import Control.Monad.IO.Class
 import Control.Concurrent
 import qualified Data.Text.IO as TextIO
 import qualified Data.Text as T
+import qualified Data.Text.Lazy as LT
+import qualified Data.Text.Lazy.Builder.Int as BI
+import qualified Data.Text.Lazy.Builder as B
 import Text.Read
 import Data.Functor
+import Data.Monoid
 import System.Exit
 import System.IO
 
@@ -39,9 +43,24 @@ seqFWorker fork = \case
         else writeList a b c >> ok
 
 writeList :: Int -> Int -> Int -> Fish ()
+writeList a b c =
+  echo
+  . LT.toStrict
+  . B.toLazyText
+  $ createList a b c
+
+createList :: Int -> Int -> Int -> B.Builder
+createList a b c
+  | a <= c = BI.decimal a <> ( B.singleton '\n' <> createList (a+b) b c )
+  | otherwise = mempty
+
+
+{-
+writeList :: Int -> Int -> Int -> Fish ()
 writeList a b c = (echo . T.unlines) $ createList a b c
 
 createList :: Int -> Int -> Int -> [T.Text]
 createList a b c
   | a <= c = T.pack (show a) : createList (a+b) b c
   | otherwise = []
+-}

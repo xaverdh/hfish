@@ -32,9 +32,9 @@ seqF fork = \case
   [f,i,l] -> seqFWorker fork ((,,) <$> mread f <*> mread i <*> mread l)
   _ -> errork "seq: too many arguments given"
   where
-    mread = readTextIntegralMaybe
+    mread = readTextIntegerMaybe
 
-seqFWorker :: Bool -> Maybe (Int,Int,Int) -> Fish ()
+seqFWorker :: Bool -> Maybe (Integer,Integer,Integer) -> Fish ()
 seqFWorker fork = \case
     Nothing -> errork "seq: invalid argument(s) given"
     Just (a,b,c) -> do
@@ -42,24 +42,24 @@ seqFWorker fork = \case
         then forkFish (writeList a b c) >> ok
         else writeList a b c >> ok
 
-writeList :: Int -> Int -> Int -> Fish ()
+writeList :: Integer -> Integer -> Integer -> Fish ()
 writeList a b c =
   echo
   . LT.toStrict
   . B.toLazyText
   $ createList a b c
 
-createList :: Int -> Int -> Int -> B.Builder
+createList :: Integer -> Integer -> Integer -> B.Builder
 createList a b c
   | a <= c = BI.decimal a <> ( B.singleton '\n' <> createList (a+b) b c )
   | otherwise = mempty
 
 
 {-
-writeList :: Int -> Int -> Int -> Fish ()
+writeList :: Integer -> Integer -> Integer -> Fish ()
 writeList a b c = (echo . T.unlines) $ createList a b c
 
-createList :: Int -> Int -> Int -> [T.Text]
+createList :: Integer -> Integer -> Integer -> [T.Text]
 createList a b c
   | a <= c = T.pack (show a) : createList (a+b) b c
   | otherwise = []

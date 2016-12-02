@@ -348,8 +348,8 @@ evalInt e = do
   vs <- evalArg e
   forM (T.words =<< vs) f
   where
-    f v = case readTextIntegralMaybe v of
-      Just x -> return x
+    f v = case readTextIntegerMaybe v of
+      Just x -> return (fromInteger x)
       Nothing -> errork
         $ "failed to interpret expression "
           <> "as integer: " <> v

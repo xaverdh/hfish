@@ -44,7 +44,7 @@ mkInitialFishState = do
     inc :: Maybe Var -> Maybe Var
     inc mv =
       (Var True . pure . T.pack . show . (+1))
-      <$> (mv >>= readVarMaybeIntegral)
+      <$> (mv >>= readVarMaybeInteger)
     
     incShlvl = at "SHLVL" %~ inc    
     initStatus = M.insert "status" (Var False ["0"])

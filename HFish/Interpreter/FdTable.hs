@@ -9,6 +9,8 @@ import Control.Lens
 import Control.Monad.Reader.Class
 import Control.Monad.IO.Class
 
+import Debug.Trace (trace)
+
 -- | A global table, holding all file descriptors.
 --
 --   Implemented as a map from /abstract/ fds to the underlying

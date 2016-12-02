@@ -32,7 +32,7 @@ seqF fork = \case
   [f,i,l] -> seqFWorker fork ((,,) <$> mread f <*> mread i <*> mread l)
   _ -> errork "seq: too many arguments given"
   where
-    mread = readTextIntegralMaybe
+    mread = readTextMaybe
 
 seqFWorker :: Bool -> Maybe (Int,Int,Int) -> Fish ()
 seqFWorker fork = \case

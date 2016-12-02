@@ -84,11 +84,11 @@ readVar = withTextVar readText
 readVarMaybe :: Read a => Var -> Maybe a
 readVarMaybe = withTextVar readTextMaybe
 
-readVarInteger :: Var -> Integer
-readVarInteger = withTextVar readTextInteger
+readVarIntegral :: Integral a => Var -> a
+readVarIntegral = withTextVar readTextIntegral
 
-readVarMaybeInteger :: Var -> Maybe Integer
-readVarMaybeInteger = withTextVar readTextIntegerMaybe
+readVarMaybeIntegral :: Integral a => Var -> Maybe a
+readVarMaybeIntegral = withTextVar readTextIntegralMaybe
 
 mapSerialVar :: (Read a,Show b) => (a -> b) -> Var -> Var
 mapSerialVar f = value %~ map (showText . f . readText)

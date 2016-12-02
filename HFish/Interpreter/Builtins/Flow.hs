@@ -29,7 +29,7 @@ continueF :: Bool -> [T.Text] -> Fish a
 continueF _ = \case
   [] -> jump 1
   args -> onMaybe
-    (fmap fromInteger $ readTextIntegerMaybe $ mconcat args)
+    (readTextIntegralMaybe $ mconcat args)
     (mkInvalidErr "continue:")
     jump
   where
@@ -40,7 +40,7 @@ breakF :: Bool -> [T.Text] -> Fish a
 breakF _ = \case
   [] -> jump 1
   args -> onMaybe
-    (fmap fromInteger $ readTextIntegerMaybe $ mconcat args)
+    (readTextIntegralMaybe $ mconcat args)
     (mkInvalidErr "break:")
     jump
   where
@@ -52,7 +52,7 @@ returnF _ = \case
   [t] -> maybe
            (noIntErr t)
            (setStatus . toEnum)
-           (fmap fromInteger $ readTextIntegerMaybe t)
+           (readTextIntegralMaybe t)
          >> ret
   _ -> errork "return: too many arguments given"
   where

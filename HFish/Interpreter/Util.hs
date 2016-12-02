@@ -59,15 +59,15 @@ readTextsMaybe = readTextMaybe . T.unwords
 showText :: Show a => a -> T.Text
 showText = T.pack . show
 
-readTextIntegerMaybe :: T.Text -> Maybe Integer
-readTextIntegerMaybe = 
+readTextIntegralMaybe :: Integral a => T.Text -> Maybe a
+readTextIntegralMaybe = 
   readerToMaybe
     (TR.signed TR.decimal)
 
-readTextInteger :: T.Text -> Integer
-readTextInteger =
-  fromMaybe (error "readTextInteger")
-  . readTextIntegerMaybe
+readTextIntegral :: Integral a => T.Text -> a
+readTextIntegral =
+  fromMaybe (error "readTextIntegral")
+  . readTextIntegralMaybe
 
 showCall :: (MonadIO m,Show a) => String -> [a] -> m ()
 showCall f args =

@@ -170,7 +170,7 @@ ifStA ((st,prog):blks) elblk = do
   simpleStmtA st
   onStatus
     (const $ ifStA blks elblk)
-    (progA prog >> ok)    
+    (progA prog >> ok)
 
 -- | Match a string against a number of glob patterns.
 --

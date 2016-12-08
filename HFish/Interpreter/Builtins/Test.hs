@@ -27,6 +27,12 @@ import Text.Parser.Expression
 import Data.Attoparsec.Text
 import Text.Parser.Char (alphaNum)
 
+
+-- todo:
+-- 'str = some alphaNum' etc. is too narrow
+--
+
+
 testF :: Bool -> [T.Text] -> Fish ()
 testF _ ts = do
   f <- parseTestE (T.unwords ts)
@@ -137,7 +143,7 @@ strE = strBinary <|> strUnary
       f <- choice
         [ sym "-n" $> (/="")
          ,sym "-z" $> (=="") ]
-      f <$> str
+      f <$> many alphaNum
 
 ttyTestE :: Parser (IO Bool)
 ttyTestE = "-t" *> int

@@ -114,8 +114,7 @@ readLineFrom fd = do
 writeTo :: L.Fd -> T.Text -> Fish ()
 writeTo fd text = do
   pfd <- lookupFd' fd
-  liftIO (P.fdWrite pfd $ T.unpack text)
-  -- inefficient, but currently the only thing that works reliably
+  liftIO (writeString pfd $ T.unpack text)
   
   -- h <- liftIO (P.fdToHandle pfd)
   -- liftIO (hSetBinaryMode h False)
@@ -124,6 +123,14 @@ writeTo fd text = do
   -- liftIO $ hPutStr h (T.unpack text) >> hFlush h -- seems to work ok?
   -- liftIO (TextIO.hPutStr h text >> hFlush h) -- flush seems to take very long
   return ()
+  where
+    -- inefficient, but currently the only thing that works reliably
+    writeString pfd = \case
+      [] -> return ()
+      s -> do
+        bc <- P.fdWrite pfd s
+        writeString pfd $ drop (fromEnum bc) s
+
 
 echo :: T.Text -> Fish ()
 echo = writeTo L.Fd1

@@ -15,6 +15,7 @@ import Control.Monad
 import Control.Monad.IO.Class
 
 import qualified Data.Text as T
+import qualified Data.Char as C
 
 import System.Posix.Types
 import System.Posix.Files
@@ -29,8 +30,7 @@ import Text.Parser.Char (alphaNum)
 
 
 -- todo:
--- 'str = some alphaNum' etc. is too narrow
---
+-- treat cases where functions fail (e.g. "test -d /hom")
 
 
 testF :: Bool -> [T.Text] -> Fish ()
@@ -89,7 +89,9 @@ isExecutable p =
 fileE :: Parser (IO Bool)
 fileE = file1E <|> file2E <|> file3E <|> file4E
   where
-    file = some alphaNum
+    file = T.unpack
+      <$> takeWhile1 (not . C.isSpace)
+      <* skipSpace
 
     file4E = do
       f <- sym "-L" $> isSymbolicLink
@@ -129,9 +131,11 @@ fileE = file1E <|> file2E <|> file3E <|> file4E
       return (f =<< getFileStatus p)
 
 strE :: Parser Bool
-strE = strBinary <|> strUnary
+strE = strUnary <|> strBinary
   where
-    str = some alphaNum
+    str = T.unpack
+      <$> takeWhile1 (not . C.isSpace)
+      <* skipSpace
     strBinary = do
       s <- str
       f <- choice
@@ -143,7 +147,7 @@ strE = strBinary <|> strUnary
       f <- choice
         [ sym "-n" $> (/="")
          ,sym "-z" $> (=="") ]
-      f <$> many alphaNum
+      f <$> takeTill C.isSpace <* skipSpace
 
 ttyTestE :: Parser (IO Bool)
 ttyTestE = "-t" *> int
@@ -176,8 +180,8 @@ term :: Parser (IO Bool)
 term =
   ( bracketed
     <|> (return <$> numE)
-    <|> (return <$> strE)
-    <|> fileE )
+    <|> fileE
+    <|> (return <$> strE) )
   <* skipSpace
   where
   bracketed = char '(' *> testE <* char ')'
@@ -189,8 +193,8 @@ parseTestE :: T.Text -> Fish (IO Bool)
 parseTestE t = either onErr return
   $ parseOnly (testE <* endOfInput) t
   where
-    onErr _ = 
-      errork "test: malformed expression"
+    onErr r = 
+      errork $ "test: malformed expression" <> showText r
 
 int :: Parser Int
 int = signed decimal <* skipSpace

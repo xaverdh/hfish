@@ -13,6 +13,7 @@ import Data.Functor
 import Control.Applicative
 import Control.Monad
 import Control.Monad.IO.Class
+import Control.Exception
 
 import qualified Data.Text as T
 import qualified Data.Char as C
@@ -22,22 +23,22 @@ import System.Posix.Files
 import System.Posix.User
 import System.Posix.Terminal (queryTerminal)
 
--- import Text.Parser.Combinators
--- import Text.Parser.Token
 import Text.Parser.Expression
 import Data.Attoparsec.Text
 import Text.Parser.Char (alphaNum)
 
 
--- todo:
--- treat cases where functions fail (e.g. "test -d /hom")
-
-
 testF :: Bool -> [T.Text] -> Fish ()
 testF _ ts = do
   f <- parseTestE (T.unwords ts)
-  b <- liftIO f
-  if b then ok else  bad
+  b <- liftIO $ catch f onIOErr
+  if b then ok else bad
+  where
+    -- IO errors get mapped to False. This is usually
+    -- what you want and agrees with fishs implementation.
+    onIOErr :: IOException -> IO Bool
+    onIOErr = const (return False)
+    
 
 {- File Operations -}
 hasMode ::

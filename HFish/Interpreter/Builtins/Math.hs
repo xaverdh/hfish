@@ -35,9 +35,9 @@ import Data.Attoparsec.Text
 
 mathF :: Bool -> [T.Text] -> Fish ()
 mathF _ = \case
-  "-t":args -> (echo . unparse) =<< tmathF args
-  args -> tmathF args
-    >>= extractSfc
+  [] -> errork "math: not enough arguments given"
+  args ->
+    compMath (T.unwords args)
     >>= (return . ser)
     >>= echo
 
@@ -45,43 +45,24 @@ ser :: Scientific -> T.Text
 ser s = T.pack
   $ either show show (floatingOrInteger s)
 
+compMath :: T.Text -> Fish Scientific
+compMath ex = parseMath ex >>= eval
 
-tmathF :: [T.Text] -> Fish Math
-tmathF = \case
-  [] -> errork "math: not enough arguments given"
-  ex:args -> compMath ex args
-
-compMath :: T.Text -> [T.Text] -> Fish Math
-compMath ex args = do
-  e <- parseMath ex
-  ms <- forM args parseMath
-  xs <- forM ms extractSfc
-  eval (length xs) (IM.fromList $ zip [1..] xs) e
-
-extractSfc :: Math -> Fish Scientific
-extractSfc = \case
-  (Sfc a) -> return a
-  m -> errork "math: too few arguments supplied"
-  
-eval :: Int -> IM.IntMap Scientific -> Math -> Fish Math
-eval n im = ev
-  where
-    ev = \case
-      Free i -> return $ maybe (Free (i - n)) Sfc (IM.lookup i im)
-      Neg a -> negate <$> ev a
-      Abs a -> abs <$> ev a
-      Signum a -> signum <$> ev a
-      Plus a b -> liftA2 (+) (ev a) (ev b)
-      Minus a b -> liftA2 (-) (ev a) (ev b)
-      Times a b -> liftA2 (*) (ev a) (ev b)
-      Mod a b -> do { x <- ev a; y <- ev b; mathModFish x y }
-      Div a b -> liftA2 mathDiv (ev a) (ev b)
-      Pow a b -> liftA2 mathPow (ev a) (ev b)
-      m -> return m
+eval :: Math -> Fish Scientific
+eval = \case
+  Sfc a -> return a
+  Neg a -> negate <$> eval a
+  Abs a -> abs <$> eval a
+  Signum a -> signum <$> eval a
+  Plus a b -> liftA2 (+) (eval a) (eval b)
+  Minus a b -> liftA2 (-) (eval a) (eval b)
+  Times a b -> liftA2 (*) (eval a) (eval b)
+  Mod a b -> do { x <- eval a; y <- eval b; mathModFish x y }
+  Div a b -> liftA2 mathDiv (eval a) (eval b)
+  Pow a b -> liftA2 mathPow (eval a) (eval b)
 
 data Math = 
   Sfc Scientific
-  | Free Int
   | Neg Math
   | Abs Math
   | Signum Math
@@ -92,6 +73,7 @@ data Math =
   | Pow Math Math
   | Mod Math Math
   deriving (Eq,Ord,Show)
+
 
 instance Num Math where
   Sfc a + Sfc b = Sfc (a+b)
@@ -112,14 +94,12 @@ instance Fractional Math where
   (/) = Div
   fromRational = undefined
 
-mathModFish (Sfc a) (Sfc b) = Sfc <$> intArith mod a b
-mathModFish a b = return (Mod a b)
 
-mathDiv (Sfc a) (Sfc b) = Sfc $ imprecise (/) a b
-mathDiv a b = Div a b
+mathModFish a b = intArith mod a b
 
-mathPow (Sfc a) (Sfc b) = Sfc $ imprecise (**) a b
-mathPow a b = Pow a b
+mathDiv a b = imprecise (/) a b
+
+mathPow a b = imprecise (**) a b
 
 intArith :: (Integer -> Integer -> Integer) -> Scientific -> Scientific -> Fish Scientific
 intArith f a b = do
@@ -151,11 +131,10 @@ opTable =
    ,[ binary "+" (+) AssocLeft, binary "-" (-)   AssocLeft ] ]
 
 term :: Parser Math
-term = (bracketed <|> sfc <|> free) <* skipSpace
+term = ( bracketed <|> sfc ) <* skipSpace
   where
-  bracketed = char '(' *> math <* char ')'
-  sfc = Sfc <$> scientific
-  free = (Free . fromInteger) <$> (char '&' *> decimal)
+    bracketed = char '(' *> math <* char ')'
+    sfc = Sfc <$> scientific
 
 math :: Parser Math
 math = skipSpace *> buildExpressionParser opTable term
@@ -172,7 +151,6 @@ parseMath t = either onErr return
 unparse :: Math -> T.Text
 unparse = \case
   Sfc s -> ser s
-  Free i -> "&" <> showT i
   Neg a -> "-" <> unparse a
   Abs a -> undefined
   Signum a -> undefined

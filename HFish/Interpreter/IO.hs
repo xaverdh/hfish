@@ -33,7 +33,10 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as TextIO
 import qualified Data.Text.Encoding as Enc
 import qualified Data.ByteString as B
+import qualified Data.ByteString.Internal as BI
 import qualified Foreign as F
+
+
 -- | Make an abstract fd a duplicate of another abstract fd, i.e. a fd pointing
 --
 --   to the same OS fd as the other (it mimics the dup2 syscall on Posix systems).
@@ -116,9 +119,7 @@ readLineFrom fd = do
 writeTo :: L.Fd -> T.Text -> Fish ()
 writeTo fd text = do
   pfd <- lookupFd' fd
-  liftIO (fdWrite pfd $ Enc.encodeUtf8 text)
-  -- liftIO (writeString pfd $ T.unpack text)
-  
+  liftIO (fdPut pfd $ Enc.encodeUtf8 text)  
   
   -- h <- liftIO (P.fdToHandle pfd)
   -- liftIO $ B.hPut h $ Enc.encodeUtf8 text
@@ -128,13 +129,19 @@ writeTo fd text = do
   -- liftIO $ hPutStr h (T.unpack text) >> hFlush h -- seems to work ok?
   -- liftIO (TextIO.hPutStr h text) >> hFlush h) -- flush seems to take very long
   return ()
-{-  where
-    -- currently the only thing that works reliably
-    writeString pfd = \case
-      [] -> return ()
-      s -> do
-        bc <- P.fdWrite pfd s
-        writeString pfd $ drop (fromEnum bc) s-}
+
+
+-- | Outputs a 'ByteString' to the specified PT.Fd'.
+fdPut :: PT.Fd -> B.ByteString -> IO ()
+fdPut fd (BI.PS ps s l) =
+  F.withForeignPtr ps $ \p ->
+    writeLoop (p `F.plusPtr` s) (toEnum l)
+  where
+    writeLoop p = \case
+      0 -> return ()
+      len -> do
+        bc <- P.fdWriteBuf fd p len
+        writeLoop (p `F.plusPtr` fromEnum bc) (len - bc)
 
 
 -- | Write a 'ByteString' to an 'PT.Fd'.
@@ -148,8 +155,8 @@ fdWrite fd str =
       0 -> return ()
       len -> do
         bc <- P.fdWriteBuf fd (F.castPtr buf) len
-        writeLoop buf (len-bc)
-        
+        writeLoop (buf `F.plusPtr` fromEnum bc) (len - bc)
+ 
 
 
 echo :: T.Text -> Fish ()

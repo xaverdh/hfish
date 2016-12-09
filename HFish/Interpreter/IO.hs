@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, OverloadedStrings #-}
+{-# LANGUAGE LambdaCase, OverloadedStrings, PackageImports #-}
 module HFish.Interpreter.IO (
   duplicate
   ,withFileR
@@ -33,8 +33,9 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as TextIO
 import qualified Data.Text.Encoding as Enc
 import qualified Data.ByteString as B
-import qualified Data.ByteString.Internal as BI
-import qualified Foreign as F
+import qualified "unix-bytestring" System.Posix.IO.ByteString as BIO
+-- import qualified Data.ByteString.Internal as BI
+-- import qualified Foreign as F
 
 
 -- | Make an abstract fd a duplicate of another abstract fd, i.e. a fd pointing
@@ -119,18 +120,16 @@ readLineFrom fd = do
 writeTo :: L.Fd -> T.Text -> Fish ()
 writeTo fd text = do
   pfd <- lookupFd' fd
-  liftIO (fdPut pfd $ Enc.encodeUtf8 text)  
+  liftIO $ writeLoop pfd $ Enc.encodeUtf8 text
+  where
+    writeLoop pfd bs
+      | bs == B.empty = return ()
+      | otherwise = do
+        cnt <- BIO.fdWrite pfd bs
+        writeLoop pfd $ B.drop (fromEnum cnt) bs
   
-  -- h <- liftIO (P.fdToHandle pfd)
-  -- liftIO $ B.hPut h $ Enc.encodeUtf8 text
-  -- liftIO (hSetBinaryMode h False)
-  -- w <- liftIO (hIsWritable h)
-  -- unless w $ notWriteableErr fd
-  -- liftIO $ hPutStr h (T.unpack text) >> hFlush h -- seems to work ok?
-  -- liftIO (TextIO.hPutStr h text) >> hFlush h) -- flush seems to take very long
-  return ()
 
-
+{-
 -- | Outputs a 'ByteString' to the specified PT.Fd'.
 fdPut :: PT.Fd -> B.ByteString -> IO ()
 fdPut fd (BI.PS ps s l) =
@@ -142,22 +141,7 @@ fdPut fd (BI.PS ps s l) =
       len -> do
         bc <- P.fdWriteBuf fd p len
         writeLoop (p `F.plusPtr` fromEnum bc) (len - bc)
-
-
--- | Write a 'ByteString' to an 'PT.Fd'.
-fdWrite :: PT.Fd -> B.ByteString -> IO ()
-fdWrite fd str =
-  B.useAsCStringLen str $ \(buf,len) ->
-    writeLoop buf (fromIntegral len)
-  where
-    writeLoop :: F.Ptr a -> PT.ByteCount -> IO ()
-    writeLoop buf = \case
-      0 -> return ()
-      len -> do
-        bc <- P.fdWriteBuf fd (F.castPtr buf) len
-        writeLoop (buf `F.plusPtr` fromEnum bc) (len - bc)
- 
-
+-}
 
 echo :: T.Text -> Fish ()
 echo = writeTo L.Fd1

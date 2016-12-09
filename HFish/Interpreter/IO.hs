@@ -137,7 +137,7 @@ writeTo fd text = do
         writeString pfd $ drop (fromEnum bc) s-}
 
 
--- | Write a 'ByteString' to an 'PT.Fd' using the locale encoding.
+-- | Write a 'ByteString' to an 'PT.Fd'.
 fdWrite :: PT.Fd -> B.ByteString -> IO ()
 fdWrite fd str =
   B.useAsCStringLen str $ \(buf,len) ->

@@ -45,7 +45,6 @@ seqFWorker fork = \case
 writeList :: Int -> Int -> Int -> Fish ()
 writeList a b c =
   echo
-  . LT.toStrict
   . B.toLazyText
   $ createList a b c
 

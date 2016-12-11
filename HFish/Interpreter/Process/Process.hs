@@ -1,6 +1,7 @@
 {-# language LambdaCase, OverloadedStrings #-}
 module HFish.Interpreter.Process.Process (
   fishCreateProcess
+  ,fishWaitForProcess
 ) where
 
 import qualified Data.Text as T
@@ -8,6 +9,7 @@ import Data.Bifunctor
 import Data.Monoid
 import System.Process
 import System.Posix.Process
+import System.Posix.Types
 import System.IO
 import System.IO.Error
 import Control.Monad
@@ -26,25 +28,16 @@ import HFish.Interpreter.Process.Pid
 import HFish.Interpreter.Process.FdSetup
 
 
-fishCreateProcess :: Bool -> T.Text -> [T.Text] -> Fish ()
-fishCreateProcess forked name args = do
-  env <- currentEnvironment
-  pid <- forkWithFileDescriptors $
-    executeFile nameString True argsStrings ( Just env )
-  lastPid .= Just pid
-  if forked then return ()
-    else do
-      liftIO ( getProcessStatus True{-block-} False pid )
-      >>= \case
-        Nothing -> errNoStatus
-        Just stat -> case stat of
-          Exited exCode -> setStatus exCode
-          Terminated sig _ -> errTerm sig
-          Stopped sig -> errStop sig
+fishWaitForProcess :: T.Text -> ProcessID -> Fish ()
+fishWaitForProcess name pid = 
+  liftIO ( getProcessStatus True{-block-} False pid )
+  >>= \case
+    Nothing -> errNoStatus
+    Just stat -> case stat of
+      Exited exCode -> setStatus exCode
+      Terminated sig _ -> errTerm sig
+      Stopped sig -> errStop sig
   where
-    nameString = T.unpack name
-    argsStrings = map T.unpack args
-    
     errNoStatus = errork
       $ "could not retrieve status of command \""
       <> name <> "\""
@@ -55,8 +48,19 @@ fishCreateProcess forked name args = do
     errStop sig = errork
       $ "\"" <> name
        <> "\" was stopped by signal: "
-       <> showText sig
+       <> showText sig    
 
+fishCreateProcess :: T.Text -> [T.Text] -> Fish ProcessID
+fishCreateProcess name args = do
+  env <- currentEnvironment
+  pid <- forkWithFileDescriptors $
+    executeFile nameString True argsStrings ( Just env )
+  lastPid .= Just pid
+  return pid
+  where
+    nameString = T.unpack name
+    argsStrings = map T.unpack args
+    
 
 currentEnvironment :: Fish [(String,String)]
 currentEnvironment = 

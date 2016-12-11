@@ -15,24 +15,19 @@ import HFish.Interpreter.Process.Pid
 import HFish.Interpreter.Concurrent
 import HFish.Interpreter.Slice
 import HFish.Interpreter.Util
+import HFish.Interpreter.ExMode
 
--- import Data.Bifunctor
--- import Data.Bool
 import Data.Monoid
 import Data.Maybe
-
 import qualified Data.List.NonEmpty as N
 import qualified Data.Text as T
 import Control.Lens
 import Control.Monad
 import Control.Monad.State
--- import Control.Monad.Reader
--- import Control.Monad.Cont
 import Control.Applicative
 import Control.Concurrent
 import Control.Concurrent.MVar
 import qualified System.Posix.IO as PIO
-
 
 progA :: Prog t -> Fish ()
 progA (Prog _ cstmts) = forM_ cstmts compStmtA
@@ -42,23 +37,23 @@ compStmtA cst =
   case cst of
     Simple _ st -> simpleStmtA st
     Piped _ d st cst -> pipedStmtA d st cst
-    Forked _ st -> stmtA True st
+    Forked _ st -> stmtA ForkedExM st
 
 simpleStmtA :: Stmt t -> Fish ()
-simpleStmtA = stmtA False
+simpleStmtA = stmtA InOrderExM
 
 pipedStmtA :: Fd -> Stmt t -> CompStmt t -> Fish ()
 pipedStmtA fd st cst = pipeFish
   ( \wE ->
-      FDT.insert fd wE (stmtA False st)
+      FDT.insert fd wE (stmtA PipeExM st)
       `finally` (PIO.closeFd wE) )
   ( \rE ->
       FDT.insert Fd0 rE (compStmtA cst) )
 
-stmtA :: Bool -> Stmt t -> Fish ()
-stmtA fork = \case
+stmtA :: ExMode -> Stmt t -> Fish ()
+stmtA mode = \case
   CmdSt _ i args ->
-    cmdStA fork i args
+    cmdStA mode i args
   SetSt _ mvdef -> 
     setStA mvdef
   FunctionSt _ i args prog ->
@@ -80,18 +75,22 @@ stmtA fork = \case
   NotSt _ st ->
     notStA st
   RedirectedSt _ st redirects ->
-    redirectedStmtA fork st (N.toList redirects)
+    redirectedStmtA (stmtA mode st) (N.toList redirects)
   CommentSt _ _ -> return ()
 
-cmdStA :: Bool -> CmdIdent t -> Args t -> Fish ()
-cmdStA fork (CmdIdent _ ident) args = do
+cmdStA :: ExMode -> CmdIdent t -> Args t -> Fish ()
+cmdStA mode (CmdIdent _ ident) args = do
   ts <- evalArgs args
   bn <- preview (builtins . ix ident)
   fn <- preuse (functions . ix ident)
   case (bn,fn) of
-    (Just b,_) -> b fork ts
+    (Just b,_) -> b (isFork mode) ts
     (_,Just f) -> setReturnK $ f ts
-    (Nothing,Nothing) -> fishCreateProcess fork ident ts
+    (Nothing,Nothing) -> do
+      pid <- fishCreateProcess ident ts
+      if isInOrder mode
+        then fishWaitForProcess ident pid
+        else return ()
 
 setStA :: Maybe (VarDef t, Args t) -> Fish ()
 setStA = maybe getStA
@@ -211,9 +210,8 @@ notStA :: Stmt t -> Fish ()
 notStA st = 
   simpleStmtA st >> invertStatus
 
-redirectedStmtA :: Bool -> Stmt t -> [Redirect t] -> Fish ()
-redirectedStmtA fork st redirects =
-  void (setupAll (stmtA fork st))
+redirectedStmtA :: Fish () -> [Redirect t] -> Fish ()
+redirectedStmtA f redirects = void (setupAll f)
   where
     setupAll = foldr ((.) . setup) id redirects
 

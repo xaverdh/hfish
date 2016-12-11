@@ -15,6 +15,8 @@ import HFish.Interpreter.Util
 import HFish.Interpreter.FdTable
 import HFish.Interpreter.Core
 import HFish.Interpreter.Status
+import HFish.Interpreter.Posix.IO
+import qualified HFish.Lang.Lang as L
 
 import Control.Monad
 import Control.Applicative
@@ -25,17 +27,11 @@ import Data.Bool
 import System.IO
 import System.IO.Error as IOE
 import System.Posix.Files
-
 import qualified System.Posix.Types as PT
 import qualified System.Posix.IO as P
-import qualified HFish.Lang.Lang as L
 import qualified Data.Text as T
 import qualified Data.Text.IO as TextIO
-import qualified Data.Text.Encoding as Enc
-import qualified Data.ByteString as B
-import qualified "unix-bytestring" System.Posix.IO.ByteString as BIO
--- import qualified Data.ByteString.Internal as BI
--- import qualified Foreign as F
+
 
 
 -- | Make an abstract fd a duplicate of another abstract fd, i.e. a fd pointing
@@ -101,47 +97,20 @@ withFileW fpath mode fd k =
       <> fpath <> " due to: "
       <> showText err -}
 
-readFrom :: L.Fd -> Fish T.Text
+readFrom :: FdData a => L.Fd -> Fish a
 readFrom fd = do
   pfd <- lookupFd' fd
-  h <- liftIO (P.fdToHandle pfd)
-  r <- liftIO (hIsReadable h)
-  unless r $ notReadableErr fd
-  liftIO (TextIO.hGetContents h)
+  liftIO $ fdGetContents pfd
 
-readLineFrom :: L.Fd -> Fish T.Text
+readLineFrom :: FdData a => L.Fd -> Fish a
 readLineFrom fd = do
   pfd <- lookupFd' fd
-  h <- liftIO (P.fdToHandle pfd)
-  r <- liftIO (hIsReadable h)
-  unless r $ notReadableErr fd
-  liftIO (TextIO.hGetLine h)
+  liftIO $ fdGetLine pfd  
 
-writeTo :: L.Fd -> T.Text -> Fish ()
+writeTo :: FdData a => L.Fd -> a -> Fish ()
 writeTo fd text = do
   pfd <- lookupFd' fd
-  liftIO $ writeLoop pfd $ Enc.encodeUtf8 text
-  where
-    writeLoop pfd bs
-      | bs == B.empty = return ()
-      | otherwise = do
-        cnt <- BIO.fdWrite pfd bs
-        writeLoop pfd $ B.drop (fromEnum cnt) bs
-  
-
-{-
--- | Outputs a 'ByteString' to the specified PT.Fd'.
-fdPut :: PT.Fd -> B.ByteString -> IO ()
-fdPut fd (BI.PS ps s l) =
-  F.withForeignPtr ps $ \p ->
-    writeLoop (p `F.plusPtr` s) (toEnum l)
-  where
-    writeLoop p = \case
-      0 -> return ()
-      len -> do
-        bc <- P.fdWriteBuf fd p len
-        writeLoop (p `F.plusPtr` fromEnum bc) (len - bc)
--}
+  liftIO $ fdPut pfd text
 
 echo :: T.Text -> Fish ()
 echo = writeTo L.Fd1
@@ -158,7 +127,6 @@ warn t = liftIO (TextIO.hPutStrLn stderr t)
 lookupFd' :: L.Fd -> Fish PT.Fd
 lookupFd' fd = lookupFd fd >>=
   maybe (notOpenErr fd) return
-
 
 -- Errors:
 

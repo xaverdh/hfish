@@ -95,25 +95,25 @@ withFileW fpath mode fd k =
       <> fpath <> " due to: "
       <> showText err -}
 
-readFrom :: FdData a => L.Fd -> Fish a
+readFrom :: FdReadable a => L.Fd -> Fish a
 readFrom fd = do
   pfd <- lookupFd' fd
   liftIO $ fdGetContents pfd
 
-readLineFrom :: FdData a => L.Fd -> Fish a
+readLineFrom :: FdReadable a => L.Fd -> Fish a
 readLineFrom fd = do
   pfd <- lookupFd' fd
   liftIO $ fdGetLine pfd  
 
-writeTo :: FdData a => L.Fd -> a -> Fish ()
+writeTo :: FdWritable a => L.Fd -> a -> Fish ()
 writeTo fd text = do
   pfd <- lookupFd' fd
   liftIO $ fdPut pfd text
 
-echo :: FdData a => a -> Fish ()
+echo :: FdWritable a => a -> Fish ()
 echo = writeTo L.Fd1
 
-echoLn :: (Monoid a,IsString a,FdData a) => a -> Fish ()
+echoLn :: (Monoid a,IsString a,FdWritable a) => a -> Fish ()
 echoLn t = echo (t <> fromString "\n")
 
 -- | 'warn' bypasses the whole Fd passing machinery

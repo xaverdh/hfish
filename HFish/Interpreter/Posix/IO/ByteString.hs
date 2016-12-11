@@ -54,9 +54,25 @@ fdGetLineLB fd =
   <$> fdGetLineByteStrings fd
 
 fdPutLB :: Fd -> LB.ByteString -> IO ()
-fdPutLB fd =
-  mapM_ (fdPutB fd) . LB.toChunks
-
+fdPutLB fd = writeLoop fd . LB.toChunks
+  -- mapM_ (fdPutB fd) . LB.toChunks
+  where
+    writeLoop fd bs's
+      | bs's == [] = return ()
+      | otherwise = do
+          cnt <- BIO.fdWritev fd bs's
+          let (n,k) = reconstruct (fromEnum cnt) (map B.length bs's)
+          let bs:rest = drop n bs's
+          writeLoop fd $ B.drop k bs : rest
+    
+    reconstruct :: Int -> [Int] -> (Int,Int)
+    reconstruct cnt (x:xs)
+       | cnt == 0 = (0,0)
+       | cnt < x = (0,cnt)
+       | cnt == x = (1,0)
+       | otherwise = 
+          let (n,k) = reconstruct (cnt - x) xs
+           in (n+1,k)
 
 fdGetContentsByteStrings :: Fd -> IO [B.ByteString]
 fdGetContentsByteStrings fd = readLoop fd

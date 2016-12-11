@@ -7,6 +7,7 @@ import HFish.Lang.Lang
 import HFish.Interpreter.Core
 import HFish.Interpreter.IO
 import HFish.Interpreter.Concurrent
+import HFish.Interpreter.Process.Process
 import HFish.Interpreter.Status
 import HFish.Interpreter.Util
 
@@ -43,10 +44,13 @@ seqFWorker fork = \case
         else writeList a b c >> ok
 
 writeList :: Int -> Int -> Int -> Fish ()
-writeList a b c =
-  echo
-  . B.toLazyText
-  $ createList a b c
+writeList a b c
+  | c `div` b > 10000 =
+    fishCreateProcess "seq" (map showText [a,b,c])
+    >>= fishWaitForProcess "seq"
+  | otherwise = echo
+      . B.toLazyText
+      $ createList a b c
 
 createList :: Int -> Int -> Int -> B.Builder
 createList a b c

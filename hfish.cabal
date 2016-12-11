@@ -1,6 +1,6 @@
 name:                hfish
 version:             0.1.0.0
-synopsis:            an interpreter for the fish language
+synopsis:            Interpreter for a fish-like language
 -- description:         
 license:             MIT
 license-file:        LICENSE

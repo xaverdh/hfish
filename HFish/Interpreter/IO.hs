@@ -23,6 +23,7 @@ import Control.Applicative
 import Control.Monad.IO.Class
 import qualified Control.Exception as E
 import Data.Monoid
+import Data.String (IsString(..))
 import Data.Bool
 import System.IO
 import System.IO.Error as IOE
@@ -30,9 +31,6 @@ import System.Posix.Files
 import qualified System.Posix.Types as PT
 import qualified System.Posix.IO as P
 import qualified Data.Text as T
-import qualified Data.Text.IO as TextIO
-
-
 
 -- | Make an abstract fd a duplicate of another abstract fd, i.e. a fd pointing
 --
@@ -112,17 +110,17 @@ writeTo fd text = do
   pfd <- lookupFd' fd
   liftIO $ fdPut pfd text
 
-echo :: T.Text -> Fish ()
+echo :: FdData a => a -> Fish ()
 echo = writeTo L.Fd1
 
-echoLn :: T.Text -> Fish ()
-echoLn t = echo (t <> "\n")
+echoLn :: (Monoid a,IsString a,FdData a) => a -> Fish ()
+echoLn t = echo (t <> fromString "\n")
 
 -- | 'warn' bypasses the whole Fd passing machinery
 --
 --   and writes directly to stderr. Use for debugging only.
-warn :: T.Text -> Fish ()
-warn t = liftIO (TextIO.hPutStrLn stderr t)
+warn :: String -> Fish ()
+warn = liftIO . hPutStrLn stderr
 
 lookupFd' :: L.Fd -> Fish PT.Fd
 lookupFd' fd = lookupFd fd >>=

@@ -29,6 +29,10 @@ import Control.Concurrent
 import Control.Concurrent.MVar
 import qualified System.Posix.IO as PIO
 
+import Options.Applicative
+import Options.Applicative.Builder
+
+
 progA :: Prog t -> Fish ()
 progA (Prog _ cstmts) = forM_ cstmts compStmtA
 
@@ -92,9 +96,9 @@ cmdStA mode (CmdIdent _ ident) args = do
         then fishWaitForProcess ident pid
         else return ()
 
-setStA :: Maybe (VarDef t, Args t) -> Fish ()
+setStA :: Maybe (Args t, VarDef t, Args t) -> Fish ()
 setStA = maybe getStA
-  $ \(VarDef _ (VarIdent _ ident) ref,args) -> do
+  $ \(pres,VarDef _ (VarIdent _ ident) ref,args) -> do
     ro <- isReadOnlyVar ident
     when ro (errork readOnlyErr)
     if isNothing ref 

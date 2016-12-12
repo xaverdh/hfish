@@ -45,12 +45,14 @@ seqFWorker fork = \case
 
 writeList :: Int -> Int -> Int -> Fish ()
 writeList a b c
-  | c `div` b > 10000 =
+  | c `div` b > 40000 =
     fishCreateProcess "seq" (map showText [a,b,c])
     >>= fishWaitForProcess "seq"
   | otherwise = echo
-      . B.toLazyText
+      . B.toLazyTextWith ubound
       $ createList a b c
+  where
+    ubound = (round $ logBase 10 (fromIntegral c) + 1) * c `div` b
 
 createList :: Int -> Int -> Int -> B.Builder
 createList a b c
@@ -58,12 +60,3 @@ createList a b c
   | otherwise = mempty
 
 
-{-
-writeList :: Int -> Int -> Int -> Fish ()
-writeList a b c = (echo . T.unlines) $ createList a b c
-
-createList :: Int -> Int -> Int -> [T.Text]
-createList a b c
-  | a <= c = T.pack (show a) : createList (a+b) b c
-  | otherwise = []
--}

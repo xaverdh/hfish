@@ -45,7 +45,7 @@ seqFWorker fork = \case
 
 writeList :: Int -> Int -> Int -> Fish ()
 writeList a b c
-  | c `div` b > 40000 =
+  | c `div` b > 10^5 =
     fishCreateProcess "seq" (map showText [a,b,c])
     >>= fishWaitForProcess "seq"
   | otherwise = echo

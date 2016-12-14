@@ -55,7 +55,7 @@ hfishMain noexecute ast command fishcompat args
     if command
       then exDirect args (runProgram r s)
       else case args of
-        [] -> runInterpreterLoop False r s
+        [] -> runInterpreterLoop fishcompat False r s
         path:args' -> do
           s' <- injectArgs args' r s
           exPath path (runProgram r s')
@@ -80,6 +80,12 @@ hfishMain noexecute ast command fishcompat args
       | fishcompat = parseFish
       | otherwise = parseHFish
 
+    atBreakpoint :: Fish ()
+    atBreakpoint = do
+      r <- ask
+      s <- get
+      liftIO $ runInterpreterLoop fishcompat True r s
+
 mkPrompt :: Bool -> FishState -> String
 mkPrompt isbrkpt s
   | isbrkpt = insStatus <> ": "
@@ -87,20 +93,30 @@ mkPrompt isbrkpt s
   where
     insStatus = (show . fromEnum) (s ^. status)
 
-runInterpreterLoop :: Bool -> FishReader -> FishState -> IO ()
-runInterpreterLoop isbrkpt r s =
+runInterpreterLoop :: Bool
+  -> Bool
+  -> FishReader
+  -> FishState
+  -> IO ()
+runInterpreterLoop fishcompat isbrkpt r s =
   runInputT defaultSettings
-    ( interpreterLoop (mkPrompt isbrkpt) r s )
 
-interpreterLoop ::
-  (FishState -> String) -- The prompt
+    ( interpreterLoop fishcompat (mkPrompt isbrkpt) r s )
+
+interpreterLoop :: Bool
+  -> (FishState -> String) -- The prompt
   -> FishReader -> FishState -> InputT IO ()
-interpreterLoop prompt r s =
+interpreterLoop fishcompat prompt r s =
   getInputLine (prompt s) >>= \case
     Nothing -> return ()
     Just l -> do
-      ms' <- withProg (parseHFishInteractive $ l ++ "\n") (runProgram r s)
-      interpreterLoop prompt r (fromMaybe s ms')
+      ms' <- withProg (parseInteractive $ l ++ "\n") (runProgram r s)
+      interpreterLoop fishcompat prompt r (fromMaybe s ms')
+  where
+    parseInteractive
+      | fishcompat = parseFishInteractive
+      | otherwise = parseHFishInteractive
+
 
 coerce :: IO (Either SomeException a) -> IO (Either SomeException a)
 coerce = id
@@ -124,8 +140,3 @@ runProgram r s p =
       return s
     Right s' -> return s'
 
-atBreakpoint :: Fish ()
-atBreakpoint = do
-  r <- ask
-  s <- get
-  liftIO $ runInterpreterLoop True r s

@@ -24,13 +24,16 @@ import System.Environment (getArgs)
 import Options.Applicative as O
 import Options.Applicative.Builder as OB
 
+import Fish.Pretty
+import Text.PrettyPrint.GenericPretty (doc)
+-- import Text.PrettyPrint.ANSI.Leijen
+
 main :: IO ()
 main = customExecParser conf parser >>= id
   where
     conf = OB.defaultPrefs {
       prefDisambiguate = True
       ,prefShowHelpOnError = True
-      ,prefShowHelpOnEmpty = True
     }
     parser = info hfishOptions idm
 
@@ -45,7 +48,7 @@ hfishOptions = hfishMain
 hfishMain :: Bool -> Bool -> Bool -> Bool -> [String] -> IO ()
 hfishMain noexecute ast command fishcompat args
   | noexecute = forM_ args parseIt
-  | ast && command = exDirect args print
+  | ast && command = exDirect args (print . doc)
   | ast = case args of
     [] -> putStrLn "hfish: missing argument."
     path:_ -> exPath path print
@@ -63,7 +66,7 @@ hfishMain noexecute ast command fishcompat args
     injectArgs args = runFish
       $ setVar (EnvLens flocalEnv)
         "argv" (Var UnExport $ map T.pack args)
-      
+    
     exDirect args = withProg'
       $ parseInteractive
         $ L.unwords args <> "\n"

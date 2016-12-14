@@ -31,23 +31,15 @@ setCommandA :: ( Args t -> Fish [T.Text] )
   -> SetCommand t
   -> Fish ()
 setCommandA evalArgs evalRef = \case
-  SetSetting mscp mex varDef args ->
+  SetSetting mscp mex varDef args -> 
     let VarDef _ (VarIdent _ ident) ref = varDef
-     in evalArgs args >>= \args' ->
-      collectSetupData ident mscp mex $ \env ex mvs ->
-      if isNothing ref
-        then setVarSafe env ident $ Var ex args'
-        else case mvs of
-          Nothing -> errork uninitErr
-          Just vs -> do
-            slcs <- evalRef ref (length vs)
-            vs' <- writeSlices slcs vs args'
-            setVarSafe env ident $ Var ex vs'
-  SetList mscp mex namesOnly -> listVars mscp mex namesOnly
-  SetQuery mscp mex args -> evalArgs args >>= queryVars mscp mex
-  SetErase mscp args -> evalArgs args >>= eraseVars mscp
-  where
-    uninitErr = "set: Trying to set parts of uninitialised variable"
+     in evalArgs args >>= setSetting evalRef mscp mex ident ref
+  SetList mscp mex namesOnly -> 
+    listVars mscp mex namesOnly
+  SetQuery mscp mex args -> 
+    evalArgs args >>= queryVars mscp mex
+  SetErase mscp args -> 
+    evalArgs args >>= eraseVars mscp
 
 collectSetupData :: T.Text
   -> Maybe Scope
@@ -72,7 +64,25 @@ collectSetupData ident mscope mexport k =
         ( k env (defEx UnExport) Nothing )
         ( \(Var ex vs) -> k env (defEx ex) (Just vs) )
 
-
+setSetting :: (Maybe a -> Int -> Fish Slices)
+  -> Maybe Scope
+  -> Maybe Export
+  -> T.Text
+  -> Maybe a
+  -> [T.Text]
+  -> Fish ()
+setSetting evalRef mscp mex ident ref args =
+  collectSetupData ident mscp mex $ \env ex mvs ->
+  if isNothing ref
+    then setVarSafe env ident $ Var ex args
+    else case mvs of
+      Nothing -> errork uninitErr
+      Just vs -> do
+        slcs <- evalRef ref (length vs)
+        vs' <- writeSlices slcs vs args
+        setVarSafe env ident $ Var ex vs'
+  where
+    uninitErr = "set: Trying to set parts of uninitialised variable"
 
 listVars :: Maybe Scope -> Maybe Export -> Bool -> Fish ()
 listVars mscope mexport namesOnly =

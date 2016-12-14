@@ -1,7 +1,7 @@
 {-# language LambdaCase, GADTs, Rank2Types, OverloadedStrings, TupleSections, Strict #-}
 module HFish.Interpreter.Var where
 
-import HFish.Lang.Lang
+import Fish.Lang
 
 import HFish.Interpreter.Core
 import HFish.Interpreter.Util

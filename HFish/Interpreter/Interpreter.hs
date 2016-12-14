@@ -1,7 +1,7 @@
 {-# language LambdaCase, OverloadedStrings #-}
 module HFish.Interpreter.Interpreter where
 
-import HFish.Lang.Lang
+import Fish.Lang
 
 import HFish.Interpreter.Core
 import HFish.Interpreter.FdTable as FDT

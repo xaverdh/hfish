@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, OverloadedStrings, PackageImports, TypeSynonymInstances, FlexibleInstances #-}
+{-# LANGUAGE LambdaCase, OverloadedStrings, TypeSynonymInstances, FlexibleInstances #-}
 module HFish.Interpreter.Posix.IO (
   FdData(..)
   ,FdReadable(..)

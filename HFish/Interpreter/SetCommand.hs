@@ -3,7 +3,7 @@ module HFish.Interpreter.SetCommand (
   setCommandA
 ) where
 
-import HFish.Lang.Lang
+import Fish.Lang
 
 import HFish.Interpreter.Core
 import HFish.Interpreter.Util

@@ -6,7 +6,7 @@ module HFish.Interpreter.Builtins (
 import Control.Lens
 import Control.Monad.State
 import Control.Monad.Reader
-import HFish.Lang.Lang
+import Fish.Lang
 import HFish.Interpreter.Core
 import HFish.Interpreter.Interpreter
 import Data.Bifunctor

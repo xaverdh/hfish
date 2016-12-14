@@ -3,7 +3,7 @@ module HFish.Interpreter.Builtins.Seq (
   seqF
 ) where
 
-import HFish.Lang.Lang
+import Fish.Lang
 import HFish.Interpreter.Core
 import HFish.Interpreter.IO
 import HFish.Interpreter.Concurrent

@@ -15,7 +15,7 @@ import HFish.Interpreter.Interpreter
 import HFish.Interpreter.Core
 import HFish.Interpreter.Init
 import HFish.Interpreter.Parsing
-import HFish.Lang.Lang
+import Fish.Lang
 
 import System.Console.Haskeline
 import System.Environment (getArgs)

@@ -6,7 +6,7 @@ module HFish.Interpreter.Builtins.Echo (
 import HFish.Interpreter.Core
 import HFish.Interpreter.IO
 import HFish.Interpreter.Status
-import HFish.Lang.Lang
+import Fish.Lang
 
 import qualified Data.Text as T
 import Data.Text.IO as TextIO

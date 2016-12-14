@@ -6,7 +6,7 @@ module HFish.Interpreter.Process.FdSetup (
 import HFish.Interpreter.Util
 import HFish.Interpreter.Core
 import HFish.Interpreter.FdTable
-import qualified HFish.Lang.Lang as L
+import qualified Fish.Lang as L
 import qualified Data.Map as M
 import qualified Data.IntSet as S
 import qualified System.Posix.IO as P

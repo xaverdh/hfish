@@ -8,7 +8,7 @@ import HFish.Interpreter.Parsing
 import HFish.Interpreter.Core
 import HFish.Interpreter.Interpreter (progA)
 import qualified Data.Text as T
-import HFish.Lang.Lang
+import Fish.Lang
 import System.Posix.Process
 import System.Exit
 import Control.Monad

@@ -1,7 +1,7 @@
 {-# LANGUAGE TemplateHaskell, RankNTypes, GeneralizedNewtypeDeriving, LambdaCase, OverloadedStrings #-}
 module HFish.Interpreter.Core where
 
-import HFish.Lang.Lang
+import Fish.Lang
 import HFish.Interpreter.Util
 import HFish.Interpreter.FdTable as FDT
 

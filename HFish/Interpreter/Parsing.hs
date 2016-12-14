@@ -7,7 +7,7 @@ import qualified Text.PrettyPrint.ANSI.Leijen as Pretty
 
 import Control.Monad
 import Control.Monad.IO.Class
-import HFish.Lang.Lang
+import Fish.Lang
 
 parseFishInteractive :: String -> TriR.Result (Prog ())
 parseFishInteractive = Tri.parseString TriP.program mempty

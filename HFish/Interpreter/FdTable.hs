@@ -2,7 +2,7 @@
 module HFish.Interpreter.FdTable where
 
 import qualified Data.Map as M
-import qualified HFish.Lang.Lang as L
+import qualified Fish.Lang as L
 import qualified System.Posix.IO as P
 import qualified System.Posix.Types as PT
 import Control.Lens

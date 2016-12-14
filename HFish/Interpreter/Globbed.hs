@@ -7,7 +7,7 @@ module HFish.Interpreter.Globbed (
   ,matchGlobbed
 ) where
 
-import HFish.Lang.Lang
+import Fish.Lang
 import HFish.Interpreter.Core
 
 import Data.Maybe

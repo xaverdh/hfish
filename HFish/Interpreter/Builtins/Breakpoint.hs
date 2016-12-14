@@ -8,7 +8,7 @@ import HFish.Interpreter.Core
 import HFish.Interpreter.IO
 
 import qualified Data.Text as T
-import HFish.Lang.Lang
+import Fish.Lang
 import Control.Monad
 
 breakpointF :: Builtin

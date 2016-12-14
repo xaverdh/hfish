@@ -5,7 +5,7 @@ module HFish.Interpreter.Builtins.Dirstack (
   ,dirsF
 ) where
 
-import HFish.Lang.Lang
+import Fish.Lang
 import HFish.Interpreter.Core
 import HFish.Interpreter.IO
 import HFish.Interpreter.Concurrent

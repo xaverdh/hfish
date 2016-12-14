@@ -39,11 +39,12 @@ hfishOptions = hfishMain
   <$> switch (short 'n' <> long "no-execute")
   <*> switch (short 'a' <> long "ast")
   <*> switch (short 'c' <> long "command")
+  <*> switch (short 'f' <> long "fish-compat")
   <*> many (strArgument (metavar "ARGS"))
 
-hfishMain :: Bool -> Bool -> Bool -> [String] -> IO ()
-hfishMain noexecute ast command args
-  | noexecute = forM_ args parseHFish
+hfishMain :: Bool -> Bool -> Bool -> Bool -> [String] -> IO ()
+hfishMain noexecute ast command fishcompat args
+  | noexecute = forM_ args parseIt
   | ast && command = exDirect args print
   | ast = case args of
     [] -> putStrLn "hfish: missing argument."
@@ -64,12 +65,20 @@ hfishMain noexecute ast command args
         "argv" (Var UnExport $ map T.pack args)
       
     exDirect args = withProg'
-      $ parseHFishInteractive
-      $ L.unwords args <> "\n"
+      $ parseInteractive
+        $ L.unwords args <> "\n"
     
     exPath path f = do
-      res <- parseHFish path
+      res <- parseIt path
       withProg' res f
+
+    parseInteractive
+      | fishcompat = parseFishInteractive
+      | otherwise = parseHFishInteractive 
+    
+    parseIt
+      | fishcompat = parseFish
+      | otherwise = parseHFish
 
 mkPrompt :: Bool -> FishState -> String
 mkPrompt isbrkpt s

@@ -28,14 +28,14 @@ main = do
   case args of
     [] -> runInterpreterLoop False r s
     "-n":paths -> void $
-      forM_ paths parseFish
+      forM_ paths parseHFish
     "-p":rest -> void $
-      withProg (parseFishInteractive (L.unwords rest <> "\n")) print
+      withProg (parseHFishInteractive (L.unwords rest <> "\n")) print
     "-c":rest -> do
-      withProg (parseFishInteractive (L.unwords rest <> "\n")) (runProgram r s)
+      withProg (parseHFishInteractive (L.unwords rest <> "\n")) (runProgram r s)
       return ()
     path:rest -> do
-      res <- parseFish path
+      res <- parseHFish path
       withProg res (runProgram r s)
       return ()
 
@@ -59,7 +59,7 @@ interpreterLoop prompt r s =
   getInputLine (prompt s) >>= \case
     Nothing -> return ()
     Just l -> do
-      ms' <- withProg (parseFishInteractive $ l ++ "\n") (runProgram r s)
+      ms' <- withProg (parseHFishInteractive $ l ++ "\n") (runProgram r s)
       interpreterLoop prompt r (fromMaybe s ms')
 
 coerce :: IO (Either SomeException a) -> IO (Either SomeException a)

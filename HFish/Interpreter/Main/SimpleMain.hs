@@ -48,10 +48,10 @@ hfishOptions = hfishMain
 hfishMain :: Bool -> Bool -> Bool -> Bool -> [String] -> IO ()
 hfishMain noexecute ast command fishcompat args
   | noexecute = forM_ args parseIt
-  | ast && command = exDirect args (print . doc)
+  | ast && command = exDirect args printAST
   | ast = case args of
     [] -> putStrLn "hfish: missing argument."
-    path:_ -> exPath path print
+    path:_ -> exPath path printAST
   | otherwise = do
     s <- mkInitialFishState
     r <- mkInitialFishReader atBreakpoint
@@ -63,6 +63,8 @@ hfishMain noexecute ast command fishcompat args
           s' <- injectArgs args' r s
           exPath path (runProgram r s')
   where
+    printAST = print . doc
+    
     injectArgs args = runFish
       $ setVar (EnvLens flocalEnv)
         "argv" (Var UnExport $ map T.pack args)

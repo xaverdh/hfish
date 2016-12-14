@@ -17,6 +17,8 @@ import Data.Monoid
 import Data.Bool
 import Data.Bifunctor
 import Control.Monad
+import Control.Monad.IO.Class
+import qualified Control.Exception as E
 
 {- Implements fish style array slicing -}
 
@@ -51,26 +53,32 @@ readSlices = work 0
          in mbRev b ys ++ done
 
 {- writeSlices may fail if the ranges overlap -}
-writeSlices :: Show a => Slices -> [a] -> [a] -> [a]
-writeSlices = work 0
+writeSlices :: Show a => Slices -> [a] -> [a] -> Fish [a]
+writeSlices slcs xs ys =
+  liftIO (E.try $ E.evaluate $ work 0 slcs xs ys)
+  >>= \case
+    Left e -> errork $ showText (e :: E.ErrorCall)
+    Right zs -> return zs
   where
     work n slcs xs ys =
       case slcs of
-        [] -> bool
-          (error "Too many values to write.")
-          xs (isEmpty ys)
+        [] -> bool tooManyErr xs (isEmpty ys)
         (b,(i,j)):rest -> 
           case triSplit (i-n) (j-i+1) xs of
-            Nothing -> error 
-              $ "Invalid indices (out of bounds or overlapping): "
-                ++ showSlices slcs
+            Nothing -> invalidIndicesErr slcs
             Just (hs,_,xs') ->
               case splitAtMaybe (j-i+1) ys of
-                Nothing -> error
-                  "Too few values to write." 
+                Nothing -> tooFewErr
                 Just (rs,ys') -> 
                   let done = work (j+1) rest xs' ys'
                    in (hs ++ mbRev b rs ++ done)
+    
+    tooFewErr = error "Too few values to write."
+    tooManyErr = error "Too many values to write."
+    invalidIndicesErr slcs = error
+      $ "Invalid indices (out of bounds or overlapping): "
+        ++ showSlices slcs
+    
 
 showSlices :: Slices -> String
 showSlices slcs = 

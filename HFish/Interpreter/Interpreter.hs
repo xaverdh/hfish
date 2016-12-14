@@ -1,4 +1,4 @@
-{-# language LambdaCase, OverloadedStrings, BangPatterns #-}
+{-# language LambdaCase, OverloadedStrings #-}
 module HFish.Interpreter.Interpreter where
 
 import HFish.Lang.Lang
@@ -14,6 +14,7 @@ import HFish.Interpreter.Process.Process
 import HFish.Interpreter.Process.Pid
 import HFish.Interpreter.Concurrent
 import HFish.Interpreter.Slice
+import HFish.Interpreter.SetCommand
 import HFish.Interpreter.Util
 import HFish.Interpreter.ExMode
 
@@ -28,9 +29,6 @@ import Control.Applicative
 import Control.Concurrent
 import Control.Concurrent.MVar
 import qualified System.Posix.IO as PIO
-
-import Options.Applicative
-import Options.Applicative.Builder
 
 
 progA :: Prog t -> Fish ()
@@ -58,8 +56,8 @@ stmtA :: ExMode -> Stmt t -> Fish ()
 stmtA mode = \case
   CmdSt _ i args ->
     cmdStA mode i args
-  SetSt _ mvdef -> 
-    setStA mvdef
+  SetSt _ setCmd -> 
+    setStA setCmd
   FunctionSt _ i args prog ->
     functionStA i args prog
   WhileSt _ st prog ->
@@ -96,41 +94,8 @@ cmdStA mode (CmdIdent _ ident) args = do
         then fishWaitForProcess ident pid
         else return ()
 
-setStA :: Maybe (Args t, VarDef t, Args t) -> Fish ()
-setStA = maybe getStA
-  $ \(pres,VarDef _ (VarIdent _ ident) ref,args) -> do
-    ro <- isReadOnlyVar ident
-    when ro (errork readOnlyErr)
-    if isNothing ref 
-      then setF ident args
-      else getVarMaybe ident >>= \case
-        Nothing -> errork uninitErr
-        Just (Var exp vs) -> do
-          ts <- evalArgs args
-          slcs <- evalRef ref (length vs)
-          let !vs' = writeSlices slcs vs ts
-          setVarSafe flocalEnv ident (Var exp vs')
-  where
-    setF ident args = do
-      vs <- evalArgs args
-      setVarSafe flocalEnv ident (Var False vs)
-
-    uninitErr = "set: Trying to set parts of uninitialised variable"
-    doesNotMatchErr = "set: number of arguments does not match"
-    readOnlyErr = "set: Will not set or shadow readonly variable"    
-
-getStA :: Fish ()
-getStA = do
-  fe <- use flocalEnv
-  le <- use localEnv
-  ge <- use globalEnv
-  ro <- use readOnlyEnv
-  echo 
-    $ showVars le
-    <> showVars fe
-    <> showVars ge
-    <> showVars ro
-
+setStA :: SetCommand t -> Fish ()
+setStA = setCommandA evalArgs evalRef
 
 {- This is _very_ rudimentary atm. -}
 functionStA :: FunIdent t -> Args t -> Prog t -> Fish ()
@@ -139,7 +104,7 @@ functionStA (FunIdent _ ident) args prog =
   where
     f args' =
       localise flocalEnv $ do
-        setVar flocalEnv "argv" (Var False args')
+        setVar (EnvLens flocalEnv) "argv" (Var UnExport args')
         progA prog
 
 whileStA :: Stmt t -> Prog t -> Fish ()
@@ -157,7 +122,7 @@ forStA (VarIdent _ varIdent) args prog = do
   setBreakK (loop xs)
   where
     lbind x f = localise localEnv
-      (setVarSafe localEnv varIdent (Var False [x]) >> f)
+      (setVarSafe (EnvLens localEnv) varIdent (Var UnExport [x]) >> f)
     
     body = progA prog
     
@@ -280,26 +245,6 @@ evalCmdSubstE (CmdRef _ prog ref) = do
     Just _ -> do
       slcs <- evalRef ref (length ts)
       return (readSlices slcs ts)
-
-{-
-Old version:
-
-evalCmdSubstE :: CmdRef t -> Fish [Globbed]
-evalCmdSubstE (CmdRef _ prog ref) = do
-  (mvar,wE) <- createHandleMVarPair
-  stMVar <- FDT.insert Fd1 wE (forkFish $ progA prog)
-  FDT.insert Fd1 wE (progA prog)
-  spliceInState stMVar
-  liftIO (PIO.closeFd wE)
-  text <- liftIO $ takeMVar mvar
-  let ts = T.lines text
-  map fromText
-    <$> case ref of
-    Nothing -> return ts
-    Just _ -> do
-      slcs <- evalRef ref (length ts)
-      return (readSlices slcs ts)
--}
 
 evalVarRefE :: Bool -> VarRef t -> Fish [Globbed]
 evalVarRefE q vref = do

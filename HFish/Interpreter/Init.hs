@@ -4,6 +4,8 @@ module HFish.Interpreter.Init (
   ,mkInitialFishReader
 ) where
 
+import HFish.Lang.Lang
+
 import HFish.Interpreter.Core
 import HFish.Interpreter.FdTable (initialFdTable)
 import HFish.Interpreter.Var
@@ -25,7 +27,7 @@ readOnly = ["SHLVL","PWD"]
 mkInitialFishState :: IO FishState
 mkInitialFishState = do
   wdir <- getCurrentDirectory
-  inherited <- map (bimap T.pack (Var True . pure . T.pack)) <$> getEnvironment
+  inherited <- map (bimap T.pack (Var Export . pure . T.pack)) <$> getEnvironment
   let (ro,rw) = teeVars inherited
   return $  emptyFishState {
       _functions = M.empty
@@ -43,11 +45,11 @@ mkInitialFishState = do
     
     inc :: Maybe Var -> Maybe Var
     inc mv =
-      (Var True . pure . T.pack . show . (+1))
+      (Var Export . pure . T.pack . show . (+1))
       <$> (mv >>= readVarMaybe)
     
     incShlvl = at "SHLVL" %~ inc    
-    initStatus = M.insert "status" (Var False ["0"])
+    initStatus = M.insert "status" (Var UnExport ["0"])
 
 
 mkInitialFishReader :: Fish () -> IO FishReader

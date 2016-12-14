@@ -1,6 +1,7 @@
 {-# language LambdaCase, OverloadedStrings #-}
 module HFish.Interpreter.Status where
 
+import HFish.Lang.Lang
 import HFish.Interpreter.Core
 import HFish.Interpreter.Var
 
@@ -25,14 +26,14 @@ setStatus :: ExitCode -> Fish ()
 setStatus exCode = do
   status .= exCode
   readOnlyEnv . at "status" .= Just
-    (Var False [T.pack . show $ fromEnum exCode])
+    (Var UnExport [T.pack . show $ fromEnum exCode])
 
 modifyStatus :: (ExitCode -> ExitCode) -> Fish ()
 modifyStatus f = do
   status %= f
   exCode <- use status
   readOnlyEnv . at "status" .= Just
-    (Var False [T.pack . show $ fromEnum exCode])
+    (Var UnExport [T.pack . show $ fromEnum exCode])
 
 invertStatus :: Fish ()
 invertStatus =

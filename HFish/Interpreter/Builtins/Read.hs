@@ -18,6 +18,7 @@ import Control.Monad
 import Control.Monad.IO.Class
 import System.Exit
 
+-- Todo: proper support for scopes.
 
 readF :: Bool -> [T.Text] -> Fish ()
 readF _ = \case
@@ -27,11 +28,13 @@ readF _ = \case
     loop args (T.words l)
     ok
   where
-    loop [a] wds = 
-      void $ setVarSafe localEnv a (Var False wds)
+    setIt vs = 
+      flip ( setVarSafe ( EnvLens localEnv ) )
+      ( Var UnExport vs )
+    loop [a] wds =
+      void $ setIt wds a
     loop (a:args) (w:wds) = do
-      setVarSafe localEnv a (Var False [w])
+      setIt [w] a
       loop args wds
     loop args [] = 
-      forM_ args $ \a ->
-        setVarSafe localEnv a (Var False [])
+      forM_ args $ setIt []

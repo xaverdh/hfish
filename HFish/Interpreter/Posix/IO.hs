@@ -1,12 +1,13 @@
-{-# LANGUAGE LambdaCase, OverloadedStrings, PackageImports #-}
+{-# LANGUAGE LambdaCase, OverloadedStrings, PackageImports, TypeSynonymInstances, FlexibleInstances #-}
 module HFish.Interpreter.Posix.IO (
   FdData(..)
   ,FdReadable(..)
   ,FdWritable(..)
 ) where
 
-import HFish.Interpreter.Posix.IO.Text
 import HFish.Interpreter.Posix.IO.ByteString
+import HFish.Interpreter.Posix.IO.Text
+import HFish.Interpreter.Posix.IO.String
 
 import System.Posix.Types
 import qualified Data.Text as T
@@ -24,6 +25,7 @@ class FdWritable a where
   fdPut :: Fd -> a -> IO ()
 
 
+-- Strict ByteStrings
 instance FdReadable B.ByteString where
   fdGetContents = fdGetContentsB
   fdGetLine = fdGetLineB
@@ -34,6 +36,7 @@ instance FdWritable B.ByteString where
 instance FdData B.ByteString
 
 
+-- Lazy ByteStrings
 instance FdReadable LB.ByteString where
   fdGetContents = fdGetContentsLB  
   fdGetLine = fdGetLineLB
@@ -44,6 +47,7 @@ instance FdWritable LB.ByteString where
 instance FdData LB.ByteString
 
 
+-- Strict Text
 instance FdReadable T.Text where
   fdGetContents = fdGetContentsT
   fdGetLine = fdGetLineT
@@ -54,6 +58,7 @@ instance FdWritable T.Text where
 instance FdData T.Text
 
 
+-- Lazy Text
 instance FdReadable LT.Text where
   fdGetContents = fdGetContentsLT
   fdGetLine = fdGetLineLT
@@ -62,4 +67,15 @@ instance FdWritable LT.Text where
   fdPut = fdPutLT
 
 instance FdData LT.Text
+
+
+-- Strings
+instance FdReadable String where
+  fdGetContents = fdGetContentsS
+  fdGetLine = fdGetLineS
+
+instance FdWritable String where
+  fdPut = fdPutS
+
+instance FdData String
 

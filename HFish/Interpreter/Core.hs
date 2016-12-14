@@ -61,7 +61,7 @@ asIO f g = projectIO f >>= g
 
 -- | The type of a fish /variable/
 data Var = Var {
-    _exported :: Bool
+    _exported :: Export
     ,_value :: [T.Text]
   }
   deriving (Eq,Ord)

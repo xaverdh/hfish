@@ -39,6 +39,11 @@ withProg res f = case res of
       ++ "\n~> Occured while parsing interactive statement.\n"
     return Nothing
 
+withProg' :: MonadIO m
+  => TriR.Result (Prog ())
+  -> (Prog () -> m a)
+  -> m ()
+withProg' res f = void $ withProg res f
 
 {-
 hybridParseInteractive :: String -> TriR.Result (Prog ())

@@ -1,4 +1,4 @@
-{-# language LambdaCase, FlexibleInstances #-}
+{-# language LambdaCase, OverloadedStrings, FlexibleInstances #-}
 module HFish.Interpreter.Main.SimpleMain where
 
 import Control.Lens
@@ -15,30 +15,61 @@ import HFish.Interpreter.Interpreter
 import HFish.Interpreter.Core
 import HFish.Interpreter.Init
 import HFish.Interpreter.Parsing
+import HFish.Interpreter.Var
 import Fish.Lang
 
 import System.Console.Haskeline
 import System.Environment (getArgs)
 
+import Options.Applicative as O
+import Options.Applicative.Builder as OB
 
-main = do
-  args <- getArgs
-  s <- mkInitialFishState
-  r <- mkInitialFishReader atBreakpoint
-  case args of
-    [] -> runInterpreterLoop False r s
-    "-n":paths -> void $
-      forM_ paths parseHFish
-    "-p":rest -> void $
-      withProg (parseHFishInteractive (L.unwords rest <> "\n")) print
-    "-c":rest -> do
-      withProg (parseHFishInteractive (L.unwords rest <> "\n")) (runProgram r s)
-      return ()
-    path:rest -> do
+main :: IO ()
+main = customExecParser conf parser >>= id
+  where
+    conf = OB.defaultPrefs {
+      prefDisambiguate = True
+      ,prefShowHelpOnError = True
+      ,prefShowHelpOnEmpty = True
+    }
+    parser = info hfishOptions idm
+
+hfishOptions :: O.Parser (IO ())
+hfishOptions = hfishMain
+  <$> switch (short 'n' <> long "no-execute")
+  <*> switch (short 'a' <> long "ast")
+  <*> switch (short 'c' <> long "command")
+  <*> many (strArgument (metavar "ARGS"))
+
+hfishMain :: Bool -> Bool -> Bool -> [String] -> IO ()
+hfishMain noexecute ast command args
+  | noexecute = forM_ args parseHFish
+  | ast && command = exDirect args print
+  | ast = case args of
+    [] -> putStrLn "hfish: missing argument."
+    path:_ -> exPath path print
+  | otherwise = do
+    s <- mkInitialFishState
+    r <- mkInitialFishReader atBreakpoint
+    if command
+      then exDirect args (runProgram r s)
+      else case args of
+        [] -> runInterpreterLoop False r s
+        path:args' -> do
+          s' <- injectArgs args' r s
+          exPath path (runProgram r s')
+  where
+    injectArgs args = runFish
+      $ setVar (EnvLens flocalEnv)
+        "argv" (Var UnExport $ map T.pack args)
+      
+    exDirect args = withProg'
+      $ parseHFishInteractive
+      $ L.unwords args <> "\n"
+    
+    exPath path f = do
       res <- parseHFish path
-      withProg res (runProgram r s)
-      return ()
-
+      withProg' res f
 
 mkPrompt :: Bool -> FishState -> String
 mkPrompt isbrkpt s
@@ -65,7 +96,11 @@ interpreterLoop prompt r s =
 coerce :: IO (Either SomeException a) -> IO (Either SomeException a)
 coerce = id
 
-runProgram :: MonadIO m => FishReader -> FishState -> Prog () -> m FishState
+runProgram :: MonadIO m
+  => FishReader
+  -> FishState
+  -> Prog ()
+  -> m FishState
 runProgram r s p =
   ( liftIO . coerce . try $ runFish (progA p) r s ) >>= \case
     Left e -> do
@@ -85,4 +120,3 @@ atBreakpoint = do
   r <- ask
   s <- get
   liftIO $ runInterpreterLoop True r s
-

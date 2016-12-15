@@ -122,7 +122,6 @@ interpreterLoop fishcompat prompt r s =
       | fishcompat = parseFishInteractive
       | otherwise = parseHFishInteractive
 
-
 coerce :: IO (Either SomeException a) -> IO (Either SomeException a)
 coerce = id
 
@@ -138,10 +137,9 @@ runProgram r s p =
         "~> Error:\n"
         ++ show e
         ++ "\n~> Occured while evaluating:\n"
-        ++ show p
-        -- ++ "\n~> From code: "
-        -- ++ unparse (fmap T.unpack p)
+        ++ printAST p
         ++ "\n"
       return s
     Right s' -> return s'
-
+  where
+    printAST = print . doc

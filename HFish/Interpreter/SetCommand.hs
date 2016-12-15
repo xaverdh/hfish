@@ -1,7 +1,5 @@
 {-# language LambdaCase, OverloadedStrings, Strict #-}
-module HFish.Interpreter.SetCommand (
-  setCommandA
-) where
+module HFish.Interpreter.SetCommand where
 
 import Fish.Lang
 
@@ -159,5 +157,6 @@ scopeAsEnvLens scope = EnvLens $
   case scope of
     ScopeLocal -> localEnv
     ScopeGlobal -> globalEnv
-    ScopeUniversal -> error "universal scope not supported yet."
+    ScopeUniversal -> {- universalEnv -}
+      error "universal scope not supported yet."
 

@@ -14,7 +14,7 @@ import HFish.Interpreter.Process.Process
 import HFish.Interpreter.Process.Pid
 import HFish.Interpreter.Concurrent
 import HFish.Interpreter.Slice
-import HFish.Interpreter.SetCommand
+import HFish.Interpreter.SetCommand as SetCmd
 import HFish.Interpreter.Util
 import HFish.Interpreter.ExMode
 
@@ -95,7 +95,7 @@ cmdStA mode (CmdIdent _ ident) args = do
         else return ()
 
 setStA :: SetCommand t -> Fish ()
-setStA = setCommandA evalArgs evalRef
+setStA = SetCmd.setCommandA evalArgs evalRef
 
 {- This is _very_ rudimentary atm. -}
 functionStA :: FunIdent t -> Args t -> Prog t -> Fish ()

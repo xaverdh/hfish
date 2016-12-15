@@ -79,17 +79,19 @@ fdGetContentsByteStrings fd = readLoop fd
   where
     chunkSize :: ByteCount
     chunkSize = toEnum (2^14)
-
+    
     readLoop :: Fd -> IO [B.ByteString]
     readLoop fd = do
-      bs <- mapSingletonList $ BIO.fdRead fd chunkSize
-      (bs++) <$> readLoop fd
-
-    mapSingletonList :: IO a -> IO [a]
-    mapSingletonList f = IOE.catchIOError (pure <$> f)
+      mbs <- eofToNothing $ BIO.fdRead fd chunkSize
+      case mbs of
+        Nothing -> return []
+        Just bs -> (bs:) <$> readLoop fd
+    
+    eofToNothing :: IO a -> IO (Maybe a)
+    eofToNothing f = IOE.catchIOError (Just <$> f)
       $ \e ->
         if IOE.isEOFError e
-        then return []
+        then return Nothing
         else ioError e
 
 fdGetLineByteStrings :: Fd -> IO [B.ByteString]

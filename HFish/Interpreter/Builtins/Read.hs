@@ -22,6 +22,8 @@ import System.Exit
 import Options.Applicative
 import Options.Applicative.Builder as OB
 
+-- Todo: support IFS variable for customizing the variable splitting
+
 readF :: Bool -> [T.Text] -> Fish ()
 readF _ ts =
   let res = execParserPure defaultPrefs parser (map T.unpack ts)

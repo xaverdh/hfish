@@ -1,6 +1,6 @@
 # hfish
 
-## Dependencies
+## Prerequisites and Dependencies
   * A unix / posix system (linux for example)
   * A recent cabal / ghc
   * The icu (International Components for Unicode) library

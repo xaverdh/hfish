@@ -4,6 +4,8 @@ module HFish.Interpreter.Slice (
   ,makeSlices
   ,readSlices
   ,writeSlices
+  ,dropSlices
+  ,isEmptySlice
 ) where
 
 import Fish.Lang
@@ -22,7 +24,15 @@ import qualified Control.Exception as E
 
 {- Implements fish style array slicing -}
 
+
+-- | A collection of slices, eachof which consists of:
+--
+--   * A boolean, indicating if the slice is "reversed"
+--   * A pair of Ints, corresponding to the ends of the slice.
 type Slices = [(Bool,(Int,Int))]
+
+isEmptySlice :: Slices -> Bool
+isEmptySlice = (==[])
 
 makeSlices :: Int -> [(Int,Int)] -> Fish Slices
 makeSlices l xs = 
@@ -78,7 +88,24 @@ writeSlices slcs xs ys =
     invalidIndicesErr slcs = error
       $ "Invalid indices (out of bounds or overlapping): "
         ++ showSlices slcs
-    
+
+
+{- drop the slices from an array -}
+dropSlices :: Show a => Slices -> [a] -> Fish [a]
+dropSlices slcs xs =
+  liftIO (E.try $ E.evaluate $ work 0 slcs xs)
+  >>= \case
+    Left e -> errork $ showText (e :: E.ErrorCall)
+    Right zs -> return zs
+  where
+    work n slcs xs =
+      case slcs of
+        [] -> xs
+        (_,(i,j)):rest ->
+          let (ys,xs') = splitAt (i-n) xs
+              (_,zs) = splitAt (j-i+1) xs'
+              done = work i rest zs
+           in ys ++ done
 
 showSlices :: Slices -> String
 showSlices slcs = 

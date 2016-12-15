@@ -20,6 +20,7 @@ import Data.Functor
 import Data.Monoid
 import Data.Maybe
 import Data.Bool
+import qualified Data.List.NonEmpty as N
 import qualified Data.Text as T
 import qualified Data.Map as M
 
@@ -32,14 +33,18 @@ setCommandA :: ( Args t -> Fish [T.Text] )
   -> Fish ()
 setCommandA evalArgs evalRef = \case
   SetSetting mscp mex varDef args -> 
-    let VarDef _ (VarIdent _ ident) ref = varDef
-     in evalArgs args >>= setSetting evalRef mscp mex ident ref
+    evalArgs args >>= 
+      setSetting evalRef mscp mex (extract varDef)
   SetList mscp mex namesOnly -> 
     listVars mscp mex namesOnly
   SetQuery mscp mex args -> 
     evalArgs args >>= queryVars mscp mex
-  SetErase mscp args -> 
-    evalArgs args >>= eraseVars mscp
+  SetErase mscp varDefs -> 
+    eraseVars evalRef mscp $ map extract $ N.toList varDefs
+  where
+    extract :: VarDef t -> (T.Text,Ref (Expr t))
+    extract (VarDef _ (VarIdent _ ident) ref) = (ident,ref)
+
 
 collectSetupData :: T.Text
   -> Maybe Scope
@@ -64,14 +69,13 @@ collectSetupData ident mscope mexport k =
         ( k env (defEx UnExport) Nothing )
         ( \(Var ex vs) -> k env (defEx ex) (Just vs) )
 
-setSetting :: (Maybe a -> Int -> Fish Slices)
+setSetting :: (Ref a -> Int -> Fish Slices)
   -> Maybe Scope
   -> Maybe Export
-  -> T.Text
-  -> Maybe a
+  -> (T.Text,Ref a)
   -> [T.Text]
   -> Fish ()
-setSetting evalRef mscp mex ident ref args =
+setSetting evalRef mscp mex (ident,ref) args =
   collectSetupData ident mscp mex $ \env ex mvs ->
   if isNothing ref
     then setVarSafe env ident $ Var ex args
@@ -118,27 +122,36 @@ queryVars mscope mexport args = do
           Nothing -> False
           Just ex' -> ex /= ex'
 
-eraseVars :: Maybe Scope -> [T.Text] -> Fish ()
-eraseVars mscope args = 
-  forM_ args eraseVar
+eraseVars :: (Ref a -> Int -> Fish Slices)
+  -> Maybe Scope
+  -> [(T.Text,Ref a)]
+  -> Fish ()
+eraseVars evalRef mscope argsData =
+  forM_ argsData eraseVar
   where
-    eraseVar :: T.Text -> Fish ()
-    eraseVar name = 
+    -- eraseVar :: (T.Text,Ref a) -> Fish ()
+    eraseVar argData = 
       case mscope of
         Nothing ->
-          let f b env = if b then return b else eraseVarIn env name
+          let f b env = if b then return b else eraseVarIn env argData
            in foldM f False evironments
               >>= bool bad ok
         Just scope -> do
-          b <- eraseVarIn (scopeAsEnvLens scope) name
+          b <- eraseVarIn (scopeAsEnvLens scope) argData
           bool bad ok b
     
-    eraseVarIn :: EnvLens Var -> T.Text -> Fish Bool
-    eraseVarIn env ident = do
+    -- eraseVarIn :: EnvLens Var -> (T.Text,Ref a) -> Fish Bool
+    eraseVarIn env (ident,ref) = do
       mv <- preuse $ envlens env . ix ident
       case mv of
         Nothing -> return False
-        Just _ -> delVarSafe env ident $> True
+        Just (Var ex vs) -> 
+          evalRef ref (length vs)
+          >>= \slcs -> True <$
+            if isEmptySlice slcs
+              then delVarSafe env ident
+              else setVarSafe env ident =<<
+                ( Var ex <$> dropSlices slcs vs )
 
 
 scopeAsEnvLens :: Scope -> EnvLens Var

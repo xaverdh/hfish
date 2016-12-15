@@ -137,9 +137,8 @@ runProgram r s p =
         "~> Error:\n"
         ++ show e
         ++ "\n~> Occured while evaluating:\n"
-        ++ printAST p
+        ++ show (doc p)
         ++ "\n"
       return s
     Right s' -> return s'
-  where
-    printAST = print . doc
+

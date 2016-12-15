@@ -23,4 +23,4 @@ cabal sandbox add-source ../fish-lang ../fish-parser ../hfish-parser
 cabal install
 ```
 
-Build time from scratch is ~10min so I suggest that you get yourself a cup of tea.
+Build time from scratch is ~10min on a i5-4200U with -j4 so I suggest that you get yourself a cup of tea.

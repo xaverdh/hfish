@@ -109,3 +109,4 @@ readWorker array nullTerm mscp mex names
     
     arrayWrongArgNumErr = errork
       $ "read: expecting exactly one identifier with -a"
+

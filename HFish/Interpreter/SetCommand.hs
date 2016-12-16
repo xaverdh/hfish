@@ -60,12 +60,12 @@ collectSetupData ident mscope mexport k =
         [] -> k (EnvLens flocalEnv) (defEx UnExport) Nothing
         (env,Var ex vs):_ -> k env (defEx ex) (Just vs)
           
-    haveScope scope = do
-      let env = scopeAsEnvLens scope
-      mv <- preuse $ envlens env . ix ident
-      onMaybe mv
-        ( k env (defEx UnExport) Nothing )
-        ( \(Var ex vs) -> k env (defEx ex) (Just vs) )
+    haveScope scope = scopeAsEnvLens scope
+      & \env -> do
+        mv <- preuse $ envlens env . ix ident
+        onMaybe mv
+          ( k env (defEx UnExport) Nothing )
+          ( \(Var ex vs) -> k env (defEx ex) (Just vs) )
 
 setSetting :: (Ref a -> Int -> Fish Slices)
   -> Maybe Scope
@@ -130,8 +130,10 @@ eraseVars evalRef mscope argsData =
     -- eraseVar :: (T.Text,Ref a) -> Fish ()
     eraseVar argData = 
       case mscope of
-        Nothing ->
-          let f b env = if b then return b else eraseVarIn env argData
+        Nothing -> 
+          let f b env = if b
+                        then return b
+                        else eraseVarIn env argData
            in foldM f False evironments
               >>= bool bad ok
         Just scope -> do

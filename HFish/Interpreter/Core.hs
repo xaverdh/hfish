@@ -200,13 +200,13 @@ finally f cleanup =
 -- | Clearing all continuations,
 --   calls to them will be silently ignored.
 disallowK :: Fish a -> Fish a
-disallowK =
-  let noA = repeat ( const $ return () )
-   in local
+disallowK = local
     ( ( breakK .~ noA    )
     . ( continueK .~ noA )
     . ( returnK .~ noA   )
     . ( errorK .~ noA    ) )
+  where
+    noA = repeat ( const $ return () )
 
 -- | An empty FishState
 emptyFishState =

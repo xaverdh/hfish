@@ -101,7 +101,10 @@ mathDiv a b = imprecise (/) a b
 
 mathPow a b = imprecise (**) a b
 
-intArith :: (Integer -> Integer -> Integer) -> Scientific -> Scientific -> Fish Scientific
+intArith :: (Integer -> Integer -> Integer)
+  -> Scientific
+  -> Scientific
+  -> Fish Scientific
 intArith f a b = do
   i <- castInt a
   j <- castInt b
@@ -112,10 +115,13 @@ intArith f a b = do
       return
       (floatingOrInteger a)
 
-imprecise :: (Double -> Double -> Double) -> Scientific -> Scientific -> Scientific        
+imprecise :: (Double -> Double -> Double)
+  -> Scientific
+  -> Scientific
+  -> Scientific        
 imprecise f a b =
-  let r = f (toRealFloat a) (toRealFloat b)
-   in fromFloatDigits r
+  f (toRealFloat a) (toRealFloat b)
+  & fromFloatDigits
 
 {- Parsing -}
 

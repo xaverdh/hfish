@@ -18,6 +18,7 @@ import HFish.Interpreter.Status
 import HFish.Interpreter.Posix.IO
 import qualified Fish.Lang as L
 
+import Control.Lens
 import Control.Monad
 import Control.Applicative
 import Control.Monad.IO.Class
@@ -59,8 +60,8 @@ withFileR fpath fd k = do
 
 withFileW :: T.Text -> L.FileMode -> L.Fd -> Fish () -> Fish ()
 withFileW fpath mode fd k =
-  let popen m f = P.openFd (T.unpack fpath) P.WriteOnly m f
-   in do
+  P.openFd (T.unpack fpath) P.WriteOnly
+  & \popen -> do
     mpfd <- treatExceptions $ case mode of
       L.FModeWrite -> popen (Just accessMode)
         P.defaultFileFlags { P.trunc = True }

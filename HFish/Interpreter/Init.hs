@@ -28,8 +28,8 @@ mkInitialFishState :: IO FishState
 mkInitialFishState = do
   wdir <- getCurrentDirectory
   inherited <- map (bimap T.pack (Var Export . pure . T.pack)) <$> getEnvironment
-  let (ro,rw) = teeVars inherited
-  return $  emptyFishState {
+  teeVars inherited & \(ro,rw) ->
+    return $ emptyFishState {
       _functions = M.empty
       ,_globalEnv = M.fromList rw
       ,_readOnlyEnv = (initStatus . incShlvl . M.fromList) ro

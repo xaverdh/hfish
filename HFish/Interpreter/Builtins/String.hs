@@ -102,12 +102,11 @@ splitF m r sep ts = do
   ok  
   where
     work :: T.Text -> T.Text
-    work t = 
-      let ts = T.splitOn sep t
-          l = length ts
-          mx = fromMaybe l m
-          (a,b) = splitAt (if r then l - mx else mx) ts
-      in if r 
+    work t = T.splitOn sep t
+      & \ts -> length ts
+      & \l -> fromMaybe l m 
+      & \mx -> splitAt (if r then l - mx else mx) ts
+      & \(a,b) -> if r 
         then newl (sA a) (nwlA b)
         else newl (nwlA a) (sA b)
     sA = T.intercalate sep
@@ -116,3 +115,4 @@ splitF m r sep ts = do
 
 inText c t =
   isJust (T.find (==c) t)
+

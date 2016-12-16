@@ -238,13 +238,12 @@ evalCmdSubstE (CmdRef _ prog ref) = do
   FDT.insert Fd1 wE (progA prog)
   liftIO (PIO.closeFd wE)
   text <- liftIO $ takeMVar mvar
-  let ts = T.lines text
-  map fromText
-    <$> case ref of
-    Nothing -> return ts
-    Just _ -> do
-      slcs <- evalRef ref (length ts)
-      return (readSlices slcs ts)
+  T.lines text & \ts -> 
+    map fromText <$> case ref of
+      Nothing -> return ts
+      Just _ -> do
+        slcs <- evalRef ref (length ts)
+        return (readSlices slcs ts)
 
 evalVarRefE :: Bool -> VarRef t -> Fish [Globbed]
 evalVarRefE q vref = do

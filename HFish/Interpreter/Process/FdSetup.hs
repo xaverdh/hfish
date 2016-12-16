@@ -52,8 +52,7 @@ getUnusedFd :: FdSetupMonad PT.Fd
 getUnusedFd = do
   i <- use allocIndex
   used <- use fdsInUse
-  let avail = [ j | j <- map (\x -> i-x) [0..i] , S.notMember j used ]
-  case avail of
+  [ j | j <- map (\x -> i-x) [0..i] , S.notMember j used ] & \case
     [] -> error "too many file descriptors open"
     r:_ -> do
       fdsInUse %= S.insert r
@@ -88,17 +87,17 @@ forkWithFileDescriptors :: IO () -> Fish PT.ProcessID
 forkWithFileDescriptors action = do
   max_num_fds <- getMaxNumFds
   FdTable fdescs closed <- askFdTable
-  let used = map fromEnum ( M.fold (:) [] fdescs )
-  liftIO . forkProcess $ do
-    -- close all fds marked closed:
-    forM_ closed P.closeFd
-
-    -- set up the redirections
-    runStateT setupFds FdSetupState
-      { _table = fdescs
-       ,_fdsInUse = S.fromList used
-       ,_allocIndex = max_num_fds-1 }
-
-    -- run the action
-    action
+  map fromEnum ( M.fold (:) [] fdescs ) & \used ->
+    liftIO . forkProcess $ do
+      -- close all fds marked closed:
+      forM_ closed P.closeFd
+  
+      -- set up the redirections
+      runStateT setupFds FdSetupState
+        { _table = fdescs
+         ,_fdsInUse = S.fromList used
+         ,_allocIndex = max_num_fds-1 }
+  
+      -- run the action
+      action
 

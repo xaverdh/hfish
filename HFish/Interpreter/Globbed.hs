@@ -55,13 +55,14 @@ globExpand globbed =
     Nothing -> do
       wdir <- use cwdir
       paths <- recurseDirRel True wdir
-      let re = genParser globbed
-      let ms = mapMaybe (=~ re) paths
-      case ms of
-        [] -> errork
-          $ "No matches for glob pattern: "
-          <> showGlobbed globbed
-        _ -> return (map T.pack ms)
+      genParser globbed & \re ->
+        mapMaybe (=~ re) paths & \case
+          [] -> noMatchErr globbed
+          ms -> return (map T.pack ms)
+  where
+    noMatchErr globbed = errork
+      $ "No matches for glob pattern: "
+        <> showGlobbed globbed
 
 optimisticCast :: Globbed -> Maybe T.Text
 optimisticCast (Globbed g) = work g
@@ -74,8 +75,7 @@ optimisticCast (Globbed g) = work g
 
 matchGlobbed :: Globbed -> T.Text -> Maybe String
 matchGlobbed globbed text = 
-  let re = genParser globbed
-   in (T.unpack text) =~ re
+  genParser globbed & ((T.unpack text) =~)
 
 genParser :: Globbed -> RE Char String
 genParser (Globbed g) = work g

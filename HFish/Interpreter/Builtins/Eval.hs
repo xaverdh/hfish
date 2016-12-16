@@ -11,6 +11,7 @@ import qualified Data.Text as T
 import Fish.Lang
 import System.Posix.Process
 import System.Exit
+import Control.Lens
 import Control.Monad
 import Control.Monad.IO.Class
 
@@ -26,6 +27,6 @@ evalF _ ts = void (onArgs ts progA)
 
 execF :: Builtin
 execF _ ts = 
-  let name:args = map T.unpack ts
-   in liftIO $ executeFile name True args Nothing
+  map T.unpack ts & \(name:args) ->
+   liftIO $ executeFile name True args Nothing
 

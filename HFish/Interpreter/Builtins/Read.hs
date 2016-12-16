@@ -9,7 +9,7 @@ import HFish.Interpreter.Core
 import HFish.Interpreter.IO
 import HFish.Interpreter.Var
 import HFish.Interpreter.Status
-import HFish.Interpreter.SetCommand
+import HFish.Interpreter.SetCmd
 import HFish.Interpreter.Util
 
 import qualified Data.Text as T

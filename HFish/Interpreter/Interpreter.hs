@@ -14,9 +14,10 @@ import HFish.Interpreter.Process.Process
 import HFish.Interpreter.Process.Pid
 import HFish.Interpreter.Concurrent
 import HFish.Interpreter.Slice
-import HFish.Interpreter.SetCommand as SetCmd
 import HFish.Interpreter.Util
 import HFish.Interpreter.ExMode
+import qualified HFish.Interpreter.SetCmd as SetCmd
+import qualified HFish.Interpreter.FuncSt as FuncSt
 
 import Data.Monoid
 import Data.Maybe
@@ -35,11 +36,10 @@ progA :: Prog t -> Fish ()
 progA (Prog _ cstmts) = forM_ cstmts compStmtA
 
 compStmtA :: CompStmt t -> Fish ()
-compStmtA cst =
-  case cst of
-    Simple _ st -> simpleStmtA st
-    Piped _ d st cst -> pipedStmtA d st cst
-    Forked _ st -> stmtA ForkedExM st
+compStmtA = \case
+  Simple _ st -> simpleStmtA st
+  Piped _ d st cst -> pipedStmtA d st cst
+  Forked _ st -> stmtA ForkedExM st
 
 simpleStmtA :: Stmt t -> Fish ()
 simpleStmtA = stmtA InOrderExM
@@ -97,15 +97,9 @@ cmdStA mode (CmdIdent _ ident) args = do
 setStA :: SetCommand t -> Fish ()
 setStA = SetCmd.setCommandA evalArgs evalRef
 
-{- This is _very_ rudimentary atm. -}
 functionStA :: FunIdent t -> Args t -> Prog t -> Fish ()
-functionStA (FunIdent _ ident) args prog = 
-  modify (functions . at ident .~ Just f)
-  where
-    f args' =
-      localise flocalEnv $ do
-        setVar (EnvLens flocalEnv) "argv" (Var UnExport args')
-        progA prog
+functionStA = FuncSt.funcStA progA
+
 
 whileStA :: Stmt t -> Prog t -> Fish ()
 whileStA st prog = setBreakK loop
@@ -184,14 +178,14 @@ redirectedStmtA f redirects = void (setupAll f)
   where
     setupAll = foldr ((.) . setup) id redirects
 
-    setup red f = case red of
+    setup red f = red & \case
       RedirectClose fd -> close fd f
-      RedirectIn fd t -> case t of
+      RedirectIn fd t -> t & \case
         Left fd2 -> duplicate fd2 fd f
         Right e -> do
           [name] <- evalArg e
           withFileR name fd f
-      RedirectOut fd t -> case t of
+      RedirectOut fd t -> t & \case
         Left fd2 -> duplicate fd2 fd f
         Right (mode,e) -> do
           [name] <- evalArg e

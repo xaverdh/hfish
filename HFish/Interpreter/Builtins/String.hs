@@ -107,8 +107,8 @@ splitF m r sep ts = do
         & \l -> fromMaybe l m 
           & \mx -> splitAt (if r then l - mx else mx) ts
             & \(a,b) -> if r 
-        then newl (sA a) (nwlA b)
-        else newl (nwlA a) (sA b)
+              then newl (sA a) (nwlA b)
+              else newl (nwlA a) (sA b)
     sA = T.intercalate sep
     nwlA = T.intercalate "\n"
     newl a b = a <> (if a == "" || b == "" then "" else "\n") <> b

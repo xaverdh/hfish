@@ -18,6 +18,7 @@ import Data.Tuple
 import Data.Monoid
 import Data.Bool
 import Data.Bifunctor
+import Control.Lens
 import Control.Monad
 import Control.Monad.IO.Class
 import qualified Control.Exception as E
@@ -54,13 +55,12 @@ makeSlices l xs =
 readSlices :: Slices -> [a] -> [a]
 readSlices = work 0
   where
-    work n slcs xs = case slcs of
+    work n slcs xs = slcs & \case
       [] -> []
       (b,(i,j)):rest -> 
-        let (_,xs') = splitAt (i-n) xs
-            (ys,_) = splitAt (j-i+1) xs'
-            done = work i rest xs'
-         in mbRev b ys ++ done
+        splitAt (i-n) xs & \(_,xs') ->
+          splitAt (j-i+1) xs' & \(ys,_) ->
+            mbRev b ys ++ work i rest xs'
 
 {- writeSlices may fail if the ranges overlap -}
 writeSlices :: Show a => Slices -> [a] -> [a] -> Fish [a]
@@ -70,18 +70,17 @@ writeSlices slcs xs ys =
     Left e -> errork $ showText (e :: E.ErrorCall)
     Right zs -> return zs
   where
-    work n slcs xs ys =
-      case slcs of
-        [] -> bool tooManyErr xs (isEmpty ys)
-        (b,(i,j)):rest -> 
-          case triSplit (i-n) (j-i+1) xs of
-            Nothing -> invalidIndicesErr slcs
-            Just (hs,_,xs') ->
-              case splitAtMaybe (j-i+1) ys of
-                Nothing -> tooFewErr
-                Just (rs,ys') -> 
-                  let done = work (j+1) rest xs' ys'
-                   in (hs ++ mbRev b rs ++ done)
+    work n slcs xs ys = slcs & \case
+      [] -> bool tooManyErr xs (isEmpty ys)
+      (b,(i,j)):rest -> 
+        triSplit (i-n) (j-i+1) xs & \case
+          Nothing -> invalidIndicesErr slcs
+          Just (zs,_,xs') ->
+            splitAtMaybe (j-i+1) ys & \case
+              Nothing -> tooFewErr
+              Just (rs,ys') ->
+                zs ++ mbRev b rs
+                ++ work (j+1) rest xs' ys'
     
     tooFewErr = error "Too few values to write."
     tooManyErr = error "Too many values to write."
@@ -98,14 +97,12 @@ dropSlices slcs xs =
     Left e -> errork $ showText (e :: E.ErrorCall)
     Right zs -> return zs
   where
-    work n slcs xs =
-      case slcs of
-        [] -> xs
-        (_,(i,j)):rest ->
-          let (ys,xs') = splitAt (i-n) xs
-              (_,zs) = splitAt (j-i+1) xs'
-              done = work i rest zs
-           in ys ++ done
+    work n slcs xs = slcs & \case
+      [] -> xs
+      (_,(i,j)):rest ->
+        splitAt (i-n) xs & \(ys,xs') ->
+          splitAt (j-i+1) xs' & \(_,zs) ->
+            ys ++ work i rest zs
 
 showSlices :: Slices -> String
 showSlices slcs = 
@@ -121,10 +118,10 @@ showSlices slcs =
 
 triSplit :: Int -> Int -> [a] -> Maybe ([a],[a],[a])
 triSplit i j xs = do
-  (hs,xs') <- splitAtMaybe i xs
+  (zs,xs') <- splitAtMaybe i xs
   (xs'',ts) <- splitAtMaybe j xs'
-  Just (hs,xs'',ts)
-    
+  Just (zs,xs'',ts)
+
 mbRev :: Bool -> [a] -> [a]
 mbRev = bool id reverse
 

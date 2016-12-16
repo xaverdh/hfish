@@ -104,9 +104,9 @@ splitF m r sep ts = do
     work :: T.Text -> T.Text
     work t = T.splitOn sep t
       & \ts -> length ts
-      & \l -> fromMaybe l m 
-      & \mx -> splitAt (if r then l - mx else mx) ts
-      & \(a,b) -> if r 
+        & \l -> fromMaybe l m 
+          & \mx -> splitAt (if r then l - mx else mx) ts
+            & \(a,b) -> if r 
         then newl (sA a) (nwlA b)
         else newl (nwlA a) (sA b)
     sA = T.intercalate sep

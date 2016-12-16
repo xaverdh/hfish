@@ -26,7 +26,7 @@ import Options.Applicative.Builder as OB
 
 
 {- TODO: escape -> wait for UnParser,
-         match, replace, -q/--quiet option and status -}
+         match, replace -}
 
 stringF :: Bool -> [T.Text] -> Fish ()
 stringF _ ts = 
@@ -48,58 +48,71 @@ stringF _ ts =
     cmd n p = OB.command n (info p idm)
     rest = many $ OB.argument text (metavar "STRINGS...")
     
-    lengthOpt = lengthF <$> rest
+    lengthOpt = lengthF
+      <$> switch (short 'q' <> long "quiet")
+      <*> rest
     subOpt = subF
-      <$> option auto (short 's' <> long "start" <> metavar "START" <> value 1)
+      <$> switch (short 'q' <> long "quiet")
+      <*> option auto (short 's' <> long "start" <> metavar "START" <> value 1)
       <*> option (Just <$> auto) (short 'l' <> long "length" <> metavar "LENGTH" <> value Nothing)
       <*> rest
     joinOpt = joinF
-      <$> OB.argument text (metavar "SEP")
+      <$> switch (short 'q' <> long "quiet")
+      <*> OB.argument text (metavar "SEP")
       <*> rest
     trimOpt = trimF
-      <$> switch (short 'l' <> long "left")
+      <$> switch (short 'q' <> long "quiet")
+      <*> switch (short 'l' <> long "left")
       <*> switch (short 'r' <> long "right")
       <*> option text (short 'c' <> long "chars" <> metavar "CHARS")
       <*> rest
     splitOpt = splitF
-      <$> option (Just <$> auto) (short 'm' <> long "max" <> metavar "MAX" <> value Nothing)
+      <$> switch (short 'q' <> long "quiet")
+      <*> option (Just <$> auto) (short 'm' <> long "max" <> metavar "MAX" <> value Nothing)
       <*> switch (short 'r' <> long "right")
       <*> OB.argument text (metavar "SEP")
       <*> rest
     text = maybeReader (Just . T.pack)
     
-lengthF :: [T.Text] -> Fish ()
-lengthF ts = do
-  forM_ ts (echo . T.pack . show . T.length)
-  ok
+lengthF :: Bool -> [T.Text] -> Fish ()
+lengthF q ts = do
+  unless q $ forM_ ts (echo . T.pack . show . T.length)
+  if all (==T.empty) ts then bad else ok
 
-subF :: Int -> Maybe Int -> [T.Text] -> Fish ()
-subF start mlen ts = do
-  echo (T.unlines $ map sub ts)
-  ok
+subF :: Bool -> Int -> Maybe Int -> [T.Text] -> Fish ()
+subF q start mlen ts = 
+  map sub ts & \ts' -> do
+  unless q $ echo $ T.unlines ts'
+  if ts == ts' then bad else ok
   where
     sub = (maybe id T.take mlen) . T.drop (start-1)    
 
-joinF :: T.Text -> [T.Text] -> Fish ()
-joinF sep ts = do
-  echo (T.intercalate sep ts)
-  ok
+joinF :: Bool -> T.Text -> [T.Text] -> Fish ()
+joinF q sep ts = 
+  T.intercalate sep ts & \ts' -> do
+  unless q $ echo ts'
+  ts & \case
+    [] -> bad
+    [_] -> bad
+    _ -> ok
 
-trimF :: Bool -> Bool -> T.Text -> [T.Text] -> Fish ()
-trimF l r cs ts = do
-  echo trimmed
-  ok
+trimF :: Bool -> Bool -> Bool -> T.Text -> [T.Text] -> Fish ()
+trimF q l r cs ts = 
+  map trim ts & \ts' -> do
+  unless q $ echo $ T.unlines ts'
+  if ts == ts' then bad else ok
   where
-    trimmed = f r l (`inText` cs) (T.unwords ts)
+    trim = f r l (`inText` cs)
     f True False = T.dropWhileEnd
     f False True = T.dropWhile
     f _ _ = T.dropAround
 
 
-splitF :: Maybe Int -> Bool -> T.Text -> [T.Text] -> Fish ()
-splitF m r sep ts = do
-  echo (T.unlines $ map work ts)
-  ok  
+splitF :: Bool -> Maybe Int -> Bool -> T.Text -> [T.Text] -> Fish ()
+splitF q m r sep ts = 
+  map work ts & \ts' -> do
+  unless q $ echo $ T.unlines ts'
+  if ts == ts' then bad else ok
   where
     work :: T.Text -> T.Text
     work t = T.splitOn sep t

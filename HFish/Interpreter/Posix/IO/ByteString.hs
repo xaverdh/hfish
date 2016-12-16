@@ -54,8 +54,11 @@ fdGetLineLB fd =
   <$> fdGetLineByteStrings fd
 
 fdPutLB :: Fd -> LB.ByteString -> IO ()
-fdPutLB fd = writeLoop fd . LB.toChunks
-  -- mapM_ (fdPutB fd) . LB.toChunks
+fdPutLB fd = fdPutByteStrings fd . LB.toChunks
+  {- mapM_ (fdPutB fd) . LB.toChunks -}
+
+fdPutByteStrings :: Fd -> [B.ByteString] -> IO ()
+fdPutByteStrings = writeLoop
   where
     writeLoop fd bs's
       | bs's == [] = return ()

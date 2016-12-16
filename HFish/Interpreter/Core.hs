@@ -121,6 +121,7 @@ data FishReader = FishReader {
     ,_returnK :: [() -> Fish ()]
     ,_errorK :: [T.Text -> Fish ()]
     ,_breakpoint :: Fish ()
+    ,_fishCompatible :: Bool
   }
 
 makeLenses ''Var

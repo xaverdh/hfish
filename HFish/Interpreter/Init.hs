@@ -52,8 +52,8 @@ mkInitialFishState = do
     initStatus = M.insert "status" (Var UnExport ["0"])
 
 
-mkInitialFishReader :: Fish () -> IO FishReader
-mkInitialFishReader atBreakpoint =
+mkInitialFishReader :: Fish () -> Bool -> IO FishReader
+mkInitialFishReader atBreakpoint fishcompat =
   return FishReader {
     _fdTable = initialFdTable
     ,_builtins = allBuiltins
@@ -62,6 +62,7 @@ mkInitialFishReader atBreakpoint =
     ,_returnK = [const warnR]
     ,_errorK = [error . T.unpack]
     ,_breakpoint = atBreakpoint
+    ,_fishCompatible = fishcompat
   }
   where
     warnB = error "no loop left to break"

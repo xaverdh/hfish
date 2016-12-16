@@ -11,7 +11,6 @@ import Control.Monad
 import Control.Monad.IO.Class
 import Fish.Lang
 
-
 parseHFishInteractive :: String -> TriR.Result (Prog ())
 parseHFishInteractive = Tri.parseString HFTriP.program mempty
 

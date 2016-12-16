@@ -5,6 +5,7 @@ module HFish.Interpreter.Globbed (
   ,fromString
   ,globExpand
   ,matchGlobbed
+  ,matchText
 ) where
 
 import Fish.Lang
@@ -75,7 +76,7 @@ optimisticCast (Globbed g) = work g
 
 matchGlobbed :: Globbed -> T.Text -> Maybe String
 matchGlobbed globbed text = 
-  genParser globbed & ((T.unpack text) =~)
+  genParser globbed & (T.unpack text =~)
 
 genParser :: Globbed -> RE Char String
 genParser (Globbed g) = work g
@@ -90,6 +91,24 @@ genParser (Globbed g) = work g
             StarGl -> few $ psym (/='/')
             DiStarGl -> few anySym
             QMarkGl -> pure <$> psym (/='/') 
+
+-- Used by fishSwitch
+genParserFromText :: T.Text -> RE Char String
+genParserFromText = work . T.unpack
+  where
+    work :: String -> RE Char String
+    work = \case
+      [] -> pure ""
+      g:gs -> (\p -> (++) <$> p <*> work gs)
+        $ case g of
+          '*' -> few $ anySym
+          '?' -> pure <$> anySym
+          _ -> pure <$> sym g
+
+-- Used by fishSwitch
+matchText :: T.Text -> T.Text -> Maybe String
+matchText globText text =
+  genParserFromText globText & (T.unpack text =~)
 
 recurseDirRel :: Bool -> FilePath -> Fish [FilePath]
 recurseDirRel b p = do

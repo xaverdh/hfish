@@ -21,6 +21,7 @@ import qualified HFish.Interpreter.FuncSt as FuncSt
 
 import Data.Monoid
 import Data.Maybe
+import Data.Bool
 import qualified Data.List.NonEmpty as N
 import qualified Data.Text as T
 import Control.Lens
@@ -135,9 +136,13 @@ ifStA ((st,prog):blks) elblk = do
     (const $ ifStA blks elblk)
     (progA prog >> ok)
 
+switchStA :: Expr t -> [(Expr t,Prog t)] -> Fish ()
+switchStA e brnchs = view fishCompatible >>=
+  bool (hfishSwitch e brnchs) (fishSwitch e brnchs)
+
 -- | Match a string against a number of glob patterns.
 --
---   The implementation deviates strongly from the original fish:
+--   This implementation deviates strongly from the original fish:
 --
 --   If given an array instead of a string, it will match against
 --   the arrays serialisation.
@@ -147,17 +152,35 @@ ifStA ((st,prog):blks) elblk = do
 --
 --   These glob patterns are matched directly against the string,
 --   superseding the usual glob pattern expansion.
-switchStA :: Expr t -> [(Expr t,Prog t)] -> Fish ()
-switchStA e branches = do
-  t <- T.unwords <$> evalArg e
-  loop t branches
+--
+--   In addition the matching is lazy, i.e. when a branch is taken
+--   all branches following it will not be evaluated.
+hfishSwitch ::  Expr t -> [(Expr t,Prog t)] -> Fish ()
+hfishSwitch e branches = do
+  text <- T.unwords <$> evalArg e
+  loop text branches
   where
     loop _ [] = return ()
-    loop t ((e,prog):branches) = do
+    loop text ((e,prog):branches) = do
       glob <- mintcal " " <$> evalExpr e
-      if isJust ( matchGlobbed glob t )
-        then progA prog
-        else loop t branches
+      matchGlobbed glob text & \case
+        Just _ -> progA prog
+        Nothing -> loop text branches
+
+fishSwitch :: Expr t -> [(Expr t,Prog t)] -> Fish ()
+fishSwitch e branches = evalArg e >>= \case
+  [text] -> loop text branches
+  _ -> tooManyErr
+  where
+    loop _ [] = return ()
+    loop text ((e,prog):branches) = do
+      globText <- mintcal " " <$> evalArg e
+      matchText globText text & \case
+        Just _ -> progA prog
+        Nothing -> loop text branches
+
+    tooManyErr = errork
+      $ "switch: too many arguments given"
 
 beginStA :: Prog t -> Fish ()
 beginStA prog =

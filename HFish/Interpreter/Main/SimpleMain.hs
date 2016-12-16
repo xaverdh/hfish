@@ -54,7 +54,7 @@ hfishMain noexecute ast command fishcompat args
     path:_ -> exPath path printAST
   | otherwise = do
     s <- mkInitialFishState
-    r <- mkInitialFishReader atBreakpoint
+    r <- mkInitialFishReader atBreakpoint fishcompat
     if command
       then exDirect args (runProgram r s)
       else case args of

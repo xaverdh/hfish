@@ -15,21 +15,23 @@ import Data.Monoid
 import Data.Maybe
 import Data.Char (isSpace)
 import Data.Bool
+import Control.Lens
 import Control.Monad
 import Control.Monad.IO.Class
 import System.Exit
 import System.Environment
 
-import Options.Applicative.Builder
 import Options.Applicative
+import Options.Applicative.Builder as OB
+
 
 {- TODO: escape -> wait for UnParser,
          match, replace, -q/--quiet option and status -}
 
 stringF :: Bool -> [T.Text] -> Fish ()
 stringF _ ts = 
-  let res = execParserPure defaultPrefs parser (map T.unpack ts)
-  in case res of
+  execParserPure defaultPrefs parser (map T.unpack ts)
+  & \case
     Success f -> f
     Failure err -> 
       (errork . T.pack . fst)
@@ -43,8 +45,8 @@ stringF _ ts =
        ,cmd "split" splitOpt
        ,cmd "trim" trimOpt ]
     
-    cmd n p = command n (info p idm)
-    rest = many $ argument text (metavar "STRINGS...")
+    cmd n p = OB.command n (info p idm)
+    rest = many $ OB.argument text (metavar "STRINGS...")
     
     lengthOpt = lengthF <$> rest
     subOpt = subF
@@ -52,7 +54,7 @@ stringF _ ts =
       <*> option (Just <$> auto) (short 'l' <> long "length" <> metavar "LENGTH" <> value Nothing)
       <*> rest
     joinOpt = joinF
-      <$> argument text (metavar "SEP")
+      <$> OB.argument text (metavar "SEP")
       <*> rest
     trimOpt = trimF
       <$> switch (short 'l' <> long "left")
@@ -62,7 +64,7 @@ stringF _ ts =
     splitOpt = splitF
       <$> option (Just <$> auto) (short 'm' <> long "max" <> metavar "MAX" <> value Nothing)
       <*> switch (short 'r' <> long "right")
-      <*> argument text (metavar "SEP")
+      <*> OB.argument text (metavar "SEP")
       <*> rest
     text = maybeReader (Just . T.pack)
     

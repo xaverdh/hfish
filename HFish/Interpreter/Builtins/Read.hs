@@ -10,6 +10,7 @@ import HFish.Interpreter.IO
 import HFish.Interpreter.Var
 import HFish.Interpreter.Status
 import HFish.Interpreter.SetCommand
+import HFish.Interpreter.Util
 
 import qualified Data.Text as T
 import Data.Monoid
@@ -22,12 +23,11 @@ import System.Exit
 import Options.Applicative
 import Options.Applicative.Builder as OB
 
--- Todo: support IFS variable for customizing the variable splitting
 
 readF :: Bool -> [T.Text] -> Fish ()
 readF _ ts =
-  let res = execParserPure defaultPrefs parser (map T.unpack ts)
-  in case res of
+  execParserPure defaultPrefs parser (map T.unpack ts)
+  & \case
     Success f -> f
     Failure err ->
       (errork . T.pack . fst)
@@ -67,25 +67,31 @@ readWorker array nullTerm mscp mex names
   | array && nullTerm =
     case names of
       [name] -> do
-        s <- readFrom Fd0
-        setV name (T.lines s)
+        vs <- readFrom Fd0 >>= splitWords
+        setV name vs
         ok
       _ -> arrayWrongArgNumErr
   | array = case names of
     [name] -> do
-      l <- readLineFrom Fd0
-      setV name (T.words l)
+      vs <- readLineFrom Fd0 >>= splitWords
+      setV name vs
       ok
     _ -> arrayWrongArgNumErr
   | nullTerm = do
-    s <- readFrom Fd0
-    assignLoop names (T.lines s)
+    vs <- readFrom Fd0 >>= splitWords
+    assignLoop names vs
     ok
   | otherwise = do
-    l <- readLineFrom Fd0
-    assignLoop names (T.words l)
+    vs <- readLineFrom Fd0 >>= splitWords
+    assignLoop names vs
     ok
   where
+    splitWords :: T.Text -> Fish [T.Text]
+    splitWords s = getVarMaybe "IFS" <$$> \case
+      Just (Var _ vs) -> join (map T.unpack vs)
+        & \cs -> T.split (`elem` cs) s
+      Nothing -> T.foldr ((:) . T.singleton) [] s
+    
     setV = flip setIt
     
     setIt vs ident = 

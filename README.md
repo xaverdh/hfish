@@ -3,8 +3,8 @@
 ## What it is
 
 This is the main repository of hfish, a reimplementation of the [fish shell][fish-shell] in haskell.
-It is not, however, an exact copy of fish (that wouldn't be possible anyway, since to my knowledge there is no formal specification of the fish language).
-Refer to the Syntax section for details on the differences.
+This is not, however, an exact replica of fish (that wouldn't be possible anyway, since to my knowledge there is no formal specification of the fish language).
+Refer to the [Syntax](#syntax) section for details on the differences.
   [fish-shell]: https://github.com/fish-shell/fish-shell/
 
 ## Prerequisites and Dependencies

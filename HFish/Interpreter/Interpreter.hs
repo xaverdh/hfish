@@ -98,7 +98,8 @@ setStA :: SetCommand t -> Fish ()
 setStA = SetCmd.setCommandA evalArgs evalRef
 
 functionStA :: FunIdent t -> Args t -> Prog t -> Fish ()
-functionStA = FuncSt.funcStA progA
+functionStA ident args prog = evalArgs args
+  >>= \ts -> FuncSt.funcStA progA ident ts prog
 
 
 whileStA :: Stmt t -> Prog t -> Fish ()

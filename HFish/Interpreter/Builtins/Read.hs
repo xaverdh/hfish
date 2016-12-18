@@ -29,9 +29,8 @@ readF _ ts =
   execParserPure defaultPrefs parser (map T.unpack ts)
   & \case
     Success f -> f
-    Failure err ->
-      (errork . T.pack . fst)
-       (renderFailure err "read: invalid arguments given\n")
+    Failure err -> errork . T.pack . fst
+      $ renderFailure err "read: invalid arguments given\n"
   where
     parser = info readOptions idm
 

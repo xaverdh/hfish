@@ -253,10 +253,9 @@ evalBracesE es =
 evalCmdSubstE :: CmdRef t -> Fish [Globbed]
 evalCmdSubstE (CmdRef _ prog ref) = do
   (mvar,wE) <- createHandleMVarPair
-  FDT.insert Fd1 wE (progA prog)
-  liftIO (PIO.closeFd wE)
+  FDT.insert Fd1 wE (progA prog) `finally` PIO.closeFd wE
   text <- liftIO $ takeMVar mvar
-  T.lines text & \ts -> 
+  T.lines text & \ts ->
     map fromText <$> case ref of
       Nothing -> return ts
       Just _ -> do

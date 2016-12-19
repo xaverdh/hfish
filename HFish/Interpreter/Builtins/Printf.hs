@@ -96,9 +96,8 @@ specifiers t = either onErr finish
       -- liftIO $ print xs -- for debugging
       return $ xs ++ [Left SpecEnd]
     
-    onErr e = errork $
+    onErr _ = errork $
       "printf: malformed escape sequence"
-      <> showText e
 
 
 formatPart :: Atto.Parser (Either Specifier T.Text)
@@ -122,17 +121,16 @@ spec = char '%' *> choice
     ,char 'b' $> Left SpecB ]
 
 plain :: Atto.Parser T.Text
-plain = do
-  t1 <- takeWhile1 (\c -> c /= '\\' && c /= '%')
-  result t1 <|> do
-    t2 <- char '\\' *> ( escaped <|> cancel <|> oct <|> hex )
-    t3 <- option "" plain
-    return $ t1 <> t2 <> t3
-  where
-    result t = peekChar >>= \case
-      Nothing -> return t
-      Just c -> if c == '%' then return t else mzero      
-    
+plain = takeWhile1 (\c -> c /= '\\' && c /= '%')
+  <|> char '\\' *> choice
+      [ escaped
+        ,cancel
+        ,oct
+        ,hex
+        ,uni16
+        ,uni32
+        ,return "\\" ]
+  where    
     escaped = choice
       [ string "\\"
         ,string "\"" -- ^ idiotic but thats what the manpage says
@@ -147,7 +145,7 @@ plain = do
     
     cancel = char 'c' *> takeLazyText *> return ""
     
-    oct = fromDigits 8 <$> count 3 octDigit
+    oct = try $ fromDigits 8 <$> count 3 octDigit
     
     hex = char 'x' *>
       (fromDigits 16 <$> count 2 hexDigit)

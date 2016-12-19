@@ -23,6 +23,7 @@ import HFish.Interpreter.Builtins.Exit
 import HFish.Interpreter.Builtins.Cd
 import HFish.Interpreter.Builtins.Dirstack
 import HFish.Interpreter.Builtins.Echo
+import HFish.Interpreter.Builtins.Printf
 import HFish.Interpreter.Builtins.Bool
 import HFish.Interpreter.Builtins.Read
 import HFish.Interpreter.Builtins.String
@@ -61,5 +62,6 @@ allBuiltins =
     ,("exec",execF)
     ,("breakpoint",breakpointF)
     ,("test",testF)
+    ,("printf",printfF)
   ]
 

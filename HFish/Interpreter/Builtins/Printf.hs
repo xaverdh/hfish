@@ -5,36 +5,165 @@ module HFish.Interpreter.Builtins.Printf (
 
 import HFish.Interpreter.Core
 import HFish.Interpreter.IO
-import HFish.Interpreter.Util
 import HFish.Interpreter.Status
+import HFish.Interpreter.Util
+import Fish.Lang
 
-import Data.Monoid
+import qualified Data.Text as T
+import Data.Text.IO as TextIO
 import Data.Functor
+import Data.Monoid
+import Data.Bool
+import Data.Char (ord,chr)
+import Control.Lens
 import Control.Applicative
 import Control.Monad
 import Control.Monad.IO.Class
+import qualified Control.Exception as E
+import qualified Control.DeepSeq as DeepSeq
+import System.Exit
+import System.IO
 
-import qualified Data.Text.Lazy as T
-
-import System.Posix.Types
-import System.Posix.Files
-import System.Posix.User
-
--- import Text.Parser.Combinators
--- import Text.Parser.Token
-import Text.Parser.Expression
-import Data.Attoparsec.Text
-import Text.Parser.Char (alphaNum)
+import Data.Attoparsec.Text as Atto
+import Data.Attoparsec.Combinator
+import Text.Parser.Char (hexDigit,octDigit)
 
 import Text.Printf
 
-printF :: Bool -> [T.Text] -> Fish ()
-printF _ (t:ts) =
-  printf (T.unpack t) 
-  
-  
-  
-  
+
+printfF :: Bool -> [T.Text] -> Fish ()
+printfF _ = \case
+  [] -> errork "printf: too few arguments given"
+  t:ts -> printWorker t ts
+
+printWorker :: T.Text -- ^ The format
+  -> [T.Text] -- ^ Arguments
+  -> Fish ()
+printWorker fmt args = do
+  parts <- specifiers fmt
+  let ts = combine args (join $ repeat parts)
+  res <- liftIO $ E.try (E.evaluate $ DeepSeq.force ts)
+  either onErr (echoLn . T.intercalate "") res
+  where
+    onErr :: E.ErrorCall -> Fish ()
+    onErr _ = errork "printf: invalid argument(s)"
+    
+    combine :: [T.Text] -> [Either Specifier T.Text] -> [T.Text]
+    combine args (part:rest) =
+      case part of
+        Right t -> t : combine args rest
+        Left SpecEnd -> []
+        Left spec -> case args of
+          [] -> insertEmpty spec : combine [] rest
+          x:xs -> insert x spec : combine xs rest
+    
+    insert arg = T.pack . \case
+      SpecD -> printf "%d" (readText arg :: Integer)
+      SpecI -> printf "%i" (readText arg :: Integer)
+      SpecO -> printf "%o" (readText arg :: Integer)
+      SpecU -> printf "%u" (readText arg :: Int)
+      SpecX -> printf "%x" (readText arg :: Integer)
+      SpecF -> printf "%.6f" (readText arg :: Double)
+      SpecE -> printf "%.6E" (readText arg :: Double)
+      SpecS -> T.unpack arg
+      SpecB -> error "%b is not supported"
+      
+    
+    insertEmpty = T.pack . \case
+      SpecD -> printf "%d" (0::Integer)
+      SpecI -> printf "%i" (0::Integer)
+      SpecO -> printf "%o" (0::Integer)
+      SpecU -> printf "%u" (0::Int)
+      SpecX -> printf "%x" (0::Integer)
+      SpecF -> printf "%.6f" (0::Double)
+      SpecE -> printf "%.6E" (0::Double)
+      SpecS -> ""
+      SpecB -> ""
+      
+
+data Specifier =
+  SpecD | SpecI | SpecO
+  | SpecU | SpecX | SpecF
+  | SpecE | SpecS | SpecB
+  | SpecEnd
+  deriving Show
+
+specifiers :: T.Text -> Fish [Either Specifier T.Text]
+specifiers t = either onErr finish
+  $ parseOnly (many formatPart <* endOfInput) t
+  where
+    finish xs = do
+      -- liftIO $ print xs -- for debugging
+      return $ xs ++ [Left SpecEnd]
+    
+    onErr e = errork $
+      "printf: malformed escape sequence"
+      <> showText e
 
 
+formatPart :: Atto.Parser (Either Specifier T.Text)
+formatPart = spec <|> Right <$> plain
 
+spec :: Atto.Parser (Either Specifier T.Text)
+spec = char '%' *> choice
+  [ Right <$> string "%"
+    ,char 'd' $> Left SpecD
+    ,char 'i' $> Left SpecI
+    ,char 'o' $> Left SpecO
+    ,char 'u' $> Left SpecU
+    ,char 'x' $> Left SpecX
+    ,char 'X' $> Left SpecX
+    ,char 'f' $> Left SpecF
+    ,char 'g' $> Left SpecF
+    ,char 'G' $> Left SpecF
+    ,char 'e' $> Left SpecE
+    ,char 'E' $> Left SpecE
+    ,char 's' $> Left SpecS
+    ,char 'b' $> Left SpecB ]
+
+plain :: Atto.Parser T.Text
+plain = do
+  t1 <- takeWhile1 (\c -> c /= '\\' && c /= '%')
+  result t1 <|> do
+    t2 <- char '\\' *> ( escaped <|> cancel <|> oct <|> hex )
+    t3 <- option "" plain
+    return $ t1 <> t2 <> t3
+  where
+    result t = peekChar >>= \case
+      Nothing -> return t
+      Just c -> if c == '%' then return t else mzero      
+    
+    escaped = choice
+      [ string "\\"
+        ,string "\"" -- ^ idiotic but thats what the manpage says
+        ,char 'a' $> "\a"
+        ,char 'b' $> "\b"
+        ,char 'e' $> "\ESC"
+        ,char 'f' $> "\f"
+        ,char 'n' $> "\n"
+        ,char 'r' $> "\r"
+        ,char 't' $> "\t"
+        ,char 'v' $> "\v" ]
+    
+    cancel = char 'c' *> takeLazyText *> return ""
+    
+    oct = fromDigits 8 <$> count 3 octDigit
+    
+    hex = char 'x' *>
+      (fromDigits 16 <$> count 2 hexDigit)
+    
+    uni16 = char 'u' *> 
+      (fromDigits 16 <$> count 4 hexDigit)
+    
+    uni32 = char 'U' *> 
+      (fromDigits 16 <$> count 8 hexDigit)
+    
+    ctoi c = ord c - 48
+    
+    compChar :: Int -> [Int] -> T.Text
+    compChar base = 
+      T.singleton . chr
+      . foldr (\x y -> y + base * x) 0
+    
+    fromDigits :: Int -> [Char] -> T.Text
+    fromDigits base = compChar base . map ctoi

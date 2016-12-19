@@ -22,6 +22,8 @@ import Control.Lens
 import Control.Monad
 import Control.Monad.IO.Class
 import qualified Control.Exception as E
+import qualified Control.DeepSeq as DeepSeq
+
 
 {- Implements fish style array slicing -}
 
@@ -63,12 +65,9 @@ readSlices = work 0
             mbRev b ys ++ work i rest xs'
 
 {- writeSlices may fail if the ranges overlap -}
-writeSlices :: Show a => Slices -> [a] -> [a] -> Fish [a]
-writeSlices slcs xs ys =
-  liftIO (E.try $ E.evaluate $ work 0 slcs xs ys)
-  >>= \case
-    Left e -> errork $ showText (e :: E.ErrorCall)
-    Right zs -> return zs
+writeSlices :: (DeepSeq.NFData a,Show a) => 
+  Slices -> [a] -> [a] -> Fish [a]
+writeSlices slcs xs ys = uncoverErrors $ work 0 slcs xs ys
   where
     work n slcs xs ys = slcs & \case
       [] -> bool tooManyErr xs (isEmpty ys)
@@ -90,12 +89,9 @@ writeSlices slcs xs ys =
 
 
 {- drop the slices from an array -}
-dropSlices :: Show a => Slices -> [a] -> Fish [a]
-dropSlices slcs xs =
-  liftIO (E.try $ E.evaluate $ work 0 slcs xs)
-  >>= \case
-    Left e -> errork $ showText (e :: E.ErrorCall)
-    Right zs -> return zs
+dropSlices :: (DeepSeq.NFData a,Show a) => 
+  Slices -> [a] -> Fish [a]
+dropSlices slcs xs = uncoverErrors $ work 0 slcs xs
   where
     work n slcs xs = slcs & \case
       [] -> xs
@@ -129,3 +125,11 @@ isEmpty :: [a] -> Bool
 isEmpty = \case
   [] -> True
   _ -> False
+
+
+uncoverErrors :: DeepSeq.NFData a => a -> Fish a
+uncoverErrors f =
+  liftIO (E.try . E.evaluate . DeepSeq.force $ f)
+  >>= \case
+    Left e -> errork $ showText (e :: E.ErrorCall)
+    Right r -> return r

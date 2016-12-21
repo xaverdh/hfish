@@ -5,9 +5,13 @@ import Fish.Lang
 import HFish.Interpreter.Core
 import qualified HFish.Parser.Trifecta as HFTriP
 import qualified Fish.Parser.Trifecta as FTriP
+import qualified HFish.Parser.Attoparsec as HFAttoP
+import qualified Fish.Parser.Attoparsec as FAttoP
+
 import qualified Text.Trifecta.Parser as Tri
 import qualified Text.Trifecta.Result as TriR
 import qualified Text.PrettyPrint.ANSI.Leijen as Pretty
+import Data.Attoparsec.Text as Atto
 
 import Control.Lens
 import Control.Monad
@@ -27,9 +31,11 @@ parseFile :: MonadIO m
 parseFile fishcompat fpath
   | fishcompat = do
     bs <- liftIO $ B.readFile fpath
+    -- <- Atto.parseOnly FAttoP.program bs
     return $ Tri.parseByteString FTriP.program mempty bs    
   | otherwise = do
     bs <- liftIO $ B.readFile fpath
+    -- <- Atto.parseOnly FAttoP.program bs
     return $ Tri.parseByteString HFTriP.program mempty bs
 
 parseFish :: FilePath -> Fish ( TriR.Result (Prog ()) )
@@ -62,23 +68,4 @@ withProg' :: MonadIO m
   -> (Prog () -> m a)
   -> m ()
 withProg' res f = void $ withProg res f
-
-{-
-hybridParseInteractive :: String -> TriR.Result (Prog ())
-hybridParseInteractive s =
-  case parseHFishInteractive s of
-    TriR.Success p -> TriR.Success p
-    TriR.Failure err -> 
-      case parseFishInteractive s of
-        TriR.Success p -> TriR.Success p
-        TriR.Failure _ -> TriR.Failure err
-
-hybridParse :: MonadIO m => FilePath -> m (TriR.Result (Prog ()))
-hybridParse s = parseHFish s >>= \case
-  TriR.Success p -> return $ TriR.Success p
-  TriR.Failure err ->
-    parseFish s >>= \case
-      TriR.Success p -> return $ TriR.Success p
-      TriR.Failure _ -> return $ TriR.Failure err
--}
 

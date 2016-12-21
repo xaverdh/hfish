@@ -16,14 +16,12 @@ import Control.Monad
 import Control.Monad.IO.Class
 
 onArgs :: [T.Text] -> (Prog () -> Fish a) -> Fish (Maybe a)
-onArgs =
-  withProg
-  . parseFishInteractive 
-  . T.unpack . T.unwords
+onArgs ts k = do
+  res <- parseFishInteractive $ (T.unpack . T.unwords) ts
+  withProg res k
 
 evalF :: Builtin
 evalF _ ts = void (onArgs ts progA)
-
 
 execF :: Builtin
 execF _ ts = 

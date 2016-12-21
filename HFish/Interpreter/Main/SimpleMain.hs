@@ -47,7 +47,7 @@ hfishOptions = hfishMain
 
 hfishMain :: Bool -> Bool -> Bool -> Bool -> [String] -> IO ()
 hfishMain noexecute ast command fishcompat args
-  | noexecute = forM_ args parseIt
+  | noexecute = forM_ args (parseFile fishcompat)
   | ast && command = exDirect args printAST
   | ast = case args of
     [] -> putStrLn "hfish: missing argument."
@@ -70,20 +70,12 @@ hfishMain noexecute ast command fishcompat args
         "argv" (Var UnExport $ map T.pack args)
     
     exDirect args = withProg'
-      $ parseInteractive
+      $ parseInteractive fishcompat
         $ L.unwords args <> "\n"
     
     exPath path f = do
-      res <- parseIt path
+      res <- parseFile fishcompat path
       withProg' res f
-
-    parseInteractive
-      | fishcompat = parseFishInteractive
-      | otherwise = parseHFishInteractive 
-    
-    parseIt
-      | fishcompat = parseFish
-      | otherwise = parseHFish
 
     atBreakpoint :: Fish ()
     atBreakpoint = do
@@ -115,12 +107,10 @@ interpreterLoop fishcompat prompt r s =
   getInputLine (prompt s) >>= \case
     Nothing -> return ()
     Just l -> do
-      ms' <- withProg (parseInteractive $ l ++ "\n") (runProgram r s)
+      ms' <- withProg
+        (parseInteractive fishcompat $ l ++ "\n")
+        (runProgram r s)
       interpreterLoop fishcompat prompt r (fromMaybe s ms')
-  where
-    parseInteractive
-      | fishcompat = parseFishInteractive
-      | otherwise = parseHFishInteractive
 
 coerce :: IO (Either SomeException a) -> IO (Either SomeException a)
 coerce = id

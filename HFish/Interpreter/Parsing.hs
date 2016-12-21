@@ -1,27 +1,46 @@
 {-# language LambdaCase #-}
 module HFish.Interpreter.Parsing where
 
-import qualified Text.Trifecta.Parser as Tri
-import qualified Text.Trifecta.Result as TriR
+import Fish.Lang
+import HFish.Interpreter.Core
 import qualified HFish.Parser.Trifecta as HFTriP
 import qualified Fish.Parser.Trifecta as FTriP
+import qualified Text.Trifecta.Parser as Tri
+import qualified Text.Trifecta.Result as TriR
 import qualified Text.PrettyPrint.ANSI.Leijen as Pretty
 
+import Control.Lens
 import Control.Monad
+import Control.Monad.Reader
 import Control.Monad.IO.Class
-import Fish.Lang
+import Data.Monoid
+import System.IO
+import qualified Data.ByteString as B
 
-parseHFishInteractive :: String -> TriR.Result (Prog ())
-parseHFishInteractive = Tri.parseString HFTriP.program mempty
+parseInteractive :: Bool -> String -> TriR.Result (Prog ())
+parseInteractive fishcompat
+  | fishcompat = Tri.parseString FTriP.program mempty
+  | otherwise = Tri.parseString HFTriP.program mempty
 
-parseHFish :: MonadIO m => FilePath -> m (TriR.Result (Prog ()))
-parseHFish = Tri.parseFromFileEx HFTriP.program
+parseFile :: MonadIO m
+  => Bool -> FilePath -> m ( TriR.Result (Prog ()) )
+parseFile fishcompat fpath
+  | fishcompat = do
+    bs <- liftIO $ B.readFile fpath
+    return $ Tri.parseByteString FTriP.program mempty bs    
+  | otherwise = do
+    bs <- liftIO $ B.readFile fpath
+    return $ Tri.parseByteString HFTriP.program mempty bs
 
-parseFishInteractive :: String -> TriR.Result (Prog ())
-parseFishInteractive = Tri.parseString FTriP.program mempty
+parseFish :: FilePath -> Fish ( TriR.Result (Prog ()) )
+parseFish fpath = do
+  compat <- view fishCompatible
+  parseFile compat fpath
 
-parseFish :: MonadIO m => FilePath -> m (TriR.Result (Prog ()))
-parseFish = Tri.parseFromFileEx FTriP.program
+parseFishInteractive :: FilePath -> Fish ( TriR.Result (Prog ()) )
+parseFishInteractive fpath = do
+  compat <- view fishCompatible
+  return $ parseInteractive compat fpath
 
 withProg :: MonadIO m
   => TriR.Result (Prog ())

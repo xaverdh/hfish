@@ -6,6 +6,7 @@ import HFish.Interpreter.Util
 import HFish.Interpreter.FdTable as FDT
 
 import qualified Data.Map as M
+import qualified Data.Set as S
 import qualified Data.Text as T
 import Data.Monoid
 import Control.Monad
@@ -16,6 +17,7 @@ import Control.Lens
 import Control.Exception as E
 import System.Exit
 import System.Posix.Types (CPid)
+import System.Posix.Signals (Signal)
 
 -- | The Fish 'Monad', it holds both mutable and unmutable (reader)
 --   state.
@@ -75,6 +77,14 @@ type Function =
   [T.Text] -- ^ The arguments to the function call, already evaluated.
   -> Fish ()
 
+-- | The type of an event handler
+newtype EventHandler = EventHandler T.Text
+  deriving (Eq,Ord,Show)
+
+-- | The type of a signal handler
+newtype SignalHandler = SignalHandler T.Text
+  deriving (Eq,Ord,Show)
+
 -- | The /mutable/ state of the interpreter.
 data FishState = FishState {
     -- _universalEnv :: Env
@@ -87,6 +97,8 @@ data FishState = FishState {
     ,_cwdir :: FilePath
     ,_dirstack :: [FilePath]
     ,_lastPid :: Maybe CPid
+    ,_eventHandlers :: Env (S.Set EventHandler)
+    ,_signalHandlers :: M.Map Signal (S.Set SignalHandler)
   }
 
 
@@ -223,4 +235,6 @@ emptyFishState =
     M.empty
     ExitSuccess "" []
     Nothing
+    M.empty
+    M.empty
 

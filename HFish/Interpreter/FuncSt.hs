@@ -5,6 +5,7 @@ import Fish.Lang
 import HFish.Interpreter.Core
 import HFish.Interpreter.Var
 import HFish.Interpreter.Util
+import HFish.Interpreter.Events
 
 import Control.Lens
 import Control.Applicative
@@ -37,8 +38,12 @@ funcStA progA (FunIdent _ name) ts prog =
       <$> textOption (short 'd' <> long "description"
         <> metavar "DESCRIPTION" <> OB.value name)
       <*> switch (short 'S' <> long "no-scope-shadowing")
+      <*> many ( textOption (short 'e' <> long "on-event"
+          <> metavar "EVENT_NAME" ) )
+      <*> many ( textOption (short 's' <> long "on-signal"
+          <> metavar "SIGSPEC" ) )
       <*> many ( textOption (short 'V' <> long "inherit-variable"
-          <> metavar "NAME") )
+          <> metavar "NAME" ) )
       <*> ( switch (short 'a' <> long "argument-names")
             *> many (OB.argument text $ metavar "NAMES") )
     
@@ -50,11 +55,17 @@ funcWorker :: (Prog t -> Fish ())
   -> Prog t -- ^ The function body
   -> T.Text -- ^ Description of the function
   -> Bool -- ^ Do not shadow the scope ?
+  -> [T.Text] -- Run on named event
+  -> [T.Text] -- Run on given signal
   -> [T.Text] -- Variables to inherit
   -> [T.Text] -- Argument identifiers
   -> Fish ()
-funcWorker progA name prog desc noShadow inherit idents = do
-  modify (functions . at name .~ Just f)
+funcWorker progA
+  name prog desc noShadow
+  events signals inherit idents = do
+    modify (functions . at name .~ Just f)
+    forM_ events (flip setupEventHandler $ EventHandler name)
+    forM_ signals (flip setupSignalHandler $ SignalHandler name)
   where
     f args =
       localise flocalEnv $ do
@@ -79,3 +90,4 @@ funcWorker progA name prog desc noShadow inherit idents = do
 
     setFLocal ident vs = (Var UnExport vs)
       & setVarSafe (EnvLens flocalEnv) ident
+

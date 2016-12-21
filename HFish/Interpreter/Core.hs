@@ -28,7 +28,7 @@ import System.Posix.Types (CPid)
 --   The latter means that we use our own error handling mechanism
 --   rather then the builtin 'error'.
 newtype Fish a = Fish ((ReaderT FishReader) (StateT FishState (ContT FishState IO)) a)
-  deriving (Applicative,Functor,Monad,MonadIO,MonadState FishState,MonadReader FishReader,MonadCont)
+  deriving (Functor,Applicative,Monad,MonadIO,MonadState FishState,MonadReader FishReader,MonadCont)
 
 -- | Run a fish action with given reader and state, returning
 --   the final state.
@@ -36,7 +36,7 @@ runFish :: Fish a -> FishReader -> FishState -> IO FishState
 runFish (Fish f) r s =
   ((f `runReaderT` r) `execStateT` s) `runContT` return
 
--- | Ruturn an IO action, running the given fish action
+-- | Return an IO action, running the given fish action
 --   in the IO Monad with and returning the new / final state.
 --
 --   The fish action will be run with the state (and reader) from

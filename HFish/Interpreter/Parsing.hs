@@ -8,10 +8,12 @@ import qualified Fish.Parser.Trifecta as FTriP
 import qualified HFish.Parser.Attoparsec as HFAttoP
 import qualified Fish.Parser.Attoparsec as FAttoP
 
+import System.Unix.IO.Text (toUnicode)
 import qualified Text.Trifecta.Parser as Tri
 import qualified Text.Trifecta.Result as TriR
 import qualified Text.PrettyPrint.ANSI.Leijen as Pretty
 import Data.Attoparsec.Text as Atto
+import Data.Attoparsec.ByteString as BAtto
 
 import Control.Lens
 import Control.Monad
@@ -31,12 +33,16 @@ parseFile :: MonadIO m
 parseFile fishcompat fpath
   | fishcompat = do
     bs <- liftIO $ B.readFile fpath
-    -- <- Atto.parseOnly FAttoP.program bs
-    return $ Tri.parseByteString FTriP.program mempty bs    
+    text <- liftIO $ toUnicode bs
+    case Atto.parseOnly FAttoP.program text of
+      Right prog -> return $ TriR.Success prog
+      Left _ -> return $ Tri.parseByteString FTriP.program mempty bs    
   | otherwise = do
     bs <- liftIO $ B.readFile fpath
-    -- <- Atto.parseOnly FAttoP.program bs
-    return $ Tri.parseByteString HFTriP.program mempty bs
+    text <- liftIO $ toUnicode bs
+    case Atto.parseOnly HFAttoP.program text of
+      Right prog -> return $ TriR.Success prog
+      Left _ -> return $ Tri.parseByteString HFTriP.program mempty bs    
 
 parseFish :: FilePath -> Fish ( TriR.Result (Prog ()) )
 parseFish fpath = do

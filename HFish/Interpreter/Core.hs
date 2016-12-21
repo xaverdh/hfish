@@ -58,7 +58,6 @@ projectIO f = do
 asIO :: Fish () -> (IO FishState -> Fish a) -> Fish a
 asIO f g = projectIO f >>= g
 
-
 -- | The type of a fish /variable/
 data Var = Var {
     _exported :: Export
@@ -138,15 +137,19 @@ setBreakpoint =
   view breakpoint >>= id
 
 -- | Sets a breakpoint which is jumped to by a call to /continue/.
+setContinueK :: Fish () -> Fish ()
 setContinueK f = callCC (\k -> local (continueK %~ (k:)) f)
 
 -- | Sets a breakpoint which is jumped to by a call to /break/.
+setBreakK :: Fish () -> Fish ()
 setBreakK f = callCC (\k -> local (breakK %~ (k:)) f)
 
 -- | Sets a breakpoint which is jumped to by a call to /return/.
+setReturnK :: Fish () -> Fish ()
 setReturnK f = callCC (\k -> local (returnK %~ (k:)) f)
 
 -- | Sets a breakpoint which is jumped to by a call to 'errork'.
+setErrorK :: Fish T.Text -> Fish T.Text
 setErrorK f = callCC (\k -> local (errorK %~ (k:)) f)
 
 -- | Calls the top '_errorK' continuation.
@@ -210,6 +213,7 @@ disallowK = local
     noA = repeat ( const $ return () )
 
 -- | An empty FishState
+emptyFishState :: FishState
 emptyFishState =
   FishState
     M.empty

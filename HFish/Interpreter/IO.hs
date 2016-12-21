@@ -15,8 +15,8 @@ import HFish.Interpreter.Util
 import HFish.Interpreter.FdTable
 import HFish.Interpreter.Core
 import HFish.Interpreter.Status
-import HFish.Interpreter.Posix.IO
 import qualified Fish.Lang as L
+import System.Unix.IO
 
 import Control.Lens
 import Control.Monad

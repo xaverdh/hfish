@@ -5,7 +5,6 @@ import Fish.Lang
 
 import HFish.Interpreter.Core
 import HFish.Interpreter.Util
-import HFish.Interpreter.IsText
 import Data.NText as NText
 import HFish.Interpreter.Env as Env
 

@@ -10,7 +10,6 @@ import HFish.Interpreter.Status
 import HFish.Interpreter.Slice
 import Data.NText
 import qualified HFish.Interpreter.Env as Env
-import HFish.Interpreter.IsText
 
 import Control.Lens
 import Control.Monad

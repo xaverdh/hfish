@@ -5,7 +5,6 @@ import Fish.Lang
 import HFish.Interpreter.Util
 import HFish.Interpreter.FdTable as FDT
 import Data.NText as NText
-import HFish.Interpreter.IsText
 import HFish.Interpreter.Env as Env
 
 import qualified Data.Map as M

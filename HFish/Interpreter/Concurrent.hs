@@ -1,8 +1,11 @@
 {-# language OverloadedStrings, LambdaCase #-}
 module HFish.Interpreter.Concurrent where
 
+import Fish.Lang as L
+
 import HFish.Interpreter.Core
 import HFish.Interpreter.Status
+import HFish.Interpreter.FdTable (close_,insert)
 import Control.Monad.State
 import Control.Monad.Reader
 
@@ -28,11 +31,19 @@ createHandleMVarPair =
       ( P.fdToHandle rE >>= TextIO.hGetContents >>= putMVar mvar )
     return (mvar,wE)
 
-pipeFish :: (PT.Fd -> Fish ()) -> (PT.Fd -> Fish ()) -> Fish ()
-pipeFish f1 f2 = do
+pipeFish :: L.Fd -> Fish () -> Fish () -> Fish ()
+pipeFish fd f1 f2 = do
   (rE,wE) <- liftIO P.createPipe
-  forkFish (f1 wE)
-  f2 rE
+  forkFish $ setup fd (Just rE) wE f1 >> liftIO (P.closeFd wE)
+  setup Fd0 Nothing rE f2
+  
+  where
+    setup :: Fd -> Maybe PT.Fd -> PT.Fd -> Fish a -> Fish a
+    setup fd' mclsH insH =
+      maybe id close_ mclsH . insert fd' insH
+    
+
+
 
 forkFish :: Fish () -> Fish (MVar FishState)
 forkFish f = do

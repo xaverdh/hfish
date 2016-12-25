@@ -41,7 +41,7 @@ data FdSetupState =
     -- ^ A pointer-like index; all fds above this index
     --   are currently in use. This is purely a performance
     --   optimisation.
-  }
+  } deriving (Show)
 makeLenses ''FdSetupState
 
 -- | A State Monad for setting up the OS file descriptors.
@@ -93,11 +93,11 @@ forkWithFileDescriptors action = do
       forM_ closed P.closeFd
   
       -- set up the redirections
-      runStateT setupFds FdSetupState
+      execStateT setupFds FdSetupState
         { _table = fdescs
          ,_fdsInUse = S.fromList used
          ,_allocIndex = max_num_fds-1 }
-  
+      
       -- run the action
       action
 

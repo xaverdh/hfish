@@ -48,12 +48,8 @@ simpleStmtA :: Stmt T.Text t -> Fish ()
 simpleStmtA = stmtA InOrderExM
 
 pipedStmtA :: Fd -> Stmt T.Text t -> CompStmt T.Text t -> Fish ()
-pipedStmtA fd st cst = pipeFish
-  ( \wE ->
-      FDT.insert fd wE (stmtA PipeExM st)
-      `finally` (PIO.closeFd wE) )
-  ( \rE ->
-      FDT.insert Fd0 rE (compStmtA cst) )
+pipedStmtA fd st cst = 
+  pipeFish fd (stmtA PipeExM st) (compStmtA cst)
 
 stmtA :: ExMode -> Stmt T.Text t -> Fish ()
 stmtA mode = \case

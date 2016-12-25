@@ -50,6 +50,19 @@ insert :: HasFdTable m => L.Fd -> PT.Fd -> m a -> m a
 insert fd pfd =
   localFdTable (mainTable %~ M.insert fd pfd)
 
+-- | Mark this OS fd as closed.
+--
+--   It will appear closed to builtins and child processes.
+--
+--   Silently ignores the case where fd does not exits.
+close_ :: HasFdTable m => PT.Fd -> m a -> m a
+close_ pfd k = 
+  flip localFdTable k
+      (  ( closed %~ (pfd:) )
+       . ( mainTable %~ M.mapMaybe (erase pfd) ) )
+  where
+    erase y x = if x == y then Nothing else Just x    
+
 -- | Mark the OS fd corresponding to this (abstract) fd as closed.
 --
 --   It will appear closed to builtins and child processes.
@@ -58,12 +71,7 @@ insert fd pfd =
 close :: HasFdTable m => L.Fd -> m a -> m a
 close fd k = lookupFd fd >>= \case
   Nothing -> k
-  Just pfd -> 
-    flip localFdTable k
-      (  ( closed %~ (pfd:) )
-       . ( mainTable %~ M.mapMaybe (erase pfd) ) )
-  where
-    erase y x = if x == y then Nothing else Just x
+  Just pfd -> close_ pfd k
 
 -- | The initial FdTable stdin / -out / -err.
 --

@@ -1,11 +1,8 @@
 {-# language OverloadedStrings, LambdaCase #-}
 module HFish.Interpreter.Concurrent where
 
-import Fish.Lang as L
-
 import HFish.Interpreter.Core
 import HFish.Interpreter.Status
-import HFish.Interpreter.FdTable (weakClose_,insert,fdWeakClose)
 import Control.Monad.State
 import Control.Monad.Reader
 
@@ -30,19 +27,6 @@ createHandleMVarPair =
     forkOS
       ( P.fdToHandle rE >>= TextIO.hGetContents >>= putMVar mvar )
     return (mvar,wE)
-
-pipeFish :: L.Fd -> Fish () -> Fish () -> Fish ()
-pipeFish fd f1 f2 = do
-  (rE,wE) <- liftIO P.createPipe
-  forkFish $ setup fd rE wE f1 `finally` fdWeakClose wE
-  setup Fd0 wE rE f2
-  where
-    setup :: Fd -> PT.Fd -> PT.Fd -> Fish a -> Fish a
-    setup fd' clsH insH =
-      weakClose_ clsH . insert fd' insH
-    
-
-
 
 forkFish :: Fish () -> Fish (MVar FishState)
 forkFish f = do

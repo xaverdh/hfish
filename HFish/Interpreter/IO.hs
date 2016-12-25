@@ -1,6 +1,7 @@
 {-# LANGUAGE LambdaCase, OverloadedStrings, PackageImports #-}
 module HFish.Interpreter.IO (
-  duplicate
+  pipeFish
+  ,duplicate
   ,withFileR
   ,withFileW
   ,readFrom
@@ -13,6 +14,7 @@ module HFish.Interpreter.IO (
 
 import HFish.Interpreter.Util
 import HFish.Interpreter.FdTable
+import HFish.Interpreter.Concurrent
 import HFish.Interpreter.Core
 import HFish.Interpreter.Status
 import qualified Fish.Lang as L
@@ -32,6 +34,22 @@ import System.Posix.Files
 import qualified System.Posix.Types as PT
 import qualified System.Posix.IO as P
 import qualified Data.Text as T
+
+-- | Connect two fish actions by a pipe.
+--   The fist action is expected to write to the (abstract) fd
+--   passed to 'pipeFish',
+--
+--   the second is expected to read from stdin.
+pipeFish :: L.Fd -> Fish () -> Fish () -> Fish ()
+pipeFish fd f1 f2 = do
+  (rE,wE) <- liftIO P.createPipe
+  forkFish $ setup fd rE wE f1 `finally` fdWeakClose wE
+  setup L.Fd0 wE rE f2
+  where
+    setup :: L.Fd -> PT.Fd -> PT.Fd -> Fish a -> Fish a
+    setup fd' clsH insH =
+      weakClose_ clsH . insert fd' insH
+
 
 -- | Make an abstract fd a duplicate of another abstract fd, i.e. a fd pointing
 --

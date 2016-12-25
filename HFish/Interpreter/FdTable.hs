@@ -17,20 +17,22 @@ import Control.Monad.IO.Class
 --   Posix file descriptors (OS fds from 'System.Posix.Types.Fd').
 data FdTable = FdTable {
     _mainTable :: M.Map L.Fd PT.Fd
+    -- ^ The main table
     ,_closed :: [PT.Fd]
+    -- ^ Fds marked for closing
     ,_weakClosed :: [PT.Fd]
+    -- ^ Fds marked for "weak" closing, ignoring any errors
   } deriving (Show)
 makeLenses ''FdTable
 
--- | A typeclass for Monads which hold a 'FdTable' in their state.
+-- | A typeclass for Monads which hold a 'FdTable' in their reader state.
 --
 --   Using MultiParamTypeClasses and FlexibleContexts,
 --   this could have been defined as:
 --
--- > class MonadState HasFdTable m => HasFdTable m
--- > askFdTable = get
--- > putFdTable = put
--- > stateFdTable = state
+-- > class MonadReader HasFdTable m => HasFdTable m
+-- > askFdTable = ask
+-- > localFdTable = local
 --
 class Monad m => HasFdTable m where
   askFdTable :: m FdTable
@@ -65,12 +67,12 @@ close_ pfd k =
   where
     erase y x = if x == y then Nothing else Just x
 
--- | Mark this OS fd as closed.
+-- | Mark this OS fd as /weakly/ closed.
 --
 --   It will appear closed to builtins and child processes.
 --
 --   Silently ignores the case where fd does not exits and
---   ignores any errors thrown on close.
+--   /ignores any errors thrown on close/.
 weakClose_ :: HasFdTable m => PT.Fd -> m a -> m a
 weakClose_ pfd k =
   flip localFdTable k
@@ -78,6 +80,17 @@ weakClose_ pfd k =
        . ( mainTable %~ M.mapMaybe (erase pfd) ) )
   where
     erase y x = if x == y then Nothing else Just x  
+
+-- | Mark the OS fd corresponding to this (abstract) fd as /weakly/ closed.
+--
+--   It will appear closed to builtins and child processes.
+--
+--   Silently ignores the case where fd does not exits and
+--   /ignores any errors thrown on close/.
+weakClose :: HasFdTable m => L.Fd -> m a -> m a
+weakClose fd k = lookupFd fd >>= \case
+  Nothing -> k
+  Just pfd -> weakClose_ pfd k
 
 -- | Mark the OS fd corresponding to this (abstract) fd as closed.
 --

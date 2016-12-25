@@ -20,10 +20,10 @@ import Options.Applicative.Builder as OB
 
 -- Todo: Event handling stuff.
 
-funcStA :: (Prog t -> Fish ())
-  -> FunIdent t
+funcStA :: (Prog T.Text t -> Fish ())
+  -> FunIdent T.Text t
   -> [T.Text]
-  -> Prog t
+  -> Prog T.Text t
   -> Fish ()
 funcStA progA (FunIdent _ name) ts prog =
   execParserPure defaultPrefs parser (map T.unpack ts)
@@ -50,9 +50,9 @@ funcStA progA (FunIdent _ name) ts prog =
     text = T.pack <$> str
     textOption = option text
 
-funcWorker :: (Prog t -> Fish ())
+funcWorker :: (Prog T.Text t -> Fish ())
   -> T.Text -- ^ The function name
-  -> Prog t -- ^ The function body
+  -> Prog T.Text t -- ^ The function body
   -> T.Text -- ^ Description of the function
   -> Bool -- ^ Do not shadow the scope ?
   -> [T.Text] -- Run on named event

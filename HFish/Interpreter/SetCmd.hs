@@ -25,9 +25,9 @@ import qualified Data.Map as M
 
 -- | Evaluate a SetCommand. We have to pass evalArgs,evalRef
 --   explicitly due to the recursive modules problem.
-setCommandA :: ( Args t -> Fish [T.Text] )
-  -> ( Ref (Expr t) -> Int -> Fish Slices )
-  -> SetCommand t
+setCommandA :: ( Args T.Text t -> Fish [T.Text] )
+  -> ( Ref (Expr T.Text t) -> Int -> Fish Slices )
+  -> SetCommand T.Text t
   -> Fish ()
 setCommandA evalArgs evalRef = \case
   SetSetting mscp mex varDef args -> 
@@ -40,7 +40,7 @@ setCommandA evalArgs evalRef = \case
   SetErase mscp varDefs -> 
     eraseVars evalRef mscp $ map extract $ N.toList varDefs
   where
-    extract :: VarDef t -> (T.Text,Ref (Expr t))
+    extract :: VarDef T.Text t -> (T.Text,Ref (Expr T.Text t))
     extract (VarDef _ (VarIdent _ ident) ref) = (ident,ref)
 
 

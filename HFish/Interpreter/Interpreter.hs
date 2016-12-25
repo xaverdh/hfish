@@ -33,19 +33,19 @@ import Control.Concurrent.MVar
 import qualified System.Posix.IO as PIO
 
 
-progA :: Prog t -> Fish ()
+progA :: Prog T.Text t -> Fish ()
 progA (Prog _ cstmts) = forM_ cstmts compStmtA
 
-compStmtA :: CompStmt t -> Fish ()
+compStmtA :: CompStmt T.Text t -> Fish ()
 compStmtA = \case
   Simple _ st -> simpleStmtA st
   Piped _ d st cst -> pipedStmtA d st cst
   Forked _ st -> stmtA ForkedExM st
 
-simpleStmtA :: Stmt t -> Fish ()
+simpleStmtA :: Stmt T.Text t -> Fish ()
 simpleStmtA = stmtA InOrderExM
 
-pipedStmtA :: Fd -> Stmt t -> CompStmt t -> Fish ()
+pipedStmtA :: Fd -> Stmt T.Text t -> CompStmt T.Text t -> Fish ()
 pipedStmtA fd st cst = pipeFish
   ( \wE ->
       FDT.insert fd wE (stmtA PipeExM st)
@@ -53,7 +53,7 @@ pipedStmtA fd st cst = pipeFish
   ( \rE ->
       FDT.insert Fd0 rE (compStmtA cst) )
 
-stmtA :: ExMode -> Stmt t -> Fish ()
+stmtA :: ExMode -> Stmt T.Text t -> Fish ()
 stmtA mode = \case
   CmdSt _ i args ->
     cmdStA mode i args
@@ -81,7 +81,7 @@ stmtA mode = \case
     redirectedStmtA (stmtA mode st) (N.toList redirects)
   CommentSt _ _ -> return ()
 
-cmdStA :: ExMode -> CmdIdent t -> Args t -> Fish ()
+cmdStA :: ExMode -> CmdIdent T.Text t -> Args T.Text t -> Fish ()
 cmdStA mode (CmdIdent _ ident) args = do
   ts <- evalArgs args
   bn <- preview (builtins . ix ident)
@@ -95,15 +95,15 @@ cmdStA mode (CmdIdent _ ident) args = do
         then fishWaitForProcess ident pid
         else return ()
 
-setStA :: SetCommand t -> Fish ()
+setStA :: SetCommand T.Text t -> Fish ()
 setStA = SetCmd.setCommandA evalArgs evalRef
 
-functionStA :: FunIdent t -> Args t -> Prog t -> Fish ()
+functionStA :: FunIdent T.Text t -> Args T.Text t -> Prog T.Text t -> Fish ()
 functionStA ident args prog = evalArgs args
   >>= \ts -> FuncSt.funcStA progA ident ts prog
 
 
-whileStA :: Stmt t -> Prog t -> Fish ()
+whileStA :: Stmt T.Text t -> Prog T.Text t -> Fish ()
 whileStA st prog = setBreakK loop
   where
     body = progA prog
@@ -112,7 +112,7 @@ whileStA st prog = setBreakK loop
       ifOk ( setContinueK body
              >> loop )
 
-forStA :: VarIdent t -> Args t -> Prog t -> Fish ()
+forStA :: VarIdent T.Text t -> Args T.Text t -> Prog T.Text t -> Fish ()
 forStA (VarIdent _ varIdent) args prog = do
   xs <- evalArgs args
   setBreakK (loop xs)
@@ -127,7 +127,7 @@ forStA (VarIdent _ varIdent) args prog = do
       lbind x $ setContinueK body
       loop xs
 
-ifStA :: [(Stmt t,Prog t)] -> Maybe (Prog t) -> Fish ()
+ifStA :: [(Stmt T.Text t,Prog T.Text t)] -> Maybe (Prog T.Text t) -> Fish ()
 ifStA [] (Just prog) = progA prog
 ifStA [] Nothing = return ()
 ifStA ((st,prog):blks) elblk = do
@@ -136,7 +136,7 @@ ifStA ((st,prog):blks) elblk = do
     (const $ ifStA blks elblk)
     (progA prog >> ok)
 
-switchStA :: Expr t -> [(Expr t,Prog t)] -> Fish ()
+switchStA :: Expr T.Text t -> [(Expr T.Text t,Prog T.Text t)] -> Fish ()
 switchStA e brnchs = view fishCompatible >>=
   bool (hfishSwitch e brnchs) (fishSwitch e brnchs)
 
@@ -155,7 +155,7 @@ switchStA e brnchs = view fishCompatible >>=
 --
 --   In addition the matching is lazy, i.e. when a branch is taken
 --   all branches following it will not be evaluated.
-hfishSwitch ::  Expr t -> [(Expr t,Prog t)] -> Fish ()
+hfishSwitch ::  Expr T.Text t -> [(Expr T.Text t,Prog T.Text t)] -> Fish ()
 hfishSwitch e branches = do
   text <- T.unwords <$> evalArg e
   loop text branches
@@ -167,7 +167,7 @@ hfishSwitch e branches = do
         Just _ -> progA prog
         Nothing -> loop text branches
 
-fishSwitch :: Expr t -> [(Expr t,Prog t)] -> Fish ()
+fishSwitch :: Expr T.Text t -> [(Expr T.Text t,Prog T.Text t)] -> Fish ()
 fishSwitch e branches = evalArg e >>= \case
   [text] -> loop text branches
   _ -> tooManyErr
@@ -182,22 +182,22 @@ fishSwitch e branches = evalArg e >>= \case
     tooManyErr = errork
       $ "switch: too many arguments given"
 
-beginStA :: Prog t -> Fish ()
+beginStA :: Prog T.Text t -> Fish ()
 beginStA prog =
   localise localEnv
   $ progA prog
 
-andStA :: Stmt t -> Fish ()
+andStA :: Stmt T.Text t -> Fish ()
 andStA st = ifOk $ simpleStmtA st
   
-orStA :: Stmt t -> Fish ()
+orStA :: Stmt T.Text t -> Fish ()
 orStA st = unlessOk $ simpleStmtA st
 
-notStA :: Stmt t -> Fish ()
+notStA :: Stmt T.Text t -> Fish ()
 notStA st = 
   simpleStmtA st >> invertStatus
 
-redirectedStmtA :: Fish () -> [Redirect t] -> Fish ()
+redirectedStmtA :: Fish () -> [Redirect T.Text t] -> Fish ()
 redirectedStmtA f redirects = void (setupAll f)
   where
     setupAll = foldr ((.) . setup) id redirects
@@ -217,16 +217,16 @@ redirectedStmtA f redirects = void (setupAll f)
 
 
 {- Expression evaluation -}
-evalArgs :: Args t -> Fish [T.Text]
+evalArgs :: Args T.Text t -> Fish [T.Text]
 evalArgs (Args _ es) = join <$> forM es evalArg
 
-evalArg :: Expr t -> Fish [T.Text]
+evalArg :: Expr T.Text t -> Fish [T.Text]
 evalArg arg = do
   globs <- evalExpr arg
   vs <- forM globs globExpand
   return (join vs)
 
-evalExpr :: Expr t -> Fish [Globbed]
+evalExpr :: Expr T.Text t -> Fish [Globbed]
 evalExpr = \case
   GlobE _ g -> return [Globbed [Left g]]
   ProcE _ e -> evalProcE e
@@ -237,7 +237,7 @@ evalExpr = \case
   CmdSubstE _ cmdref -> evalCmdSubstE cmdref
   ConcatE _ e1 e2 -> evalConcatE e1 e2
 
-evalProcE :: Expr t -> Fish [Globbed]
+evalProcE :: Expr T.Text t -> Fish [Globbed]
 evalProcE e = 
   evalArg e >>= (getPID . T.intercalate "")
 
@@ -246,11 +246,11 @@ evalHomeDirE = do
   home <- getHOME
   return [fromString home]
 
-evalBracesE :: [Expr t] -> Fish [Globbed]
+evalBracesE :: [Expr T.Text t] -> Fish [Globbed]
 evalBracesE es = 
   join <$> forM es evalExpr
 
-evalCmdSubstE :: CmdRef t -> Fish [Globbed]
+evalCmdSubstE :: CmdRef T.Text t -> Fish [Globbed]
 evalCmdSubstE (CmdRef _ prog ref) = do
   (mvar,wE) <- createHandleMVarPair
   FDT.insert Fd1 wE (progA prog) `finally` PIO.closeFd wE
@@ -262,14 +262,14 @@ evalCmdSubstE (CmdRef _ prog ref) = do
         slcs <- evalRef ref (length ts)
         return (readSlices slcs ts)
 
-evalVarRefE :: Bool -> VarRef t -> Fish [Globbed]
+evalVarRefE :: Bool -> VarRef T.Text t -> Fish [Globbed]
 evalVarRefE q vref = do
   vs <- evalVarRef vref
   return $ map fromText (ser vs)
   where
     ser = if q then pure . T.unwords else id
 
-evalVarRef :: VarRef t -> Fish [T.Text]
+evalVarRef :: VarRef T.Text t -> Fish [T.Text]
 evalVarRef (VarRef _ name ref) = do
   varIdents <- evalName name
   vs <- forM varIdents lookupVar
@@ -287,7 +287,7 @@ evalVarRef (VarRef _ name ref) = do
       Right (VarIdent _ i) -> return [i]
     
 
-evalRef :: Ref (Expr t) -> Int -> Fish Slices
+evalRef :: Ref (Expr T.Text t) -> Int -> Fish Slices
 evalRef ref l = do
     ijs <- forM (onMaybe ref [] id) indices
     makeSlices l (join ijs)
@@ -296,7 +296,7 @@ evalRef ref l = do
       Index a -> (\xs -> zip xs xs) <$> evalInt a
       Range a b -> liftA2 (,) <$> evalInt a <*> evalInt b  
   
-evalConcatE :: Expr t -> Expr t -> Fish [Globbed]
+evalConcatE :: Expr T.Text t -> Expr T.Text t -> Fish [Globbed]
 evalConcatE e1 e2 = do
   gs1 <- evalExpr e1
   gs2 <- evalExpr e2
@@ -306,7 +306,7 @@ evalConcatE e1 e2 = do
 
 {- Try to interpret Expression as an Int -}
 
-evalInt :: Expr t -> Fish [Int]
+evalInt :: Expr T.Text t -> Fish [Int]
 evalInt e = do
   vs <- evalArg e
   forM (T.words =<< vs) f

@@ -15,7 +15,7 @@ import Control.Lens
 import Control.Monad
 import Control.Monad.IO.Class
 
-onArgs :: [T.Text] -> (Prog () -> Fish a) -> Fish (Maybe a)
+onArgs :: [T.Text] -> (Prog T.Text () -> Fish a) -> Fish (Maybe a)
 onArgs ts k = do
   res <- parseFishInteractive $ (T.unpack . T.unwords) ts
   withProg res k

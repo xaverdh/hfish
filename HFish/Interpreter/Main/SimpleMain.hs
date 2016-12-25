@@ -118,7 +118,7 @@ coerce = id
 runProgram :: MonadIO m
   => FishReader
   -> FishState
-  -> Prog ()
+  -> Prog T.Text ()
   -> m FishState
 runProgram r s p =
   ( liftIO . coerce . try $ runFish (progA p) r s ) >>= \case

@@ -5,6 +5,7 @@ import qualified Data.Map as M
 import qualified Fish.Lang as L
 import qualified System.Posix.IO as P
 import qualified System.Posix.Types as PT
+import qualified Control.Exception as E
 import Control.Lens
 import Control.Monad.Reader.Class
 import Control.Monad.IO.Class
@@ -17,6 +18,7 @@ import Control.Monad.IO.Class
 data FdTable = FdTable {
     _mainTable :: M.Map L.Fd PT.Fd
     ,_closed :: [PT.Fd]
+    ,_weakClosed :: [PT.Fd]
   } deriving (Show)
 makeLenses ''FdTable
 
@@ -61,7 +63,21 @@ close_ pfd k =
       (  ( closed %~ (pfd:) )
        . ( mainTable %~ M.mapMaybe (erase pfd) ) )
   where
-    erase y x = if x == y then Nothing else Just x    
+    erase y x = if x == y then Nothing else Just x
+
+-- | Mark this OS fd as closed.
+--
+--   It will appear closed to builtins and child processes.
+--
+--   Silently ignores the case where fd does not exits and
+--   ignores any errors thrown on close.
+weakClose_ :: HasFdTable m => PT.Fd -> m a -> m a
+weakClose_ pfd k =
+  flip localFdTable k
+      (  ( weakClosed %~ (pfd:) )
+       . ( mainTable %~ M.mapMaybe (erase pfd) ) )
+  where
+    erase y x = if x == y then Nothing else Just x  
 
 -- | Mark the OS fd corresponding to this (abstract) fd as closed.
 --
@@ -73,12 +89,19 @@ close fd k = lookupFd fd >>= \case
   Nothing -> k
   Just pfd -> close_ pfd k
 
+-- | Close an OS Fd, ignoring any errors
+fdWeakClose :: PT.Fd -> IO ()
+fdWeakClose pfd = E.catch (P.closeFd pfd)
+  (\e -> return $ const () (e::E.IOException) )
+
 -- | The initial FdTable stdin / -out / -err.
 --
 initialFdTable :: FdTable
-initialFdTable = FdTable fds []
+initialFdTable = FdTable fds [] []
   where
     fds = M.fromList
       [ ( L.Fd0, P.stdInput )
         ,( L.Fd1, P.stdOutput )
         ,( L.Fd2, P.stdError ) ]
+
+

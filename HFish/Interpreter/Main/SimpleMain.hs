@@ -105,7 +105,7 @@ interpreterLoop :: Bool
   -> FishReader -> FishState -> InputT IO ()
 interpreterLoop fishcompat prompt r s =
   getInputLine (prompt s) >>= \case
-    Nothing -> return ()
+    Nothing -> return () -- ctrl-d
     Just l -> do
       ms' <- withProg
         (parseInteractive fishcompat $ l ++ "\n")

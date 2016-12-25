@@ -3,6 +3,8 @@ module HFish.Interpreter.Events where
 
 import HFish.Interpreter.Core
 import HFish.Interpreter.Util
+import Data.NText
+import HFish.Interpreter.Env as Env
 
 import Control.Lens
 import Control.Monad
@@ -14,14 +16,14 @@ import qualified Data.Text as T
 import System.Posix.Signals
 import System.Posix.Types
 
-handleEvent :: T.Text -> [T.Text] -> Fish ()
+handleEvent :: NText -> [T.Text] -> Fish ()
 handleEvent evName args =
-  use (eventHandlers . at evName)
+  uses eventHandlers (`Env.lookup` evName)
   >>= flip whenJust ( mapM_ call . S.toList )
   where
     call :: EventHandler -> Fish ()
     call (EventHandler fname) = 
-      use (functions . at fname)
+      uses functions (`Env.lookup` fname)
       >>= flip whenJust ($args)
 
 handleSignal :: Signal -> Fish ()
@@ -31,13 +33,15 @@ handleSignal sig =
   where
     call :: SignalHandler -> Fish ()
     call (SignalHandler fname) =
-      use (functions . at fname)
+      uses functions (`Env.lookup` fname)
       >>= flip whenJust ($[])
 
-setupEventHandler :: T.Text -> EventHandler -> Fish ()
+setupEventHandler :: NText -> EventHandler -> Fish ()
 setupEventHandler evName h =
-  eventHandlers . at evName %=
-    (Just . maybe (S.singleton h) (S.insert h) )
+  eventHandlers %= 
+    Env.alter
+    ( Just . maybe (S.singleton h) (S.insert h) )
+    evName
 
 setupSignalHandler :: T.Text -> SignalHandler -> Fish ()
 setupSignalHandler sigspec h = do

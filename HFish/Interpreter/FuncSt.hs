@@ -6,11 +6,13 @@ import HFish.Interpreter.Core
 import HFish.Interpreter.Var
 import HFish.Interpreter.Util
 import HFish.Interpreter.Events
+import HFish.Interpreter.Env as Env
 
 import Control.Lens
 import Control.Applicative
 import Control.Monad
 import Control.Monad.State
+import Data.NText
 import Data.Monoid
 import qualified Data.Text as T
 import qualified Data.Map as M
@@ -35,36 +37,36 @@ funcStA progA (FunIdent _ name) ts prog =
   where
     parser = info funcOptions idm
     funcOptions = funcWorker progA name prog
-      <$> textOption (short 'd' <> long "description"
-        <> metavar "DESCRIPTION" <> OB.value name)
+      <$> option text (short 'd' <> long "description"
+        <> metavar "DESCRIPTION" <> OB.value (extractText name))
       <*> switch (short 'S' <> long "no-scope-shadowing")
-      <*> many ( textOption (short 'e' <> long "on-event"
+      <*> many ( option nfcText (short 'e' <> long "on-event"
           <> metavar "EVENT_NAME" ) )
-      <*> many ( textOption (short 's' <> long "on-signal"
+      <*> many ( option text (short 's' <> long "on-signal"
           <> metavar "SIGSPEC" ) )
-      <*> many ( textOption (short 'V' <> long "inherit-variable"
+      <*> many ( option nfcText (short 'V' <> long "inherit-variable"
           <> metavar "NAME" ) )
       <*> ( switch (short 'a' <> long "argument-names")
-            *> many (OB.argument text $ metavar "NAMES") )
+            *> many (OB.argument nfcText $ metavar "NAMES") )
     
     text = T.pack <$> str
-    textOption = option text
+    nfcText = mkNText <$> text
 
 funcWorker :: (Prog T.Text t -> Fish ())
-  -> T.Text -- ^ The function name
+  -> NText -- ^ The function name
   -> Prog T.Text t -- ^ The function body
   -> T.Text -- ^ Description of the function
   -> Bool -- ^ Do not shadow the scope ?
-  -> [T.Text] -- Run on named event
+  -> [NText] -- Run on named event
   -> [T.Text] -- Run on given signal
-  -> [T.Text] -- Variables to inherit
-  -> [T.Text] -- Argument identifiers
+  -> [NText] -- Variables to inherit
+  -> [NText] -- Argument identifiers
   -> Fish ()
 funcWorker progA
   name prog desc noShadow
   events signals inherit idents = do
-    modify (functions . at name .~ Just f)
-    forM_ events (flip setupEventHandler $ EventHandler name)
+    functions %= Env.insert name f
+    forM_ events $ flip setupEventHandler (EventHandler name)
     forM_ signals (flip setupSignalHandler $ SignalHandler name)
   where
     f args =
@@ -74,10 +76,10 @@ funcWorker progA
         assignLoop args idents
         progA prog
     
-    filterInherit = M.filterWithKey
+    filterInherit = Env.filterWithKey
       $ \k _ -> k `elem` inherit
     
-    assignLoop :: [T.Text] -> [T.Text] -> Fish ()
+    assignLoop :: [T.Text] -> [NText] -> Fish ()
     assignLoop = \case
       [] -> \idents -> forM_ idents $ flip setFLocal []
       (arg:args) -> \case

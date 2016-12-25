@@ -10,6 +10,7 @@ import HFish.Interpreter.Core
 import HFish.Interpreter.FdTable (initialFdTable)
 import HFish.Interpreter.Var
 import HFish.Interpreter.Builtins (allBuiltins)
+import HFish.Interpreter.Env as Env
 
 import Control.Lens
 import Control.Monad
@@ -30,9 +31,9 @@ mkInitialFishState = do
   inherited <- map (bimap T.pack (Var Export . pure . T.pack)) <$> getEnvironment
   teeVars inherited & \(ro,rw) ->
     return $ emptyFishState {
-      _functions = M.empty
-      ,_globalEnv = M.fromList rw
-      ,_readOnlyEnv = (initStatus . incShlvl . M.fromList) ro
+      _functions = Env.empty
+      ,_globalEnv = Env.fromTextList rw
+      ,_readOnlyEnv = (initStatus . incShlvl . Env.fromTextList) ro
       ,_status = ExitSuccess
       ,_cwdir = wdir
     }
@@ -48,8 +49,8 @@ mkInitialFishState = do
       (Var Export . pure . T.pack . show . (+1))
       <$> (mv >>= readVarMaybe)
     
-    incShlvl = at "SHLVL" %~ inc    
-    initStatus = M.insert "status" (Var UnExport ["0"])
+    incShlvl = Env.alter inc "SHLVL"
+    initStatus = Env.insert "status" (Var UnExport ["0"])
 
 
 mkInitialFishReader :: Fish () -> Bool -> IO FishReader

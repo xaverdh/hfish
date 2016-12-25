@@ -7,6 +7,7 @@ module HFish.Interpreter.Process.Process (
 import qualified Data.Text as T
 import Data.Bifunctor
 import Data.Monoid
+import Data.NText
 import System.Process
 import System.Posix.Process
 import System.Posix.Types
@@ -28,7 +29,7 @@ import HFish.Interpreter.Process.Pid
 import HFish.Interpreter.Process.FdSetup
 
 
-fishWaitForProcess :: T.Text -> ProcessID -> Fish ()
+fishWaitForProcess :: NText -> ProcessID -> Fish ()
 fishWaitForProcess name pid = 
   liftIO ( getProcessStatus True{-block-} False pid )
   >>= \case
@@ -38,19 +39,20 @@ fishWaitForProcess name pid =
       Terminated sig _ -> errTerm sig
       Stopped sig -> errStop sig
   where
+    name' = extractText name
     errNoStatus = errork
       $ "could not retrieve status of command \""
-      <> name <> "\""
+      <> name' <> "\""
     errTerm sig = errork
-      $ "\"" <> name
+      $ "\"" <> name'
        <> "\" was terminated by signal: "
        <> showText sig
     errStop sig = errork
-      $ "\"" <> name
+      $ "\"" <> name'
        <> "\" was stopped by signal: "
        <> showText sig    
 
-fishCreateProcess :: T.Text -> [T.Text] -> Fish ProcessID
+fishCreateProcess ::NText -> [T.Text] -> Fish ProcessID
 fishCreateProcess name args = do
   env <- currentEnvironment
   pid <- forkWithFileDescriptors $
@@ -58,7 +60,7 @@ fishCreateProcess name args = do
   lastPid .= Just pid
   return pid
   where
-    nameString = T.unpack name
+    nameString = T.unpack $ extractText name
     argsStrings = map T.unpack args
     
 
@@ -67,5 +69,5 @@ currentEnvironment =
   fmap (map $ bimap l r) exportVars
   where
     r = T.unpack . T.unwords . _value
-    l = T.unpack
+    l = T.unpack . extractText
 

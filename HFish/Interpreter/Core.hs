@@ -4,6 +4,9 @@ module HFish.Interpreter.Core where
 import Fish.Lang
 import HFish.Interpreter.Util
 import HFish.Interpreter.FdTable as FDT
+import Data.NText as NText
+import HFish.Interpreter.IsText
+import HFish.Interpreter.Env as Env
 
 import qualified Data.Map as M
 import qualified Data.Set as S
@@ -68,21 +71,17 @@ data Var = Var {
   deriving (Eq,Ord)
 
 
--- | The type of a fish /environment/, mapping identifiers to
---   their values.
-type Env a = M.Map T.Text a
-
 -- | The type of a (fish) function.
 type Function =
   [T.Text] -- ^ The arguments to the function call, already evaluated.
   -> Fish ()
 
 -- | The type of an event handler
-newtype EventHandler = EventHandler T.Text
+newtype EventHandler = EventHandler NText
   deriving (Eq,Ord,Show)
 
 -- | The type of a signal handler
-newtype SignalHandler = SignalHandler T.Text
+newtype SignalHandler = SignalHandler NText
   deriving (Eq,Ord,Show)
 
 -- | The /mutable/ state of the interpreter.
@@ -228,13 +227,13 @@ disallowK = local
 emptyFishState :: FishState
 emptyFishState =
   FishState
-    M.empty
-    M.empty
-    M.empty
-    M.empty
-    M.empty
+    Env.empty
+    Env.empty
+    Env.empty
+    Env.empty
+    Env.empty
     ExitSuccess "" []
     Nothing
-    M.empty
+    Env.empty
     M.empty
 

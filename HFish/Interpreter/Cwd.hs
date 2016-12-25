@@ -4,6 +4,7 @@ module HFish.Interpreter.Cwd where
 import HFish.Interpreter.Core
 import HFish.Interpreter.Var
 import HFish.Interpreter.Status
+import HFish.Interpreter.Env as Env
 
 import qualified Data.Text as T
 import Data.Monoid
@@ -22,7 +23,7 @@ setCWD dir = do
   liftIO (doesDirectoryExist d) >>= \case
     True -> do
       cwdir .= d
-      readOnlyEnv . ix "PWD" . value .= [T.pack d]
+      readOnlyEnv %= Env.adjust (value .~ [T.pack d]) "PWD"
       ok
     False -> setStatus (ExitFailure 1)
 

@@ -13,6 +13,7 @@ import HFish.Interpreter.SetCmd
 import HFish.Interpreter.Util
 
 import qualified Data.Text as T
+import Data.NText
 import Data.Monoid
 import Data.Text.IO as TextIO
 import Control.Lens
@@ -67,22 +68,22 @@ readWorker array nullTerm mscp mex names
     case names of
       [name] -> do
         vs <- readFrom Fd0 >>= splitWords
-        setV name vs
+        setV (mkNText name) vs
         ok
       _ -> arrayWrongArgNumErr
   | array = case names of
     [name] -> do
       vs <- readLineFrom Fd0 >>= splitWords
-      setV name vs
+      setV (mkNText name) vs
       ok
     _ -> arrayWrongArgNumErr
   | nullTerm = do
     vs <- readFrom Fd0 >>= splitWords
-    assignLoop names vs
+    assignLoop (map mkNText names) vs
     ok
   | otherwise = do
     vs <- readLineFrom Fd0 >>= splitWords
-    assignLoop names vs
+    assignLoop (map mkNText names) vs
     ok
   where
     splitWords :: T.Text -> Fish [T.Text]

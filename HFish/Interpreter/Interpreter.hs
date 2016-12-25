@@ -16,9 +16,11 @@ import HFish.Interpreter.Concurrent
 import HFish.Interpreter.Slice
 import HFish.Interpreter.Util
 import HFish.Interpreter.ExMode
+import HFish.Interpreter.Env as Env
 import qualified HFish.Interpreter.SetCmd as SetCmd
 import qualified HFish.Interpreter.FuncSt as FuncSt
 
+import Data.NText
 import Data.Monoid
 import Data.Maybe
 import Data.Bool
@@ -84,8 +86,8 @@ stmtA mode = \case
 cmdStA :: ExMode -> CmdIdent T.Text t -> Args T.Text t -> Fish ()
 cmdStA mode (CmdIdent _ ident) args = do
   ts <- evalArgs args
-  bn <- preview (builtins . ix ident)
-  fn <- preuse (functions . ix ident)
+  bn <- views builtins (`Env.lookup` ident)
+  fn <- uses functions (`Env.lookup` ident)
   case (bn,fn) of
     (Just b,_) -> b (isFork mode) ts
     (_,Just f) -> setReturnK $ f ts
@@ -282,8 +284,9 @@ evalVarRef (VarRef _ name ref) = do
         else do
           slcs <- evalRef ref (length ts)
           return (readSlices slcs ts)
+    
     evalName = \case
-      Left vref -> evalVarRef vref
+      Left vref -> map mkNText <$> evalVarRef vref
       Right (VarIdent _ i) -> return [i]
     
 

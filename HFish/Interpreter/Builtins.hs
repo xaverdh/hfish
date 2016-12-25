@@ -9,12 +9,8 @@ import Control.Monad.Reader
 import Fish.Lang
 import HFish.Interpreter.Core
 import HFish.Interpreter.Interpreter
+import HFish.Interpreter.Env as Env
 import Data.Bifunctor
-import qualified Data.Map as M
-
-import System.Directory
-import System.IO
-import System.Exit
 import qualified Data.Text as T
 
 import HFish.Interpreter.Builtins.Debug
@@ -39,7 +35,7 @@ import HFish.Interpreter.Builtins.Emit
 
 allBuiltins :: Env (Bool -> [T.Text] -> Fish ())
 allBuiltins =
-  M.fromList [
+  Env.fromList [
     ("debug",debugF)
     ,("return",returnF)
     ,("break",breakF)

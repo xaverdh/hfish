@@ -4,6 +4,7 @@ module HFish.Interpreter.Status where
 import Fish.Lang
 import HFish.Interpreter.Core
 import HFish.Interpreter.Var
+import HFish.Interpreter.Env as Env
 
 import qualified Data.Text as T
 import Data.Monoid
@@ -25,14 +26,14 @@ getStatus = use status
 setStatus :: ExitCode -> Fish ()
 setStatus exCode = do
   status .= exCode
-  readOnlyEnv . at "status" .= Just
+  readOnlyEnv %= insert "status"
     (Var UnExport [T.pack . show $ fromEnum exCode])
 
 modifyStatus :: (ExitCode -> ExitCode) -> Fish ()
 modifyStatus f = do
   status %= f
   exCode <- use status
-  readOnlyEnv . at "status" .= Just
+  readOnlyEnv %= insert "status"
     (Var UnExport [T.pack . show $ fromEnum exCode])
 
 invertStatus :: Fish ()

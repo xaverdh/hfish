@@ -39,7 +39,7 @@ import qualified Data.Text as T
 --   The fist action is expected to write to the (abstract) fd
 --   passed to 'pipeFish',
 --
---   the second is expected to read from stdin.
+--   the second is expected to read from Fd0 (abstract stdin).
 pipeFish :: L.Fd -> Fish () -> Fish () -> Fish ()
 pipeFish fd f1 f2 = do
   (rE,wE) <- liftIO P.createPipe

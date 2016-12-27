@@ -47,7 +47,6 @@ readTextsMaybe = readTextMaybe . T.unwords
 showText :: Show a => a -> T.Text
 showText = T.pack . show
 
-
 showCall :: (MonadIO m,Show a) => String -> [a] -> m ()
 showCall f args =
   ( liftIO . putStrLn )

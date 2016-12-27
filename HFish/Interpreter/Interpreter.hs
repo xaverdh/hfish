@@ -261,11 +261,11 @@ evalCmdSubstE (CmdRef _ prog ref) = do
         return (readSlices slcs ts)
 
 evalVarRefE :: Bool -> VarRef T.Text t -> Fish [Globbed]
-evalVarRefE q vref = do
+evalVarRefE s vref = do
   vs <- evalVarRef vref
   return $ map fromText (ser vs)
   where
-    ser = if q then pure . T.unwords else id
+    ser = if s then pure . T.unwords else id
 
 evalVarRef :: VarRef T.Text t -> Fish [T.Text]
 evalVarRef (VarRef _ name ref) = do

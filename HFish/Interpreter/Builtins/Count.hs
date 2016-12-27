@@ -3,6 +3,8 @@ module HFish.Interpreter.Builtins.Count (
 ) where
 
 import HFish.Interpreter.Core
+import HFish.Interpreter.IO
+import HFish.Interpreter.Util
 
 countF :: Builtin
-countF _  = echo . show . length
+countF _  = echoLn . showText . length

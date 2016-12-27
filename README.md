@@ -29,7 +29,7 @@ git clone git://github.com/xaverdh/fish-lang
 cd hfish
 cabal sandbox init
 cabal sandbox add-source ../posix-fd-io ../nfc-text ../fish-lang ../fish-parser ../hfish-parser
-cabal install
+cabal install --ghc-option=-threaded
 ```
 
 Build time from scratch is ~10min on a i5-4200U with -j4 so I suggest that you get yourself a cup of tea.

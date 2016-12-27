@@ -32,6 +32,7 @@ import HFish.Interpreter.Builtins.Eval
 import HFish.Interpreter.Builtins.Breakpoint
 import HFish.Interpreter.Builtins.Test
 import HFish.Interpreter.Builtins.Emit
+import HFish.Interpreter.Builtins.Count
 
 allBuiltins :: Env (Bool -> [T.Text] -> Fish ())
 allBuiltins =
@@ -61,5 +62,6 @@ allBuiltins =
     ,("test",testF)
     ,("printf",printfF)
     ,("emit",emitF)
+    ,("count",countF)
   ]
 

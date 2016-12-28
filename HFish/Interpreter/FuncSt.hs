@@ -66,8 +66,8 @@ funcWorker progA
   name prog desc noShadow
   events signals inherit idents = do
     functions %= Env.insert name f
-    forM_ events $ flip setupEventHandler (EventHandler name)
-    forM_ signals (flip setupSignalHandler $ SignalHandler name)
+    forM_ events $ flip setupEventHandler $ EventHandler name
+    forM_ signals $ flip setupSignalHandler $ SignalHandler name
   where
     f args =
       localise flocalEnv $ do

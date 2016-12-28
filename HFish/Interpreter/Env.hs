@@ -14,6 +14,7 @@ module HFish.Interpreter.Env (
   ,delete
   ,filter
   ,filterWithKey
+  ,identifiers
 ) where
 
 import Prelude hiding (lookup,filter)
@@ -84,4 +85,5 @@ filter f = liftHashMap $ HM.filter f
 filterWithKey :: (NText -> b -> Bool) -> Env b -> Env b
 filterWithKey f = liftHashMap $ HM.filterWithKey f
 
-
+identifiers :: Env a -> [NText]
+identifiers = onHashMap HM.keys

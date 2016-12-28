@@ -63,9 +63,13 @@ functionsList all _ = do
     $ names
 
 functionsQuery :: [T.Text] -> Fish ()
-functionsQuery = mapM_
-  $ \fname -> maybe bad (const ok)
-    <$> uses functions (`Env.lookup` mkNText fname)
+functionsQuery fnames = do
+  mbs <- forM fnames $ \fn ->
+    uses functions (`Env.lookup` mkNText fn)
+  bool bad ok
+    (all maybeToBool mbs)
+  where
+    maybeToBool = maybe False (const True)
 
 functionsErase :: [T.Text] -> Fish ()
 functionsErase = mapM_ $ 

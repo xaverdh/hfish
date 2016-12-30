@@ -24,6 +24,12 @@ import Control.Monad.IO.Class
 import qualified Control.Exception as E
 import qualified Control.DeepSeq as DeepSeq
 
+-- todo: - Introduce 2 different slices,
+--       one for internal use here, one for
+--       one for the api.
+--       - do mkSlices internally only
+
+
 
 {- Implements fish style array slicing -}
 
@@ -73,25 +79,27 @@ readSlices slcs (Var _ _ xs) = work 0 slcs xs
 {- writeSlices may fail if the ranges overlap -}
 writeSlices :: Slices -> Var -> [T.Text] -> Fish Var
 writeSlices slcs (Var ex l xs) ys =
-  Var ex l <$> uncoverErrors (work 0 slcs xs ys)
+  Var ex l <$> either errork return
+    (work 0 slcs xs ys)
   where
+    work :: Int -> Slices -> [T.Text] -> [T.Text] -> Either T.Text [T.Text]
     work n slcs xs ys = slcs & \case
-      [] -> bool tooManyErr xs (isEmpty ys)
+      [] -> bool (Left tooManyErr) (Right xs) (isEmpty ys)
       (b,(i,j)):rest -> 
         triSplit (i-n) (j-i+1) xs & \case
-          Nothing -> invalidIndicesErr slcs
+          Nothing -> Left $ invalidIndicesErr slcs
           Just (zs,_,xs') ->
             splitAtMaybe (j-i+1) ys & \case
-              Nothing -> tooFewErr
+              Nothing -> Left tooFewErr
               Just (rs,ys') ->
-                zs ++ mbRev b rs
-                ++ work (j+1) rest xs' ys'
+                (++) <$> Right (zs ++ mbRev b rs)
+                <*> work (j+1) rest xs' ys'
     
-    tooFewErr = error "Too few values to write."
-    tooManyErr = error "Too many values to write."
-    invalidIndicesErr slcs = error
-      $ "Invalid indices (out of bounds or overlapping): "
-        ++ showSlices slcs
+    tooFewErr = "Too few values to write."
+    tooManyErr = "Too many values to write."
+    invalidIndicesErr slcs =
+      "Invalid indices (out of bounds or overlapping): "
+       <> showSlices slcs
 
 
 {- drop the slices from an array -}
@@ -107,9 +115,9 @@ dropSlices slcs (Var ex l xs) =
           splitAt (j-i+1) xs' & \(_,zs) ->
             ys ++ work i rest zs
 
-showSlices :: Slices -> String
+showSlices :: Slices -> T.Text
 showSlices slcs = 
-  arrify . unwords
+  T.pack . arrify . unwords
   $ map (sugar . unNormalise . unMarkSwap) slcs
   where
     unMarkSwap (b,(i,j)) = bool id swap b (i,j)

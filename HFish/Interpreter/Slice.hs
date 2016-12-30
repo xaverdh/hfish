@@ -72,7 +72,7 @@ readSlices slcs (Var _ _ xs) = work 0 slcs xs
 
 {- writeSlices may fail if the ranges overlap -}
 writeSlices :: Slices -> Var -> [T.Text] -> Fish Var
-writeSlices slcs (Var ex l xs) ys = 
+writeSlices slcs (Var ex l xs) ys =
   Var ex l <$> uncoverErrors (work 0 slcs xs ys)
   where
     work n slcs xs ys = slcs & \case
@@ -96,8 +96,9 @@ writeSlices slcs (Var ex l xs) ys =
 
 {- drop the slices from an array -}
 dropSlices :: Slices -> Var -> Fish Var
-dropSlices slcs (Var ex l xs) = Var ex l
-  <$> uncoverErrors (work 0 slcs xs)
+dropSlices slcs (Var ex l xs) =
+  uncoverErrors (work 0 slcs xs)
+  <$$> \ys -> Var ex (length ys) ys
   where
     work n slcs xs = slcs & \case
       [] -> xs

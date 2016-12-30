@@ -88,7 +88,7 @@ readWorker array nullTerm mscp mex names
   where
     splitWords :: T.Text -> Fish [T.Text]
     splitWords s = getVarMaybe "IFS" <$$> \case
-      Just (Var _ vs) -> join (map T.unpack vs)
+      Just (Var _ _ vs) -> join (map T.unpack vs)
         & \cs -> T.split (`elem` cs) s
       Nothing -> T.foldr ((:) . T.singleton) [] s
     
@@ -96,8 +96,8 @@ readWorker array nullTerm mscp mex names
     
     setIt vs ident = 
       collectSetupData ident mscp mex
-        $ \env ex scp -> 
-          setVarSafe env ident (Var ex vs)
+        $ \env ex _ -> 
+          setVarSafe env ident (Var ex (length vs) vs)
     
     assignLoop [name] wds =
       void $ setIt wds name

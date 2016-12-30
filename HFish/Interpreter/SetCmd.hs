@@ -48,7 +48,7 @@ setCommandA evalArgs evalRef = \case
 collectSetupData :: NText
   -> Maybe Scope
   -> Maybe Export
-  -> (EnvLens Var -> Export -> Maybe [T.Text] -> Fish a)
+  -> (EnvLens Var -> Export -> Maybe ([T.Text],Int) -> Fish a)
   -> Fish a
 collectSetupData ident mscope mexport k =
   maybe guessScope haveScope mscope
@@ -59,14 +59,14 @@ collectSetupData ident mscope mexport k =
     guessScope = getOccurs ident
       >>= \case
         [] -> k (EnvLens flocalEnv) (defEx UnExport) Nothing
-        (envl,Var ex vs):_ -> k envl (defEx ex) (Just vs)
+        (envl,Var ex l vs):_ -> k envl (defEx ex) $ Just (vs,l)
           
     haveScope scope = scopeAsEnvLens scope
       & \envl -> do
         mv <- uses (envlens envl) (`Env.lookup` ident)
         onMaybe mv
           ( k envl (defEx UnExport) Nothing )
-          ( \(Var ex vs) -> k envl (defEx ex) (Just vs) )
+          ( \(Var ex l vs) -> k envl (defEx ex) $ Just (vs,l) )
 
 setSetting :: (Ref a -> Int -> Fish Slices)
   -> Maybe Scope
@@ -77,13 +77,13 @@ setSetting :: (Ref a -> Int -> Fish Slices)
 setSetting evalRef mscp mex (ident,ref) args =
   collectSetupData ident mscp mex $ \envl ex mvs ->
   if isNothing ref
-    then setVarSafe envl ident $ Var ex args
+    then setVarSafe envl ident $ Var ex (length args) args
     else case mvs of
       Nothing -> errork uninitErr
-      Just vs -> do
-        slcs <- evalRef ref (length vs)
-        vs' <- writeSlices slcs vs args
-        setVarSafe envl ident $ Var ex vs'
+      Just (vs,l) -> do
+        slcs <- evalRef ref l
+        var <- writeSlices slcs (Var ex l vs) args
+        setVarSafe envl ident var
   where
     uninitErr = "set: Trying to set parts of uninitialised variable"
 
@@ -116,7 +116,7 @@ queryVars mscope mexport args = do
     isNotSetIn :: EnvLens Var -> NText -> Fish Bool
     isNotSetIn envl ident =
       uses (envlens envl) (`Env.lookup` ident) >>= \mv ->
-      onMaybe mv (return True) $ \(Var ex _) -> 
+      onMaybe mv (return True) $ \(Var ex _ _) -> 
         return $ case mexport of
           Nothing -> False
           Just ex' -> ex /= ex'
@@ -146,13 +146,13 @@ eraseVars evalRef mscope argsData =
       mv <- uses (envlens envl) (`Env.lookup` ident)
       case mv of
         Nothing -> return False
-        Just (Var ex vs) -> 
-          evalRef ref (length vs)
+        Just var@(Var ex l vs) -> 
+          evalRef ref l
           >>= \slcs -> True <$
             if isEmptySlice slcs
               then delVarSafe envl ident
-              else setVarSafe envl ident =<<
-                ( Var ex <$> dropSlices slcs vs )
+              else setVarSafe envl ident
+                =<< dropSlices slcs var
 
 
 scopeAsEnvLens :: Scope -> EnvLens Var

@@ -67,7 +67,7 @@ hfishMain noexecute ast command fishcompat args
     
     injectArgs args = runFish
       $ setVar (EnvLens flocalEnv)
-        "argv" (Var UnExport $ map T.pack args)
+        "argv" (mkVar $ map T.pack args)
     
     exDirect args = withProg'
       $ parseInteractive fishcompat

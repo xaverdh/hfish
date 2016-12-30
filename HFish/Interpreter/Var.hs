@@ -30,8 +30,14 @@ evironments =
    ,EnvLens readOnlyEnv ]
 
 instance Show Var where
-  show (Var UnExport vs) = show vs
-  show (Var Export vs) = "(exported) " ++ show vs
+  show (Var UnExport vs _) = show vs
+  show (Var Export vs _) = "(exported) " ++ show vs
+
+mkVar :: [T.Text] -> Var
+mkVar ts = Var UnExport (length ts) ts
+
+mkVarXp :: [T.Text] -> Var
+mkVarXp ts = Var UnExport (length ts) ts
 
 getOccurs :: NText -> Fish [(EnvLens Var,Var)]
 getOccurs ident =
@@ -72,10 +78,10 @@ showVarEnv namesOnly env = T.unlines $
   Env.toList env <$$>
   ( if namesOnly
     then extractText . fst
-    else \(k,Var _ vs) -> T.unwords (extractText k : vs) )
+    else \(k,Var _ _ vs) -> T.unwords (extractText k : vs) )
 
 isExport :: Var -> Bool
-isExport (Var ex _) = 
+isExport (Var ex _ _) = 
   case ex of
     Export -> True
     UnExport -> False

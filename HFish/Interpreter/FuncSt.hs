@@ -90,6 +90,6 @@ funcWorker progA
           setFLocal ident [arg]
           >> assignLoop args idents
 
-    setFLocal ident vs = (Var UnExport vs)
+    setFLocal ident vs = (Var UnExport (length vs) vs)
       & setVarSafe (EnvLens flocalEnv) ident
 

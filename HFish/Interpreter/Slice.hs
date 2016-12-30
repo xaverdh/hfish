@@ -27,18 +27,14 @@ import qualified Control.DeepSeq as DeepSeq
 
 {- Implements fish style array slicing -}
 
-
 -- | A collection of slices, eachof which consists of:
 --
 --   * A boolean, indicating if the slice is "reversed"
 --   * A pair of Ints, corresponding to the ends of the slice.
 type Slices = [(Bool,(Int,Int))]
 
-isEmptySlice :: Slices -> Bool
-isEmptySlice = (==[])
-
-makeSlices :: Int -> [(Int,Int)] -> Fish Slices
-makeSlices l xs = 
+mkSlices :: Int -> [(Int,Int)] -> Maybe Slices
+mkSlices l xs = 
   L.sortOn (fst . snd)
   . map markSwap
   <$> forM xs normalise
@@ -49,13 +45,23 @@ makeSlices l xs =
       return (a,b)
     markSwap (i,j) = bool (False,(i,j)) (True,(j,i)) (i>j)
     index i
-      | 0 < i && i <= l = return (i - 1)
-      | -l <= i && i < 0 = return (l + i)
-      | otherwise = errork
-        $ "Index \"" <> showText i <> "\" is out of bounds"
+      | 0 < i && i <= l = Just (i - 1)
+      | -l <= i && i < 0 = Just (l + i)
+      | otherwise = Nothing
 
-readSlices :: Slices -> [a] -> [a]
-readSlices = work 0
+makeSlices i xs = 
+  maybe err return $ mkSlices i xs
+  where
+    err = errork
+      $ "Index \""
+      <> showText i
+      <> "\" is out of bounds"
+
+isEmptySlice :: Slices -> Bool
+isEmptySlice = (==[])
+
+readSlices :: Slices -> Var -> [T.Text]
+readSlices slcs (Var _ _ xs) = work 0 slcs xs
   where
     work n slcs xs = slcs & \case
       [] -> []
@@ -65,9 +71,9 @@ readSlices = work 0
             mbRev b ys ++ work i rest xs'
 
 {- writeSlices may fail if the ranges overlap -}
-writeSlices :: (DeepSeq.NFData a,Show a) => 
-  Slices -> [a] -> [a] -> Fish [a]
-writeSlices slcs xs ys = uncoverErrors $ work 0 slcs xs ys
+writeSlices :: Slices -> Var -> [T.Text] -> Fish Var
+writeSlices slcs (Var ex l xs) ys = 
+  Var ex l <$> uncoverErrors (work 0 slcs xs ys)
   where
     work n slcs xs ys = slcs & \case
       [] -> bool tooManyErr xs (isEmpty ys)
@@ -89,9 +95,9 @@ writeSlices slcs xs ys = uncoverErrors $ work 0 slcs xs ys
 
 
 {- drop the slices from an array -}
-dropSlices :: (DeepSeq.NFData a,Show a) => 
-  Slices -> [a] -> Fish [a]
-dropSlices slcs xs = uncoverErrors $ work 0 slcs xs
+dropSlices :: Slices -> Var -> Fish Var
+dropSlices slcs (Var ex l xs) = Var ex l
+  <$> uncoverErrors (work 0 slcs xs)
   where
     work n slcs xs = slcs & \case
       [] -> xs
@@ -125,7 +131,6 @@ isEmpty :: [a] -> Bool
 isEmpty = \case
   [] -> True
   _ -> False
-
 
 uncoverErrors :: DeepSeq.NFData a => a -> Fish a
 uncoverErrors f =

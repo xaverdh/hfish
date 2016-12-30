@@ -54,7 +54,6 @@ projectIO f = do
   s <- get
   return (runFish f r s)
 
-
 -- | Takes a fish action and a continuation and passes an IO
 --
 --   version of the fish action as an argument to the continuation.
@@ -65,6 +64,7 @@ asIO f g = projectIO f >>= g
 -- | The type of a fish /variable/
 data Var = Var {
     _exported :: Export
+    ,_len :: Int
     ,_value :: [T.Text]
   }
   deriving (Eq,Ord)

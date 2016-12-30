@@ -28,7 +28,7 @@ readOnly = ["SHLVL","PWD"]
 mkInitialFishState :: IO FishState
 mkInitialFishState = do
   wdir <- getCurrentDirectory
-  inherited <- map (bimap T.pack (Var Export . pure . T.pack)) <$> getEnvironment
+  inherited <- map (bimap T.pack (mkVarXp . pure . T.pack)) <$> getEnvironment
   teeVars inherited & \(ro,rw) ->
     return $ emptyFishState {
       _functions = Env.empty
@@ -46,11 +46,11 @@ mkInitialFishState = do
     
     inc :: Maybe Var -> Maybe Var
     inc mv =
-      (Var Export . pure . T.pack . show . (+1))
+      (mkVarXp . pure . T.pack . show . (+1))
       <$> (mv >>= readVarMaybe)
     
     incShlvl = Env.alter inc "SHLVL"
-    initStatus = Env.insert "status" (Var UnExport ["0"])
+    initStatus = Env.insert "status" (mkVar ["0"])
 
 
 mkInitialFishReader :: Fish () -> Bool -> IO FishReader

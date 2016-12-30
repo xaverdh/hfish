@@ -116,7 +116,7 @@ forStA (VarIdent _ varIdent) args prog = do
   setBreakK (loop xs)
   where
     lbind x f = localise localEnv
-      (setVarSafe (EnvLens localEnv) varIdent (Var UnExport [x]) >> f)
+      (setVarSafe (EnvLens localEnv) varIdent (mkVar [x]) >> f)
     
     body = progA prog
     
@@ -257,8 +257,9 @@ evalCmdSubstE (CmdRef _ prog ref) = do
     map fromText <$> case ref of
       Nothing -> return ts
       Just _ -> do
-        slcs <- evalRef ref (length ts)
-        return (readSlices slcs ts)
+        let l = length ts
+        slcs <- evalRef ref l
+        return $ readSlices slcs (Var UnExport l ts)
 
 evalVarRefE :: Bool -> VarRef T.Text t -> Fish [Globbed]
 evalVarRefE s vref = do
@@ -274,12 +275,12 @@ evalVarRef (VarRef _ name ref) = do
   return (join vs)
   where
     lookupVar ident = do
-      ts <- getVarValue ident
+      var@(Var _ l ts) <- getVar ident
       if isNothing ref
         then return ts
         else do
-          slcs <- evalRef ref (length ts)
-          return (readSlices slcs ts)
+          slcs <- evalRef ref l
+          return $ readSlices slcs var
     
     evalName = \case
       Left vref -> map mkNText <$> evalVarRef vref

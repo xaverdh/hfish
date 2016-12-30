@@ -27,14 +27,14 @@ setStatus :: ExitCode -> Fish ()
 setStatus exCode = do
   status .= exCode
   readOnlyEnv %= insert "status"
-    (Var UnExport [T.pack . show $ fromEnum exCode])
+    (mkVar [T.pack . show $ fromEnum exCode])
 
 modifyStatus :: (ExitCode -> ExitCode) -> Fish ()
 modifyStatus f = do
   status %= f
   exCode <- use status
   readOnlyEnv %= insert "status"
-    (Var UnExport [T.pack . show $ fromEnum exCode])
+    (mkVar [T.pack . show $ fromEnum exCode])
 
 invertStatus :: Fish ()
 invertStatus =

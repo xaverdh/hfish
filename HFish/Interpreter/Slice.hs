@@ -39,7 +39,7 @@ import qualified Control.DeepSeq as DeepSeq
 --   * A pair of Ints, corresponding to the ends of the slice.
 type Slices = [(Bool,(Int,Int))]
 
-mkSlices :: Int -> [(Int,Int)] -> Maybe Slices
+mkSlices :: Int -> [(Int,Int)] -> Either T.Text Slices
 mkSlices l xs = 
   L.sortOn (fst . snd)
   . map markSwap
@@ -51,17 +51,14 @@ mkSlices l xs =
       return (a,b)
     markSwap (i,j) = bool (False,(i,j)) (True,(j,i)) (i>j)
     index i
-      | 0 < i && i <= l = Just (i - 1)
-      | -l <= i && i < 0 = Just (l + i)
-      | otherwise = Nothing
+      | 0 < i && i <= l = Right (i - 1)
+      | -l <= i && i < 0 = Right (l + i)
+      | otherwise = Left $
+        "Index \"" <> showText i <> "\" is out of bounds"
 
+makeSlices :: Int -> [(Int,Int)] -> Fish Slices
 makeSlices i xs = 
-  maybe err return $ mkSlices i xs
-  where
-    err = errork
-      $ "Index \""
-      <> showText i
-      <> "\" is out of bounds"
+  either errork return $ mkSlices i xs
 
 isEmptySlice :: Slices -> Bool
 isEmptySlice = (==[])
@@ -79,15 +76,16 @@ readSlices slcs (Var _ _ xs) = work 0 slcs xs
 {- writeSlices may fail if the ranges overlap -}
 writeSlices :: Slices -> Var -> [T.Text] -> Fish Var
 writeSlices slcs (Var ex l xs) ys =
-  Var ex l <$> either errork return
-    (work 0 slcs xs ys)
+  Var ex l
+    <$> either errork return
+      (work 0 slcs xs ys)
   where
     work :: Int -> Slices -> [T.Text] -> [T.Text] -> Either T.Text [T.Text]
     work n slcs xs ys = slcs & \case
       [] -> bool (Left tooManyErr) (Right xs) (isEmpty ys)
       (b,(i,j)):rest -> 
         triSplit (i-n) (j-i+1) xs & \case
-          Nothing -> Left $ invalidIndicesErr slcs
+          Nothing -> Left $ invalidIndicesErr (b,(i,j))
           Just (zs,_,xs') ->
             splitAtMaybe (j-i+1) ys & \case
               Nothing -> Left tooFewErr
@@ -97,10 +95,12 @@ writeSlices slcs (Var ex l xs) ys =
     
     tooFewErr = "Too few values to write."
     tooManyErr = "Too many values to write."
-    invalidIndicesErr slcs =
-      "Invalid indices (out of bounds or overlapping): "
-       <> showSlices slcs
+    invalidIndicesErr slc =
+      "Invalid indices (out of bounds or overlapping) at slice: "
+       <> showSlices [slc]
 
+    maybeToEither :: Maybe a -> b -> Either b a
+    maybeToEither ma b = maybe (Left b) Right ma
 
 {- drop the slices from an array -}
 dropSlices :: Slices -> Var -> Fish Var

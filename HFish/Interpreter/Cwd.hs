@@ -25,6 +25,11 @@ setCWD dir = do
       cwdir .= d
       readOnlyEnv %= Env.adjust (value .~ [T.pack d]) "PWD"
       liftIO $ setCurrentDirectory d
+      -- ^ This is necessary since the current working directory
+      --   is separate from the environment passed to the process.
+      --
+      --   The kernel holds it in a separate variable which is automatically
+      --   inherited when a child is spawned.
       ok
     False -> setStatus (ExitFailure 1)
 

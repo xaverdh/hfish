@@ -24,6 +24,7 @@ setCWD dir = do
     True -> do
       cwdir .= d
       readOnlyEnv %= Env.adjust (value .~ [T.pack d]) "PWD"
+      liftIO $ setCurrentDirectory d
       ok
     False -> setStatus (ExitFailure 1)
 

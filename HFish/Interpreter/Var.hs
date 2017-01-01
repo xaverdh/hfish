@@ -18,8 +18,6 @@ import Control.Lens
 import Control.Monad
 import System.Exit
 
--- TODO: catch errors thrown by read functions and rethrow as errork
-
 newtype EnvLens a = EnvLens
   { envlens :: Lens' FishState (Env a) }
 
@@ -37,7 +35,7 @@ mkVar :: [T.Text] -> Var
 mkVar ts = Var UnExport (length ts) ts
 
 mkVarXp :: [T.Text] -> Var
-mkVarXp ts = Var UnExport (length ts) ts
+mkVarXp ts = Var Export (length ts) ts
 
 getOccurs :: NText -> Fish [(EnvLens Var,Var)]
 getOccurs ident =

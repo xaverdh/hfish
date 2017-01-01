@@ -26,6 +26,9 @@ whenJust = flip $ maybe (pure ())
 onMaybe :: Maybe a -> b -> (a -> b) -> b
 onMaybe ma b f = maybe b f ma
 
+maybeToEither :: Maybe a -> b -> Either b a
+maybeToEither ma b = maybe (Left b) Right ma
+
 splitAtMaybe :: Int -> [a] -> Maybe ([a],[a])
 splitAtMaybe i
   | i < 0 = const Nothing

@@ -65,7 +65,7 @@ isEmptySlice = (==[])
 
 readSlices :: Slices -> Var -> [T.Text]
 readSlices slcs (Var _ _ xs) = work 0 slcs xs
-  where
+  where    
     work n slcs xs = slcs & \case
       [] -> []
       (b,(i,j)):rest -> 
@@ -82,16 +82,14 @@ writeSlices slcs (Var ex l xs) ys =
   where
     work :: Int -> Slices -> [T.Text] -> [T.Text] -> Either T.Text [T.Text]
     work n slcs xs ys = slcs & \case
-      [] -> bool (Left tooManyErr) (Right xs) (isEmpty ys)
-      (b,(i,j)):rest -> 
-        triSplit (i-n) (j-i+1) xs & \case
-          Nothing -> Left $ invalidIndicesErr (b,(i,j))
-          Just (zs,_,xs') ->
-            splitAtMaybe (j-i+1) ys & \case
-              Nothing -> Left tooFewErr
-              Just (rs,ys') ->
-                (++) <$> Right (zs ++ mbRev b rs)
-                <*> work (j+1) rest xs' ys'
+      [] -> if isEmpty ys then Right xs else Left tooManyErr
+      (b,(i,j)):rest -> do
+        (zs,_,xs') <- triSplit (i-n) (j-i+1) xs
+            `maybeToEither` invalidIndicesErr (b,(i,j))
+        (rs,ys') <- splitAtMaybe (j-i+1) ys
+            `maybeToEither` tooFewErr
+        (++) <$> Right (zs ++ mbRev b rs)
+             <*> work (j+1) rest xs' ys'
     
     tooFewErr = "Too few values to write."
     tooManyErr = "Too many values to write."
@@ -99,21 +97,21 @@ writeSlices slcs (Var ex l xs) ys =
       "Invalid indices (out of bounds or overlapping) at slice: "
        <> showSlices [slc]
 
-    maybeToEither :: Maybe a -> b -> Either b a
-    maybeToEither ma b = maybe (Left b) Right ma
-
 {- drop the slices from an array -}
 dropSlices :: Slices -> Var -> Fish Var
 dropSlices slcs (Var ex l xs) =
-  uncoverErrors (work 0 slcs xs)
-  <$$> \ys -> Var ex (length ys) ys
+  maybe err return (work 0 slcs xs)
+  >>= return . \ys -> Var ex (length ys) ys
   where
+    work :: Int -> [(t, (Int, Int))] -> [a] -> Maybe [a]
     work n slcs xs = slcs & \case
-      [] -> xs
-      (_,(i,j)):rest ->
-        splitAt (i-n) xs & \(ys,xs') ->
-          splitAt (j-i+1) xs' & \(_,zs) ->
-            ys ++ work i rest zs
+      [] -> Just xs
+      (_,(i,j)):rest -> do
+        (ys,xs') <- splitAtMaybe (i-n) xs
+        (_,zs) <- splitAtMaybe (j-i+1) xs'
+        done <- work i rest zs
+        Just $ ys ++ done
+    err = errork "dropSlices: unknown error"
 
 showSlices :: Slices -> T.Text
 showSlices slcs = 
@@ -126,7 +124,6 @@ showSlices slcs =
     arrify s = "[" ++ s ++ "]"
     sugar (i,j) = show i ++ ".." ++ show j
     
-
 triSplit :: Int -> Int -> [a] -> Maybe ([a],[a],[a])
 triSplit i j xs = do
   (zs,xs') <- splitAtMaybe i xs
@@ -141,9 +138,12 @@ isEmpty = \case
   [] -> True
   _ -> False
 
+{-
 uncoverErrors :: DeepSeq.NFData a => a -> Fish a
 uncoverErrors f =
   liftIO (E.try . E.evaluate . DeepSeq.force $ f)
   >>= \case
     Left e -> errork $ showText (e :: E.ErrorCall)
     Right r -> return r
+-}
+

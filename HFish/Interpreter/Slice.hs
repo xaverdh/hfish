@@ -22,7 +22,7 @@ import Control.Lens
 import Control.Monad
 import Control.Monad.IO.Class
 
--- | A collection of slices, eachof which consists of:
+-- | A collection of slices, each of which consists of:
 --
 --   * A boolean, indicating if the slice is "reversed"
 --   * A pair of Ints, corresponding to the ends of the slice.
@@ -76,10 +76,9 @@ readIndices indices (Var _ l xs) = do
       (b,(i,j)):rest -> do
         (_,xs') <- splitAtMaybe (i-n) xs
         (ys,_) <- splitAtMaybe (j-i+1) xs'
-        (++) <$> Just (mbRev b ys)
-             <*> work i rest xs'
+        (++) (mbRev b ys) <$> work i rest xs'
     err = errork
-      $ "something went wrong..."
+      $ "readIndices: something went wrong..."
     
 
 -- | Write values into variable at given indices.
@@ -97,10 +96,11 @@ writeIndices indices (Var ex l xs) ys = do
       (b,(i,j)):rest -> do
         (zs,_,xs') <- triSplit (i-n) (j-i+1) xs
             `maybeToEither` invalidIndicesErr (b,(i,j))
+        
         (rs,ys') <- splitAtMaybe (j-i+1) ys
             `maybeToEither` tooFewErr
-        (++) <$> Right (zs ++ mbRev b rs)
-             <*> work (j+1) rest xs' ys'
+        
+        (++) (zs ++ mbRev b rs) <$> work (j+1) rest xs' ys'
     
     tooFewErr = "Too few values to write."
     tooManyErr = "Too many values to write."
@@ -121,8 +121,7 @@ dropIndices indices (Var ex l xs) = do
       (_,(i,j)):rest -> do
         (ys,xs') <- splitAtMaybe (i-n) xs
         (_,zs) <- splitAtMaybe (j-i+1) xs'
-        done <- work i rest zs
-        Just $ ys ++ done
+        (++) ys <$> work i rest zs
     err = errork "dropIndices: unknown error"
 
 

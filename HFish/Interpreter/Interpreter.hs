@@ -258,8 +258,8 @@ evalCmdSubstE (CmdRef _ prog ref) = do
       Nothing -> return ts
       Just _ -> do
         let l = length ts
-        slcs <- evalRef ref l
-        readSlices slcs (Var UnExport l ts)
+        indices <- evalRef ref
+        readSlices indices (Var UnExport l ts)
 
 evalVarRefE :: Bool -> VarRef T.Text t -> Fish [Globbed]
 evalVarRefE s vref = do
@@ -275,22 +275,21 @@ evalVarRef (VarRef _ name ref) = do
   return (join vs)
   where
     lookupVar ident = do
-      var@(Var _ l ts) <- getVar ident
+      var@(Var _ _ ts) <- getVar ident
       if isNothing ref
         then return ts
         else do
-          slcs <- evalRef ref l
-          readSlices slcs var
+          indices <- evalRef ref
+          readSlices indices var
     
     evalName = \case
       Left vref -> map mkNText <$> evalVarRef vref
       Right (VarIdent _ i) -> return [i]
     
 
-evalRef :: Ref (Expr T.Text t) -> Int -> Fish Slices
-evalRef ref l = do
-    ijs <- forM (onMaybe ref [] id) indices
-    makeSlices l (join ijs)
+evalRef :: Ref (Expr T.Text t) -> Fish [(Int,Int)]
+evalRef ref =
+  join <$> forM (onMaybe ref [] id) indices
   where
     indices = \case
       Index a -> (\xs -> zip xs xs) <$> evalInt a

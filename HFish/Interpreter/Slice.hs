@@ -1,11 +1,8 @@
 {-# language LambdaCase, OverloadedStrings #-}
 module HFish.Interpreter.Slice (
-  Slices
-  ,makeSlices
-  ,readSlices
+  readSlices
   ,writeSlices
   ,dropSlices
-  ,isEmptySlice
 ) where
 
 import Fish.Lang
@@ -21,12 +18,6 @@ import Data.Bifunctor
 import Control.Lens
 import Control.Monad
 import Control.Monad.IO.Class
-
--- todo: - Introduce 2 different slices,
---       one for internal use here, one for
---       one for the api.
---       - do mkSlices internally only
-
 
 {- Implements fish style array slicing -}
 
@@ -55,13 +46,17 @@ mkSlices l xs =
 
 makeSlices :: Int -> [(Int,Int)] -> Fish Slices
 makeSlices i xs = 
-  either errork return $ mkSlices i xs
+  either errork return
+  $ mkSlices i xs
 
+{-
 isEmptySlice :: Slices -> Bool
 isEmptySlice = (==[])
+-}
 
-readSlices :: Slices -> Var -> Fish [T.Text]
-readSlices slcs (Var _ _ xs) = 
+readSlices :: [(Int,Int)] -> Var -> Fish [T.Text]
+readSlices indices (Var _ l xs) = do
+  slcs <- makeSlices l indices
   work 0 slcs xs & maybe err return
   where
     work :: Int -> Slices -> [T.Text] -> Maybe [T.Text]
@@ -77,8 +72,9 @@ readSlices slcs (Var _ _ xs) =
     
 
 {- writeSlices may fail if the ranges overlap -}
-writeSlices :: Slices -> Var -> [T.Text] -> Fish Var
-writeSlices slcs (Var ex l xs) ys =
+writeSlices :: [(Int,Int)] -> Var -> [T.Text] -> Fish Var
+writeSlices indices (Var ex l xs) ys = do
+  slcs <- makeSlices l indices
   Var ex l
     <$> either errork return
       (work 0 slcs xs ys)
@@ -101,10 +97,11 @@ writeSlices slcs (Var ex l xs) ys =
        <> showSlices [slc]
 
 {- drop the slices from an array -}
-dropSlices :: Slices -> Var -> Fish Var
-dropSlices slcs (Var ex l xs) =
-  maybe err return (work 0 slcs xs)
-  >>= return . \ys -> Var ex (length ys) ys
+dropSlices :: [(Int,Int)] -> Var -> Fish Var
+dropSlices indices (Var ex l xs) = do
+  slcs <- makeSlices l indices
+  ys <- maybe err return (work 0 slcs xs)
+  return $ Var ex (length ys) ys
   where
     work :: Int -> [(t, (Int, Int))] -> [a] -> Maybe [a]
     work n slcs xs = slcs & \case

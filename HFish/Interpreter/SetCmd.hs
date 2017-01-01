@@ -27,7 +27,7 @@ import qualified Data.Map as M
 -- | Evaluate a SetCommand. We have to pass evalArgs,evalRef
 --   explicitly due to the recursive modules problem.
 setCommandA :: ( Args T.Text t -> Fish [T.Text] )
-  -> ( Ref (Expr T.Text t) -> Int -> Fish Slices )
+  -> ( Ref (Expr T.Text t) -> Fish [(Int,Int)] )
   -> SetCommand T.Text t
   -> Fish ()
 setCommandA evalArgs evalRef = \case
@@ -68,7 +68,7 @@ collectSetupData ident mscope mexport k =
           ( k envl (defEx UnExport) Nothing )
           ( \(Var ex l vs) -> k envl (defEx ex) $ Just (vs,l) )
 
-setSetting :: (Ref a -> Int -> Fish Slices)
+setSetting :: (Ref a -> Fish [(Int,Int)])
   -> Maybe Scope
   -> Maybe Export
   -> (NText,Ref a)
@@ -81,8 +81,8 @@ setSetting evalRef mscp mex (ident,ref) args =
     else case mvs of
       Nothing -> errork uninitErr
       Just (vs,l) -> do
-        slcs <- evalRef ref l
-        var <- writeSlices slcs (Var ex l vs) args
+        indices <- evalRef ref
+        var <- writeSlices indices (Var ex l vs) args
         setVarSafe envl ident var
   where
     uninitErr = "set: Trying to set parts of uninitialised variable"
@@ -121,7 +121,7 @@ queryVars mscope mexport args = do
           Nothing -> False
           Just ex' -> ex /= ex'
 
-eraseVars :: (Ref a -> Int -> Fish Slices)
+eraseVars :: (Ref a -> Fish [(Int,Int)])
   -> Maybe Scope
   -> [(NText,Ref a)]
   -> Fish ()
@@ -129,31 +129,28 @@ eraseVars evalRef mscope argsData =
   forM_ argsData eraseVar
   where
     -- eraseVar :: (T.Text,Ref a) -> Fish ()
-    eraseVar argData = 
-      case mscope of
-        Nothing -> 
-          let f b envl = if b
-                        then return b
-                        else eraseVarIn envl argData
-           in foldM f False evironments
-              >>= bool bad ok
-        Just scope -> do
-          b <- eraseVarIn (scopeAsEnvLens scope) argData
-          bool bad ok b
+    eraseVar d = onMaybe mscope
+      (eraseNoScope d)
+      (eraseWithScope d)
+    
+    eraseNoScope d =
+      let f b envl = if b then return b else eraseVarIn envl d
+       in foldM f False evironments >>= bool bad ok
+    
+    eraseWithScope d scope =
+      eraseVarIn (scopeAsEnvLens scope) d
+      >>= bool bad ok
+    
     
     -- eraseVarIn :: EnvLens Var -> (T.Text,Ref a) -> Fish Bool
     eraseVarIn envl (ident,ref) = do
       mv <- uses (envlens envl) (`Env.lookup` ident)
-      case mv of
-        Nothing -> return False
-        Just var@(Var ex l vs) -> 
-          evalRef ref l
-          >>= \slcs -> True <$
-            if isEmptySlice slcs
-              then delVarSafe envl ident
-              else setVarSafe envl ident
-                =<< dropSlices slcs var
-
+      onMaybe mv (return False) $ \var -> True <$ do
+        evalRef ref >>= \case
+          [] -> delVarSafe envl ident
+          indices -> 
+            setVarSafe envl ident
+            =<< dropSlices indices var
 
 scopeAsEnvLens :: Scope -> EnvLens Var
 scopeAsEnvLens scope = EnvLens $

@@ -21,14 +21,11 @@ import Data.Bifunctor
 import Control.Lens
 import Control.Monad
 import Control.Monad.IO.Class
-import qualified Control.Exception as E
-import qualified Control.DeepSeq as DeepSeq
 
 -- todo: - Introduce 2 different slices,
 --       one for internal use here, one for
 --       one for the api.
 --       - do mkSlices internally only
-
 
 
 {- Implements fish style array slicing -}
@@ -63,15 +60,21 @@ makeSlices i xs =
 isEmptySlice :: Slices -> Bool
 isEmptySlice = (==[])
 
-readSlices :: Slices -> Var -> [T.Text]
-readSlices slcs (Var _ _ xs) = work 0 slcs xs
-  where    
+readSlices :: Slices -> Var -> Fish [T.Text]
+readSlices slcs (Var _ _ xs) = 
+  work 0 slcs xs & maybe err return
+  where
+    work :: Int -> Slices -> [T.Text] -> Maybe [T.Text]
     work n slcs xs = slcs & \case
-      [] -> []
-      (b,(i,j)):rest -> 
-        splitAt (i-n) xs & \(_,xs') ->
-          splitAt (j-i+1) xs' & \(ys,_) ->
-            mbRev b ys ++ work i rest xs'
+      [] -> Just []
+      (b,(i,j)):rest -> do
+        (_,xs') <- splitAtMaybe (i-n) xs
+        (ys,_) <- splitAtMaybe (j-i+1) xs'
+        (++) <$> Just (mbRev b ys)
+             <*> work i rest xs'
+    err = errork
+      $ "something went wrong..."
+    
 
 {- writeSlices may fail if the ranges overlap -}
 writeSlices :: Slices -> Var -> [T.Text] -> Fish Var
@@ -137,13 +140,4 @@ isEmpty :: [a] -> Bool
 isEmpty = \case
   [] -> True
   _ -> False
-
-{-
-uncoverErrors :: DeepSeq.NFData a => a -> Fish a
-uncoverErrors f =
-  liftIO (E.try . E.evaluate . DeepSeq.force $ f)
-  >>= \case
-    Left e -> errork $ showText (e :: E.ErrorCall)
-    Right r -> return r
--}
 

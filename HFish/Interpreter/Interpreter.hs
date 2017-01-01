@@ -259,7 +259,7 @@ evalCmdSubstE (CmdRef _ prog ref) = do
       Just _ -> do
         let l = length ts
         slcs <- evalRef ref l
-        return $ readSlices slcs (Var UnExport l ts)
+        readSlices slcs (Var UnExport l ts)
 
 evalVarRefE :: Bool -> VarRef T.Text t -> Fish [Globbed]
 evalVarRefE s vref = do
@@ -280,7 +280,7 @@ evalVarRef (VarRef _ name ref) = do
         then return ts
         else do
           slcs <- evalRef ref l
-          return $ readSlices slcs var
+          readSlices slcs var
     
     evalName = \case
       Left vref -> map mkNText <$> evalVarRef vref

@@ -1,8 +1,11 @@
 {-# language LambdaCase, OverloadedStrings #-}
+{-| Module      : Slice
+    Description : Implements fish style array slicing.
+-}
 module HFish.Interpreter.Slice (
-  readSlices
-  ,writeSlices
-  ,dropSlices
+  readIndices
+  ,writeIndices
+  ,dropIndices
 ) where
 
 import Fish.Lang
@@ -19,14 +22,25 @@ import Control.Lens
 import Control.Monad
 import Control.Monad.IO.Class
 
-{- Implements fish style array slicing -}
-
 -- | A collection of slices, eachof which consists of:
 --
 --   * A boolean, indicating if the slice is "reversed"
 --   * A pair of Ints, corresponding to the ends of the slice.
 type Slices = [(Bool,(Int,Int))]
 
+-- | Pretty show slices.
+showSlices :: Slices -> T.Text
+showSlices slcs = 
+  T.pack . arrify . unwords
+  $ map (sugar . unNormalise . unMarkSwap) slcs
+  where
+    unMarkSwap (b,(i,j)) = bool id swap b (i,j)
+    unNormalise = bimap unIndex unIndex
+    unIndex i = i+1
+    arrify s = "[" ++ s ++ "]"
+    sugar (i,j) = show i ++ ".." ++ show j
+    
+-- | Create 'Slices' from the length of an array and given indices.
 mkSlices :: Int -> [(Int,Int)] -> Either T.Text Slices
 mkSlices l xs = 
   L.sortOn (fst . snd)
@@ -44,18 +58,15 @@ mkSlices l xs =
       | otherwise = Left $
         "Index \"" <> showText i <> "\" is out of bounds"
 
+-- | Variant of 'mkSlices'.
 makeSlices :: Int -> [(Int,Int)] -> Fish Slices
-makeSlices i xs = 
+makeSlices len = 
   either errork return
-  $ mkSlices i xs
+  . mkSlices len
 
-{-
-isEmptySlice :: Slices -> Bool
-isEmptySlice = (==[])
--}
-
-readSlices :: [(Int,Int)] -> Var -> Fish [T.Text]
-readSlices indices (Var _ l xs) = do
+-- | Read values at given indices from variable.
+readIndices :: [(Int,Int)] -> Var -> Fish [T.Text]
+readIndices indices (Var _ l xs) = do
   slcs <- makeSlices l indices
   work 0 slcs xs & maybe err return
   where
@@ -71,9 +82,10 @@ readSlices indices (Var _ l xs) = do
       $ "something went wrong..."
     
 
-{- writeSlices may fail if the ranges overlap -}
-writeSlices :: [(Int,Int)] -> Var -> [T.Text] -> Fish Var
-writeSlices indices (Var ex l xs) ys = do
+-- | Write values into variable at given indices.
+--   May fail if the ranges overlap.
+writeIndices :: [(Int,Int)] -> Var -> [T.Text] -> Fish Var
+writeIndices indices (Var ex l xs) ys = do
   slcs <- makeSlices l indices
   Var ex l
     <$> either errork return
@@ -96,9 +108,9 @@ writeSlices indices (Var ex l xs) ys = do
       "Invalid indices (out of bounds or overlapping) at slice: "
        <> showSlices [slc]
 
-{- drop the slices from an array -}
-dropSlices :: [(Int,Int)] -> Var -> Fish Var
-dropSlices indices (Var ex l xs) = do
+-- | Drop indices from a variable.
+dropIndices :: [(Int,Int)] -> Var -> Fish Var
+dropIndices indices (Var ex l xs) = do
   slcs <- makeSlices l indices
   ys <- maybe err return (work 0 slcs xs)
   return $ Var ex (length ys) ys
@@ -111,19 +123,11 @@ dropSlices indices (Var ex l xs) = do
         (_,zs) <- splitAtMaybe (j-i+1) xs'
         done <- work i rest zs
         Just $ ys ++ done
-    err = errork "dropSlices: unknown error"
+    err = errork "dropIndices: unknown error"
 
-showSlices :: Slices -> T.Text
-showSlices slcs = 
-  T.pack . arrify . unwords
-  $ map (sugar . unNormalise . unMarkSwap) slcs
-  where
-    unMarkSwap (b,(i,j)) = bool id swap b (i,j)
-    unNormalise = bimap unIndex unIndex
-    unIndex i = i+1
-    arrify s = "[" ++ s ++ "]"
-    sugar (i,j) = show i ++ ".." ++ show j
-    
+
+{- Helpers: -}
+
 triSplit :: Int -> Int -> [a] -> Maybe ([a],[a],[a])
 triSplit i j xs = do
   (zs,xs') <- splitAtMaybe i xs

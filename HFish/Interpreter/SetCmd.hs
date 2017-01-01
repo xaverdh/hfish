@@ -82,7 +82,7 @@ setSetting evalRef mscp mex (ident,ref) args =
       Nothing -> errork uninitErr
       Just (vs,l) -> do
         indices <- evalRef ref
-        var <- writeSlices indices (Var ex l vs) args
+        var <- writeIndices indices (Var ex l vs) args
         setVarSafe envl ident var
   where
     uninitErr = "set: Trying to set parts of uninitialised variable"
@@ -150,7 +150,7 @@ eraseVars evalRef mscope argsData =
           [] -> delVarSafe envl ident
           indices -> 
             setVarSafe envl ident
-            =<< dropSlices indices var
+            =<< dropIndices indices var
 
 scopeAsEnvLens :: Scope -> EnvLens Var
 scopeAsEnvLens scope = EnvLens $

@@ -7,6 +7,7 @@ module HFish.Interpreter.Env (
   ,fromTextList
   ,lookup
   ,lookupDefault
+  ,union
   ,update
   ,alter
   ,adjust
@@ -45,6 +46,14 @@ liftHashMap :: (HM.HashMap NText a -> HM.HashMap NText b)
   -> Env a -> Env b
 liftHashMap f = onHashMap (Env . f)
 
+liftHashMap2 ::
+  ( HM.HashMap NText a
+  -> HM.HashMap NText b
+  -> HM.HashMap NText c )
+  -> Env a -> Env b -> Env c
+liftHashMap2 f e1 e2 = Env
+  $ asHashMap e2
+  $ asHashMap e1 f
 
 empty :: Env a
 empty = Env (HM.empty)
@@ -87,3 +96,6 @@ filterWithKey f = liftHashMap $ HM.filterWithKey f
 
 identifiers :: Env a -> [NText]
 identifiers = onHashMap HM.keys
+
+union :: Env a -> Env a -> Env a
+union = liftHashMap2 HM.union

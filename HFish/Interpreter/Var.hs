@@ -34,6 +34,12 @@ instance Show Var where
 mkVar :: [T.Text] -> Var
 mkVar ts = Var UnExport (length ts) ts
 
+emptyVar :: Var
+emptyVar = Var UnExport 0 []
+
+emptyVarXp :: Var
+emptyVarXp = Var Export 0 []
+
 mkVarXp :: [T.Text] -> Var
 mkVarXp ts = Var Export (length ts) ts
 

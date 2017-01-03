@@ -20,7 +20,6 @@ import qualified Data.Map as M
 import Options.Applicative
 import Options.Applicative.Builder as OB
 
--- Todo: Event handling stuff.
 
 funcStA :: (Prog T.Text t -> Fish ())
   -> FunIdent T.Text t
@@ -52,6 +51,8 @@ funcStA progA (FunIdent _ name) ts prog =
     text = T.pack <$> str
     nfcText = mkNText <$> text
 
+
+-- | 
 funcWorker :: (Prog T.Text t -> Fish ())
   -> NText -- ^ The function name
   -> Prog T.Text t -- ^ The function body
@@ -65,19 +66,18 @@ funcWorker :: (Prog T.Text t -> Fish ())
 funcWorker progA
   name prog desc noShadow
   events signals inherit idents = do
-    functions %= Env.insert name f
+    inherited <- uses flocalEnv $ \env ->
+      map (\k -> (k,Env.lookupDefault emptyVar k env)) inherit
+    functions %= Env.insert name (f $ Env.fromList inherited)
     forM_ events $ flip setupEventHandler $ EventHandler name
     forM_ signals $ flip setupSignalHandler $ SignalHandler name
   where
-    f args =
-      localise flocalEnv $ do
-        unless noShadow (flocalEnv %= filterInherit)
+    f inherited args = 
+      (if noShadow then localise flocalEnv else id) $ do
+        flocalEnv %= (Env.union inherited)
         setFLocal "argv" args
         assignLoop args idents
         progA prog
-    
-    filterInherit = Env.filterWithKey
-      $ \k _ -> k `elem` inherit
     
     assignLoop :: [T.Text] -> [NText] -> Fish ()
     assignLoop = \case

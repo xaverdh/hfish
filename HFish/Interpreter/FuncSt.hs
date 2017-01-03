@@ -73,7 +73,10 @@ funcWorker progA
     forM_ signals $ flip setupSignalHandler $ SignalHandler name
   where
     f inherited args = 
-      (if noShadow then id else localise flocalEnv) $ do
+      ( if noShadow 
+          then id
+          else localise flocalEnv
+             . localise localEnv ) $ do
         flocalEnv %= (Env.union inherited)
         setFLocal "argv" args
         assignLoop args idents

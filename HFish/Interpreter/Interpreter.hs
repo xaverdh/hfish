@@ -205,14 +205,19 @@ redirectedStmtA f redirects = void (setupAll f)
       RedirectIn fd t -> t & \case
         Left fd2 -> duplicate fd2 fd f
         Right e -> do
-          [name] <- evalArg e
+          name <- evalArg e >>= checkSingleton
           withFileR name fd f
       RedirectOut fd t -> t & \case
         Left fd2 -> duplicate fd2 fd f
         Right (mode,e) -> do
-          [name] <- evalArg e
+          name <- evalArg e >>= checkSingleton
           withFileW name mode fd f
-
+    
+    checkSingleton :: [a] -> Fish a
+    checkSingleton = \case
+      [] -> errork "missing file name in redirection"
+      [x] -> return x
+      _ -> errork "more then one file name in redirection"
 
 {- Expression evaluation -}
 evalArgs :: Args T.Text t -> Fish [T.Text]

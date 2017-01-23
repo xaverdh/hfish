@@ -32,6 +32,11 @@ cabal sandbox add-source ../posix-fd-io ../nfc-text ../fish-lang ../fish-parser 
 cabal install --ghc-option=-threaded
 ```
 
+There is a build script containing theses lines, so equivalently (assuming you have wget) you could do:
+```sh
+wget -O - https://github.com/xaverdh/hfish/raw/master/build | sh
+```
+
 Build time from scratch is ~10min on a i5-4200U with -j4 so I suggest that you get yourself a cup of tea.
 
 ## Syntax

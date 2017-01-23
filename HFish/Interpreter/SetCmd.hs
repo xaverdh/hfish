@@ -1,4 +1,5 @@
-{-# language LambdaCase, OverloadedStrings, Strict #-} module HFish.Interpreter.SetCmd where
+{-# language LambdaCase, OverloadedStrings, Strict #-}
+module HFish.Interpreter.SetCmd where
 
 import Fish.Lang
 

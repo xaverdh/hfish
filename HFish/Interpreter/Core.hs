@@ -165,10 +165,9 @@ setErrorK f = callCC (\k -> local (errorK %~ (k:)) f)
 -- | Calls the top '_errorK' continuation.
 --   Use this instead of 'error'
 errork :: T.Text -> Fish a
-errork t = do
-  k:_ <- view errorK
-  k t
-  return undefined
+errork t = view errorK >>= \case
+  [] -> error $ T.unpack t
+  k:_ -> k t >> return undefined
 
 -- | Takes a lens to one of the continuation stacks,
 --   an interrupt routine and a fish action.

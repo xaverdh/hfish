@@ -17,7 +17,7 @@ import System.Exit
 mkInvalidErr e = errork $ e <> " invalid argument"
 mkNoLoopErr e = errork $ e <> " called outside of loop"
 
-impl l e i
+jumpWith l e i
   | i < 1 = mkInvalidErr e
   | otherwise = do
       ks <- view l
@@ -33,7 +33,7 @@ continueF _ = \case
     (mkInvalidErr "continue:")
     jump
   where
-    jump = impl continueK "continue:"
+    jump = jumpWith continueK "continue:"
     
 
 breakF :: Bool -> [T.Text] -> Fish a
@@ -44,7 +44,7 @@ breakF _ = \case
     (mkInvalidErr "break:")
     jump
   where
-    jump = impl breakK "break:"
+    jump = jumpWith breakK "break:"
 
 returnF :: Bool -> [T.Text] -> Fish a
 returnF _ = \case
@@ -57,7 +57,7 @@ returnF _ = \case
   _ -> errork "return: too many arguments given"
   where
     noIntErr t = errork ("return: expected integer, got: " <> t)
-    ret = do
-      k:_ <- view returnK
-      k () >> return undefined
+    ret = view returnK >>= \case
+      [] -> errork "no function to return from"
+      k:_ -> k () >> return undefined
 

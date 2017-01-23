@@ -151,8 +151,10 @@ switchStA e brnchs = view fishCompatible >>=
 --   These glob patterns are matched directly against the string,
 --   superseding the usual glob pattern expansion.
 --
---   In addition the matching is lazy, i.e. when a branch is taken
---   all branches following it will not be evaluated.
+--   The matching is lazy and does not fall through, i.e.
+--   when a branch is taken all branches following it
+-- 
+--   will not be evaluated. This seems to agree with the fish impl.
 hfishSwitch ::  Expr T.Text t -> [(Expr T.Text t,Prog T.Text t)] -> Fish ()
 hfishSwitch e branches = do
   text <- T.unwords <$> evalArg e
@@ -176,7 +178,7 @@ fishSwitch e branches = evalArg e >>= \case
       matchText globText text & \case
         Just _ -> progA prog
         Nothing -> loop text branches
-
+    
     tooManyErr = errork
       $ "switch: too many arguments given"
 

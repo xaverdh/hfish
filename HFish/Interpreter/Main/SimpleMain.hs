@@ -16,6 +16,7 @@ import HFish.Interpreter.Core
 import HFish.Interpreter.Init
 import HFish.Interpreter.Parsing
 import HFish.Interpreter.Var
+import HFish.Interpreter.Version (version)
 import Fish.Lang
 
 import System.Console.Haskeline
@@ -38,12 +39,15 @@ main = execParserPure conf parser <$> getArgs
       prefDisambiguate = True
       ,prefShowHelpOnError = True
     }
-    parser = info (helper <*> hfishOptions)
+    parser = info (helper <*> (versionOpt <|> hfishOptions))
       (fullDesc
         <> header "hfish: a fish-like shell, written in haskell"
         -- <> progDesc(Doc?)
         --      "TODO: insert elaborate description here ..."
         <> failureCode 1)
+    
+    versionOpt = flag' (print version)
+      (short 'v' <> long "version" <> help "Show version")
 
 newtype NoExecute = NoExecute Bool
 newtype ShowAst = ShowAst Bool

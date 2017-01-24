@@ -80,6 +80,7 @@ hfishMain
   (IsCommand isCommand)
   (FishCompat fishCompat)
   args
+  | noExecute && isCommand = exDirect args (const $ return ())
   | noExecute = forM_ args (parseFile fishCompat)
   | showAst && isCommand = exDirect args printAST
   | showAst = case args of
@@ -102,9 +103,9 @@ hfishMain
       $ setVar (EnvLens flocalEnv)
         "argv" (mkVar $ map T.pack args)
     
-    exDirect args = withProg'
-      $ parseInteractive fishCompat
-        $ L.unwords args <> "\n"
+    exDirect args = withProg' $
+      parseInteractive fishCompat
+      $ L.unwords args <> "\n"
     
     exPath path f = do
       res <- parseFile fishCompat path

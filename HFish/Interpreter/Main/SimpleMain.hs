@@ -80,12 +80,8 @@ hfishMain
   (IsCommand isCommand)
   (FishCompat fishCompat)
   args
-  | noExecute && isCommand = exDirect args (const $ return ())
-  | noExecute = forM_ args (parseFile fishCompat)
-  | showAst && isCommand = exDirect args printAST
-  | showAst = case args of
-    [] -> putStrLn "hfish: missing argument."
-    path:_ -> exPath path printAST
+  | noExecute = execute args (const $ return ())
+  | showAst = execute args printAST
   | otherwise = do
     s <- mkInitialFishState
     r <- mkInitialFishReader atBreakpoint fishCompat
@@ -99,13 +95,17 @@ hfishMain
   where
     printAST = print . doc
     
-    injectArgs args = runFish
+    injectArgs xs = runFish
       $ setVar (EnvLens flocalEnv)
-        "argv" (mkVar $ map T.pack args)
+        "argv" (mkVar $ map T.pack xs)
     
-    exDirect args = withProg' $
+    execute = if isCommand then exDirect else exPaths
+    
+    exDirect xs = withProg' $
       parseInteractive fishCompat
-      $ L.unwords args <> "\n"
+      $ L.unwords xs <> "\n"
+    
+    exPaths xs = forM_ xs . flip exPath
     
     exPath path f = do
       res <- parseFile fishCompat path

@@ -20,12 +20,12 @@ Refer to the [Syntax](#syntax) section for details on the differences.
 For now I recommend doing the following in a fresh directory:
 
 ```sh
-git clone git://github.com/xaverdh/posix-fd-io
-git clone git://github.com/xaverdh/nfc-text
-git clone git://github.com/xaverdh/hfish
-git clone git://github.com/xaverdh/hfish-parser
-git clone git://github.com/xaverdh/fish-parser
-git clone git://github.com/xaverdh/fish-lang
+git clone https://github.com/xaverdh/posix-fd-io
+git clone https://github.com/xaverdh/nfc-text
+git clone https://github.com/xaverdh/hfish
+git clone https://github.com/xaverdh/hfish-parser
+git clone https://github.com/xaverdh/fish-parser
+git clone https://github.com/xaverdh/fish-lang
 cd hfish
 cabal sandbox init
 cabal sandbox add-source ../posix-fd-io ../nfc-text ../fish-lang ../fish-parser ../hfish-parser

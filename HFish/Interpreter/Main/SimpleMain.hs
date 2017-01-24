@@ -29,13 +29,21 @@ import Text.PrettyPrint.GenericPretty (doc)
 -- import Text.PrettyPrint.ANSI.Leijen
 
 main :: IO ()
-main = customExecParser conf parser >>= id
+main = execParserPure conf parser <$> getArgs
+  >>= \case
+    Success a -> a
+    Failure err -> putStrLn . fst $ renderFailure err ""
   where
     conf = OB.defaultPrefs {
       prefDisambiguate = True
       ,prefShowHelpOnError = True
     }
-    parser = info hfishOptions idm
+    parser = info (helper <*> hfishOptions)
+      (fullDesc
+        <> header "hfish: a fish-like shell, written in haskell"
+        -- <> progDesc(Doc?)
+        --      "TODO: insert elaborate description here ..."
+        <> failureCode 1)
 
 newtype NoExecute = NoExecute Bool
 newtype ShowAst = ShowAst Bool
@@ -44,10 +52,14 @@ newtype FishCompat = FishCompat Bool
 
 hfishOptions :: O.Parser (IO ())
 hfishOptions = hfishMain
-  <$> switchAs NoExecute (short 'n' <> long "no-execute")
-  <*> switchAs ShowAst (short 'a' <> long "ast")
-  <*> switchAs IsCommand (short 'c' <> long "command")
-  <*> switchAs FishCompat (short 'f' <> long "fish-compat")
+  <$> switchAs NoExecute (short 'n' <> long "no-execute"
+    <> help "Do not execute, only parse")
+  <*> switchAs ShowAst (short 'a' <> long "ast"
+    <> help "Show the ast instead of executing")
+  <*> switchAs IsCommand (short 'c' <> long "command"
+    <> help "Execute command given on commandline")
+  <*> switchAs FishCompat (short 'f' <> long "fish-compat"
+    <> help "Try to be more fish compatible")
   <*> many (strArgument (metavar "ARGS"))
   where
     switchAs f = fmap f . switch

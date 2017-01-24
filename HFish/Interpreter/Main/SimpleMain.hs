@@ -37,28 +37,45 @@ main = customExecParser conf parser >>= id
     }
     parser = info hfishOptions idm
 
+newtype NoExecute = NoExecute Bool
+newtype ShowAst = ShowAst Bool
+newtype IsCommand = IsCommand Bool
+newtype FishCompat = FishCompat Bool
+
 hfishOptions :: O.Parser (IO ())
 hfishOptions = hfishMain
-  <$> switch (short 'n' <> long "no-execute")
-  <*> switch (short 'a' <> long "ast")
-  <*> switch (short 'c' <> long "command")
-  <*> switch (short 'f' <> long "fish-compat")
+  <$> switchAs NoExecute (short 'n' <> long "no-execute")
+  <*> switchAs ShowAst (short 'a' <> long "ast")
+  <*> switchAs IsCommand (short 'c' <> long "command")
+  <*> switchAs FishCompat (short 'f' <> long "fish-compat")
   <*> many (strArgument (metavar "ARGS"))
+  where
+    switchAs f = fmap f . switch
 
-hfishMain :: Bool -> Bool -> Bool -> Bool -> [String] -> IO ()
-hfishMain noexecute ast command fishcompat args
-  | noexecute = forM_ args (parseFile fishcompat)
-  | ast && command = exDirect args printAST
-  | ast = case args of
+hfishMain :: NoExecute
+  -> ShowAst
+  -> IsCommand
+  -> FishCompat
+  -> [String]
+  -> IO ()
+hfishMain 
+  (NoExecute noExecute)
+  (ShowAst showAst)
+  (IsCommand isCommand)
+  (FishCompat fishCompat)
+  args
+  | noExecute = forM_ args (parseFile fishCompat)
+  | showAst && isCommand = exDirect args printAST
+  | showAst = case args of
     [] -> putStrLn "hfish: missing argument."
     path:_ -> exPath path printAST
   | otherwise = do
     s <- mkInitialFishState
-    r <- mkInitialFishReader atBreakpoint fishcompat
-    if command
+    r <- mkInitialFishReader atBreakpoint fishCompat
+    if isCommand
       then exDirect args (runProgram r s)
       else case args of
-        [] -> runInterpreterLoop fishcompat False r s
+        [] -> runInterpreterLoop fishCompat False r s
         path:args' -> do
           s' <- injectArgs args' r s
           exPath path (runProgram r s')
@@ -70,18 +87,18 @@ hfishMain noexecute ast command fishcompat args
         "argv" (mkVar $ map T.pack args)
     
     exDirect args = withProg'
-      $ parseInteractive fishcompat
+      $ parseInteractive fishCompat
         $ L.unwords args <> "\n"
     
     exPath path f = do
-      res <- parseFile fishcompat path
+      res <- parseFile fishCompat path
       withProg' res f
 
     atBreakpoint :: Fish ()
     atBreakpoint = do
       r <- ask
       s <- get
-      liftIO $ runInterpreterLoop fishcompat True r s
+      liftIO $ runInterpreterLoop fishCompat True r s
 
 mkPrompt :: Bool -> FishState -> String
 mkPrompt isbrkpt s
@@ -95,22 +112,21 @@ runInterpreterLoop :: Bool
   -> FishReader
   -> FishState
   -> IO ()
-runInterpreterLoop fishcompat isbrkpt r s =
+runInterpreterLoop fishCompat isbrkpt r s =
   runInputT defaultSettings
-
-    ( interpreterLoop fishcompat (mkPrompt isbrkpt) r s )
+    ( interpreterLoop fishCompat (mkPrompt isbrkpt) r s )
 
 interpreterLoop :: Bool
   -> (FishState -> String) -- The prompt
   -> FishReader -> FishState -> InputT IO ()
-interpreterLoop fishcompat prompt r s =
+interpreterLoop fishCompat prompt r s =
   getInputLine (prompt s) >>= \case
     Nothing -> return () -- ctrl-d
     Just l -> do
       ms' <- withProg
-        (parseInteractive fishcompat $ l ++ "\n")
+        (parseInteractive fishCompat $ l ++ "\n")
         (runProgram r s)
-      interpreterLoop fishcompat prompt r (fromMaybe s ms')
+      interpreterLoop fishCompat prompt r (fromMaybe s ms')
 
 coerce :: IO (Either SomeException a) -> IO (Either SomeException a)
 coerce = id

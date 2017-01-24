@@ -46,7 +46,7 @@ main = execParserPure conf parser <$> getArgs
         --      "TODO: insert elaborate description here ..."
         <> failureCode 1)
     
-    versionOpt = flag' (print version)
+    versionOpt = flag' (putStrLn version)
       (short 'v' <> long "version" <> help "Show version")
 
 newtype NoExecute = NoExecute Bool

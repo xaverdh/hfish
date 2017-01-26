@@ -103,7 +103,7 @@ setVarSafe scp ident var
 
 delVarSafe :: Scope -> NText -> Fish  ()
 delVarSafe scp ident
-  
+  | ReadOnlyScope <- scp = errork "Will not delete readonly variable"  
   | True = asLens scp %= Env.delete ident
 
 withTextVar :: (T.Text -> a) -> Var -> a

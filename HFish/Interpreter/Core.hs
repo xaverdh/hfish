@@ -69,7 +69,6 @@ data Var = Var {
   }
   deriving (Eq,Ord)
 
-
 -- | The type of a (fish) function.
 type Function =
   [T.Text] -- ^ The arguments to the function call, already evaluated.

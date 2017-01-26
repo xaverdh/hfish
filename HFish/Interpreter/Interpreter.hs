@@ -1,8 +1,10 @@
-{-# language LambdaCase, OverloadedStrings #-}
-module HFish.Interpreter.Interpreter where
+{-# language LambdaCase, OverloadedStrings #-} module
+HFish.Interpreter.Interpreter where
 
-import Fish.Lang
+import Fish.Lang hiding (Scope)
+import qualified Fish.Lang as L
 
+import HFish.Interpreter.Scope
 import HFish.Interpreter.Core
 import HFish.Interpreter.FdTable as FDT
 import HFish.Interpreter.IO
@@ -116,7 +118,7 @@ forStA (VarIdent _ varIdent) args prog = do
   setBreakK (loop xs)
   where
     lbind x f = localise localEnv
-      (setVarSafe (EnvLens localEnv) varIdent (mkVar [x]) >> f)
+      (setVarSafe LocalScope varIdent (mkVar [x]) >> f)
     
     body = progA prog
     

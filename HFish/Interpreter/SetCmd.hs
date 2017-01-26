@@ -1,8 +1,9 @@
-{-# language LambdaCase, OverloadedStrings, Strict #-}
+{-# language LambdaCase, OverloadedStrings, ScopedTypeVariables, Strict #-}
 module HFish.Interpreter.SetCmd where
 
-import Fish.Lang
-
+import Fish.Lang hiding (Scope)
+import qualified Fish.Lang as L
+import HFish.Interpreter.Scope as VS
 import HFish.Interpreter.Core
 import HFish.Interpreter.Util
 import HFish.Interpreter.IO
@@ -47,117 +48,112 @@ setCommandA evalArgs evalRef = \case
 
 
 collectSetupData :: NText
-  -> Maybe Scope
+  -> Maybe L.Scope
   -> Maybe Export
-  -> (EnvLens Var -> Export -> Maybe ([T.Text],Int) -> Fish a)
+  -> (Scope -> Export -> Maybe ([T.Text],Int) -> Fish a)
   -> Fish a
-collectSetupData ident mscope mexport k =
-  maybe guessScope haveScope mscope
+collectSetupData ident mlscope mexport k =
+  maybe guessScope haveScope mlscope
   where
     defEx :: Export -> Export
     defEx = flip fromMaybe mexport
     
+    -- guessScope :: Fish a
     guessScope = getOccurs ident
       >>= \case
-        [] -> k (EnvLens flocalEnv) (defEx UnExport) Nothing
-        (envl,Var ex l vs):_ -> k envl (defEx ex) $ Just (vs,l)
-          
-    haveScope scope = scopeAsEnvLens scope
-      & \envl -> do
-        mv <- uses (envlens envl) (`Env.lookup` ident)
+        [] -> k FLocalScope (defEx UnExport) Nothing
+        (scp,Var ex l vs):_ -> k scp (defEx ex) $ Just (vs,l)
+    
+    -- haveScope :: L.Scope -> Fish a
+    haveScope scope = fromLangScope scope
+      & \scp -> do
+        mv <- uses (asLens scp) (`Env.lookup` ident)
         onMaybe mv
-          ( k envl (defEx UnExport) Nothing )
-          ( \(Var ex l vs) -> k envl (defEx ex) $ Just (vs,l) )
+          ( k scp (defEx UnExport) Nothing )
+          ( \(Var ex l vs) -> k scp (defEx ex) $ Just (vs,l) )
 
 setSetting :: (Ref a -> Fish [(Int,Int)])
-  -> Maybe Scope
+  -> Maybe L.Scope
   -> Maybe Export
   -> (NText,Ref a)
   -> [T.Text]
   -> Fish ()
 setSetting evalRef mscp mex (ident,ref) args =
-  collectSetupData ident mscp mex $ \envl ex mvs ->
+  collectSetupData ident mscp mex $ \scp ex mvs ->
   if isNothing ref
-    then setVarSafe envl ident $ Var ex (length args) args
+    then setVarSafe scp ident $ Var ex (length args) args
     else case mvs of
       Nothing -> errork uninitErr
       Just (vs,l) -> do
         indices <- evalRef ref
         var <- writeIndices indices (Var ex l vs) args
-        setVarSafe envl ident var
+        setVarSafe scp ident var
   where
     uninitErr = "set: Trying to set parts of uninitialised variable"
 
-listVars :: Maybe Scope -> Maybe Export -> Bool -> Fish ()
-listVars mscope mexport namesOnly =
-  case mscope of
-    Nothing -> forM_ evironments listVarsEnv
-    Just scope -> listVarsEnv (scopeAsEnvLens scope)
+listVars :: Maybe L.Scope -> Maybe Export -> Bool -> Fish ()
+listVars mlscope mexport namesOnly =
+  case mlscope of
+    Nothing -> forM_ scopes listVarsScope
+    Just lscope -> listVarsScope (fromLangScope lscope)
   where
-    listVarsEnv envl = do
-      mp <- use $ envlens envl
+    listVarsScope :: Scope -> Fish ()
+    listVarsScope scp = do
+      mp <- use $ asLens scp
       echo $ showVarEnv namesOnly $ case mexport of
         Nothing -> mp
         Just ex -> case ex of
           Export -> Env.filter isExport mp
           UnExport -> Env.filter (not . isExport) mp
 
-queryVars :: Maybe Scope -> Maybe Export -> [T.Text] -> Fish ()
-queryVars mscope mexport args = do
+queryVars :: Maybe L.Scope -> Maybe Export -> [T.Text] -> Fish ()
+queryVars mlscope mexport args = do
   i <- (length . filter id) <$> mapM isNotSet (map mkNText args)
   echoLn $ showText i
   where
     isNotSet :: NText -> Fish Bool
-    isNotSet ident = case mscope of
+    isNotSet ident = case mlscope of
       Nothing -> all id
-        <$> forM evironments (flip isNotSetIn ident)
-      Just scope -> 
-        isNotSetIn (scopeAsEnvLens scope) ident
+        <$> forM scopes (flip isNotSetIn ident)
+      Just lscope -> 
+        isNotSetIn (fromLangScope lscope) ident
     
-    isNotSetIn :: EnvLens Var -> NText -> Fish Bool
-    isNotSetIn envl ident =
-      uses (envlens envl) (`Env.lookup` ident) >>= \mv ->
+    isNotSetIn :: Scope -> NText -> Fish Bool
+    isNotSetIn scp ident =
+      uses (asLens scp) (`Env.lookup` ident) >>= \mv ->
       onMaybe mv (return True) $ \(Var ex _ _) -> 
         return $ case mexport of
           Nothing -> False
           Just ex' -> ex /= ex'
 
 eraseVars :: (Ref a -> Fish [(Int,Int)])
-  -> Maybe Scope
+  -> Maybe L.Scope
   -> [(NText,Ref a)]
   -> Fish ()
-eraseVars evalRef mscope argsData =
+eraseVars evalRef mlscope argsData =
   forM_ argsData eraseVar
   where
     -- eraseVar :: (T.Text,Ref a) -> Fish ()
-    eraseVar d = onMaybe mscope
+    eraseVar d = onMaybe mlscope
       (eraseNoScope d)
       (eraseWithScope d)
     
     eraseNoScope d =
-      let f b envl = if b then return b else eraseVarIn envl d
-       in foldM f False evironments >>= bool bad ok
+      let f b scp = if b then return b else eraseVarIn scp d
+       in foldM f False scopes >>= bool bad ok
     
     eraseWithScope d scope =
-      eraseVarIn (scopeAsEnvLens scope) d
+      eraseVarIn (fromLangScope scope) d
       >>= bool bad ok
     
     
-    -- eraseVarIn :: EnvLens Var -> (T.Text,Ref a) -> Fish Bool
-    eraseVarIn envl (ident,ref) = do
-      mv <- uses (envlens envl) (`Env.lookup` ident)
+    -- eraseVarIn :: _
+    eraseVarIn scp (ident,ref) = do
+      mv <- uses (asLens scp) (`Env.lookup` ident)
       onMaybe mv (return False) $ \var -> True <$ do
         evalRef ref >>= \case
-          [] -> delVarSafe envl ident
+          [] -> delVarSafe scp ident
           indices -> 
-            setVarSafe envl ident
+            setVarSafe scp ident
             =<< dropIndices indices var
-
-scopeAsEnvLens :: Scope -> EnvLens Var
-scopeAsEnvLens scope = EnvLens $
-  case scope of
-    ScopeLocal -> localEnv
-    ScopeGlobal -> globalEnv
-    ScopeUniversal -> {- universalEnv -}
-      error "universal scope not supported yet."
 

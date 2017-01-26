@@ -1,8 +1,8 @@
 {-# language LambdaCase, GADTs, Rank2Types, OverloadedStrings, TupleSections, Strict #-}
 module HFish.Interpreter.Var where
 
-import Fish.Lang
-
+import Fish.Lang hiding (Scope)
+import HFish.Interpreter.Scope
 import HFish.Interpreter.Core
 import HFish.Interpreter.Util
 import Data.NText as NText
@@ -18,14 +18,12 @@ import Control.Lens
 import Control.Monad
 import System.Exit
 
-newtype EnvLens a = EnvLens
-  { envlens :: Lens' FishState (Env a) }
-
-evironments =
-  [ EnvLens localEnv
-   ,EnvLens flocalEnv
-   ,EnvLens globalEnv
-   ,EnvLens readOnlyEnv ]
+scopes =
+  [ FLocalScope
+   ,LocalScope
+   ,GlobalScope
+   ,ReadOnlyScope
+   {- ,UniversalScope -} ]
 
 instance Show Var where
   show (Var UnExport vs _) = show vs
@@ -43,15 +41,15 @@ emptyVarXp = Var Export 0 []
 mkVarXp :: [T.Text] -> Var
 mkVarXp ts = Var Export (length ts) ts
 
-getOccurs :: NText -> Fish [(EnvLens Var,Var)]
+getOccurs :: NText -> Fish [(Scope,Var)]
 getOccurs ident =
-  forM evironments look
+  forM scopes look
   <$$> mapMaybe (uncurry check)
   where
-    look env = do
-      mv <- uses (envlens env) (`Env.lookup` ident)
-      return (env,mv)
-    check env mv = (env,) <$> mv
+    look scp = do
+      mv <- uses (asLens scp) (`Env.lookup` ident)
+      return (scp,mv)
+    check scp mv = (scp,) <$> mv
 
 
 getVarMaybe :: NText -> Fish (Maybe Var)
@@ -71,7 +69,7 @@ getVarValue t = do
 
 allVars :: Fish [(NText,Var)]
 allVars = do
-  envs <- forM evironments (use . envlens)
+  envs <- forM scopes (use . asLens)
   return (join . map Env.toList $ envs)
 
 exportVars :: Fish [(NText,Var)]
@@ -90,24 +88,24 @@ isExport (Var ex _ _) =
     Export -> True
     UnExport -> False
 
-setVar :: EnvLens Var -> NText -> Var -> Fish  ()
-setVar envl ident var = envlens envl %= insert ident var
+setVar :: Scope -> NText -> Var -> Fish  ()
+setVar scp ident var = asLens scp %= insert ident var
 
-modifyVar :: EnvLens Var -> NText -> (Var -> Var) -> Fish  ()
-modifyVar envl ident f = envlens envl %= adjust f ident
+modifyVar :: Scope -> NText -> (Var -> Var) -> Fish  ()
+modifyVar scp ident f = asLens scp %= adjust f ident
 
-setVarSafe :: EnvLens Var -> NText -> Var -> Fish  ()
+setVarSafe :: Scope -> NText -> Var -> Fish  ()
 setVarSafe env ident var =
   uses readOnlyEnv (`Env.lookup` ident) >>= \case
     Just _ -> errork "Will not set or shadow readonly variable"
     Nothing -> setVar env ident var
 
-delVarSafe :: EnvLens Var -> NText -> Fish  ()
-delVarSafe env ident =
+delVarSafe :: Scope -> NText -> Fish  ()
+delVarSafe scp ident =
   -- todo: rewrite EnvLens to do something better here
   uses readOnlyEnv (`Env.lookup` ident) >>= \case
     Just _ -> errork "Will not delete readonly variable"
-    Nothing -> envlens env %= Env.delete ident
+    Nothing -> asLens scp %= Env.delete ident
 
 withTextVar :: (T.Text -> a) -> Var -> a
 withTextVar f var = f $ T.unwords (var ^. value)

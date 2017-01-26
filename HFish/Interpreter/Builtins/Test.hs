@@ -35,7 +35,7 @@ testF _ ts = do
   if b then ok else bad
   where
     -- IO errors get mapped to False. This is usually
-    -- what you want and agrees with fishs implementation.
+    -- what you want and agrees with the fish implementation.
     onIOErr :: IOException -> IO Bool
     onIOErr = const (return False)
     

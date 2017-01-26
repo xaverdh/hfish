@@ -3,7 +3,7 @@ module HFish.Interpreter.Builtins.Read (
   readF
 ) where
 
-import Fish.Lang
+import Fish.Lang as L
 
 import HFish.Interpreter.Core
 import HFish.Interpreter.IO
@@ -59,7 +59,7 @@ readOptions = readWorker
 readWorker
   :: Bool
   -> Bool
-  -> Maybe Scope
+  -> Maybe L.Scope
   -> Maybe Export
   -> [T.Text]
   -> Fish ()

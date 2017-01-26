@@ -1,7 +1,8 @@
 {-# language LambdaCase, OverloadedStrings #-}
 module HFish.Interpreter.FuncSt where
 
-import Fish.Lang
+import Fish.Lang hiding (Scope)
+import HFish.Interpreter.Scope
 import HFish.Interpreter.Core
 import HFish.Interpreter.Var
 import HFish.Interpreter.Util
@@ -94,5 +95,5 @@ funcWorker progA
           >> assignLoop args idents
 
     setFLocal ident vs = (Var UnExport (length vs) vs)
-      & setVarSafe (EnvLens flocalEnv) ident
+      & setVarSafe FLocalScope ident
 

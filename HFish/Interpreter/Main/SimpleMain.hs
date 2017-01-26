@@ -12,6 +12,7 @@ import Data.List as L
 import Control.Exception (try)
 import qualified Data.Text as T
 import HFish.Interpreter.Interpreter
+import HFish.Interpreter.Scope
 import HFish.Interpreter.Core
 import HFish.Interpreter.Init
 import HFish.Interpreter.Parsing
@@ -96,8 +97,8 @@ hfishMain
     printAST = print . doc
     
     injectArgs xs = runFish
-      $ setVar (EnvLens flocalEnv)
-        "argv" (mkVar $ map T.pack xs)
+      $ setVar FLocalScope "argv"
+        (mkVar $ map T.pack xs)
     
     execute = if isCommand then exDirect else exPaths
     

@@ -18,6 +18,8 @@ import Control.Lens
 import Control.Monad
 import System.Exit
 
+-- Todo: separate this module into interal (i.e. *Safe) and external part
+
 scopes =
   [ FLocalScope
    ,LocalScope
@@ -95,17 +97,14 @@ modifyVar :: Scope -> NText -> (Var -> Var) -> Fish  ()
 modifyVar scp ident f = asLens scp %= adjust f ident
 
 setVarSafe :: Scope -> NText -> Var -> Fish  ()
-setVarSafe env ident var =
-  uses readOnlyEnv (`Env.lookup` ident) >>= \case
-    Just _ -> errork "Will not set or shadow readonly variable"
-    Nothing -> setVar env ident var
+setVarSafe scp ident var
+  | ReadOnlyScope <- scp = errork "Will not set or shadow readonly variable"
+  | True = setVar scp ident var
 
 delVarSafe :: Scope -> NText -> Fish  ()
-delVarSafe scp ident =
-  -- todo: rewrite EnvLens to do something better here
-  uses readOnlyEnv (`Env.lookup` ident) >>= \case
-    Just _ -> errork "Will not delete readonly variable"
-    Nothing -> asLens scp %= Env.delete ident
+delVarSafe scp ident
+  
+  | True = asLens scp %= Env.delete ident
 
 withTextVar :: (T.Text -> a) -> Var -> a
 withTextVar f var = f $ T.unwords (var ^. value)

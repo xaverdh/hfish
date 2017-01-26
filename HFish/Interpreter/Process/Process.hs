@@ -13,6 +13,7 @@ import System.Posix.Process
 import System.Posix.Types
 import System.IO
 import System.IO.Error
+import System.Directory (setCurrentDirectory)
 import Control.Monad
 import Control.Monad.IO.Class
 import Control.Concurrent
@@ -54,6 +55,12 @@ fishWaitForProcess name pid =
 
 fishCreateProcess ::NText -> [T.Text] -> Fish ProcessID
 fishCreateProcess name args = do
+  getCWD >>= liftIO . setCurrentDirectory
+  -- ^ This is necessary since the current working directory
+  --   is separate from the environment passed to the process.
+  --
+  --   The kernel holds it in a separate variable which is 
+  --   automatically inherited when a child is spawned.
   env <- currentEnvironment
   pid <- forkWithFileDescriptors $
     executeFile nameString True argsStrings ( Just env )

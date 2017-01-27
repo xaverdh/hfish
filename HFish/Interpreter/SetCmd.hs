@@ -1,4 +1,4 @@
-{-# language LambdaCase, OverloadedStrings, ScopedTypeVariables, Strict #-}
+{-# language LambdaCase, OverloadedStrings, ScopedTypeVariables #-}
 module HFish.Interpreter.SetCmd where
 
 import Fish.Lang hiding (Scope)

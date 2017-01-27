@@ -1,4 +1,4 @@
-{-# language LambdaCase, GADTs, Rank2Types, OverloadedStrings, TupleSections, Strict #-}
+{-# language LambdaCase, GADTs, Rank2Types, OverloadedStrings, TupleSections #-}
 module HFish.Interpreter.Var where
 
 import Fish.Lang hiding (Scope)

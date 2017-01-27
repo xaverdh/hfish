@@ -94,7 +94,7 @@ writeIndices indices (Var ex l xs) ys = do
     work n slcs xs ys = slcs & \case
       [] -> if isEmpty ys then Right xs else Left tooManyErr
       (b,(i,j)):rest -> do
-        (zs,_,xs') <- triSplit (i-n) (j-i+1) xs
+        (zs,_,xs') <- triSplit (i-n) (j-n) xs
             `maybeToEither` invalidIndicesErr (b,(i,j))
         
         (rs,ys') <- splitAtMaybe (j-i+1) ys
@@ -116,12 +116,11 @@ dropIndices indices (Var ex l xs) = do
   return $ Var ex (length ys) ys
   where
     work :: Int -> [(t, (Int, Int))] -> [a] -> Maybe [a]
-    work n slcs xs = slcs & \case
+    work n slcs xs = case slcs of
       [] -> Just xs
       (_,(i,j)):rest -> do
-        (ys,xs') <- splitAtMaybe (i-n) xs
-        (_,zs) <- splitAtMaybe (j-i+1) xs'
-        (++) ys <$> work i rest zs
+        (ys,_,zs) <- triSplit (i-n) (j-n) xs
+        (++) ys <$> work (j+1) rest zs
     err = errork . invalidIndicesErr
     invalidIndicesErr slcs =
       "Invalid indices (out of bounds or overlapping) at slice: "
@@ -133,7 +132,7 @@ dropIndices indices (Var ex l xs) = do
 triSplit :: Int -> Int -> [a] -> Maybe ([a],[a],[a])
 triSplit i j xs = do
   (zs,xs') <- splitAtMaybe i xs
-  (xs'',ts) <- splitAtMaybe j xs'
+  (xs'',ts) <- splitAtMaybe (j-i+1) xs'
   Just (zs,xs'',ts)
 
 mbRev :: Bool -> [a] -> [a]

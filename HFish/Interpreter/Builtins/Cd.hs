@@ -17,6 +17,6 @@ cdF fork = \case
     home <- getHOME
     cdF fork [T.pack home]
     ok
-  [dir] -> setCWD $ T.unpack dir
+  [dir] -> setCWD (T.unpack dir) >>= setStatus
   _ -> errork "cd: too many arguments given"
 

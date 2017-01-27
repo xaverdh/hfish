@@ -33,7 +33,7 @@ popdF :: Bool -> [T.Text] -> Fish ()
 popdF _ = \case
   [] -> popCWD >>= \case
     Nothing -> errork "popd: directory stack is empty"
-    Just dir -> setCWD dir
+    Just dir -> setCWD dir >>= setStatus
   _ -> errork "popd: too many arguments given"
 
 dirsF :: Bool -> [T.Text] -> Fish ()

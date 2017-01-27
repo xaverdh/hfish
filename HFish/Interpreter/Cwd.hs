@@ -17,15 +17,15 @@ import System.Exit
 getHOME :: Fish FilePath
 getHOME = liftIO getHomeDirectory
 
-setCWD :: FilePath -> Fish ()
+setCWD :: FilePath -> Fish ExitCode
 setCWD dir = do
   d <- liftIO $ makeAbsolute dir
   liftIO (doesDirectoryExist d) >>= \case
     True -> do
       cwdir .= d
       readOnlyEnv %= Env.adjust (value .~ [T.pack d]) "PWD"
-      ok
-    False -> setStatus (ExitFailure 1)
+      return ExitSuccess
+    False -> return $ ExitFailure 1
 
 getCWD :: Fish FilePath
 getCWD = use cwdir
@@ -33,7 +33,7 @@ getCWD = use cwdir
 pushCWD :: FilePath -> Fish ()
 pushCWD dir = do
   oldDir <- getCWD
-  setCWD dir
+  setCWD dir >>= setStatus
   ifOk ( dirstack %= (oldDir:) )
 
 popCWD :: Fish (Maybe FilePath)

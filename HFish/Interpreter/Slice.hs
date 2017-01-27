@@ -112,7 +112,7 @@ writeIndices indices (Var ex l xs) ys = do
 dropIndices :: [(Int,Int)] -> Var -> Fish Var
 dropIndices indices (Var ex l xs) = do
   slcs <- makeSlices l indices
-  ys <- maybe err return (work 0 slcs xs)
+  ys <- maybe (err slcs) return (work 0 slcs xs)
   return $ Var ex (length ys) ys
   where
     work :: Int -> [(t, (Int, Int))] -> [a] -> Maybe [a]
@@ -122,7 +122,10 @@ dropIndices indices (Var ex l xs) = do
         (ys,xs') <- splitAtMaybe (i-n) xs
         (_,zs) <- splitAtMaybe (j-i+1) xs'
         (++) ys <$> work i rest zs
-    err = errork "dropIndices: unknown error"
+    err = errork . invalidIndicesErr
+    invalidIndicesErr slcs =
+      "Invalid indices (out of bounds or overlapping) at slice: "
+       <> showSlices slcs
 
 
 {- Helpers: -}

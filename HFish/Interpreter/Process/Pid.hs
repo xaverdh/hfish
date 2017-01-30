@@ -28,5 +28,6 @@ getPID = \case
       return [fromString $ show gpid]
     Nothing -> do
       pids <- liftIO $ readProcess "pidof" [T.unpack x] ""
+      -- ^ todo: do something better then calling pidof ?
       return (map fromString $ words pids)
 

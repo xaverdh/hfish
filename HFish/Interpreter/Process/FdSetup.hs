@@ -111,25 +111,3 @@ forkWithFileDescriptors action =
 realiseFileDescriptors :: Fish ()
 realiseFileDescriptors = 
   withFileDescriptorsSetup liftIO
-
-{- Old impl. :
-
-forkWithFileDescriptors :: IO () -> Fish PT.ProcessID
-forkWithFileDescriptors action = do
-  max_num_fds <- getMaxNumFds
-  FdTable fdescs closed weakClosed <- askFdTable
-  map fromEnum ( M.fold (:) [] fdescs ) & \used ->
-    liftIO . forkProcess $ do
-      -- close all fds marked closed:
-      forM_ closed P.closeFd
-      forM_ weakClosed fdWeakClose
-      
-      -- set up the redirections
-      execStateT setupFds FdSetupState
-        { _table = fdescs
-         ,_fdsInUse = S.fromList used
-         ,_allocIndex = max_num_fds-1 }
-      
-      -- run the action
-      action
--}

@@ -90,10 +90,12 @@ cmdStA mode (CmdIdent _ ident) args = do
     (Just b,_) -> b (isFork mode) ts
     (_,Just f) -> setReturnK $ f ts
     (Nothing,Nothing) -> do
-      pid <- fishCreateProcess ident ts
+      pid <- fishCreateProcess identText ts
       if isInOrder mode
-        then fishWaitForProcess ident pid
+        then fishWaitForProcess identText pid
         else return ()
+  where
+    identText = extractText ident
 
 setStA :: SetCommand T.Text t -> Fish ()
 setStA = SetCmd.setCommandA evalArgs evalRef

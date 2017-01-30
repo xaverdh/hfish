@@ -31,7 +31,7 @@ import HFish.Interpreter.Process.Pid
 import HFish.Interpreter.Process.FdSetup
 
 
-fishWaitForProcess :: NText -> ProcessID -> Fish ()
+fishWaitForProcess :: T.Text -> ProcessID -> Fish ()
 fishWaitForProcess name pid = 
   liftIO ( getProcessStatus True{-block-} False pid )
   >>= \case
@@ -41,20 +41,19 @@ fishWaitForProcess name pid =
       Terminated sig _ -> errTerm sig
       Stopped sig -> errStop sig
   where
-    name' = extractText name
     errNoStatus = errork
       $ "could not retrieve status of command \""
-      <> name' <> "\""
+      <> name <> "\""
     errTerm sig = errork
-      $ "\"" <> name'
+      $ "\"" <> name
        <> "\" was terminated by signal: "
        <> showText sig
     errStop sig = errork
-      $ "\"" <> name'
+      $ "\"" <> name
        <> "\" was stopped by signal: "
        <> showText sig    
 
-fishCreateProcess :: NText -> [T.Text] -> Fish ProcessID
+fishCreateProcess :: T.Text -> [T.Text] -> Fish ProcessID
 fishCreateProcess name args = do
   getCWD >>= liftIO . setCurrentDirectory
   -- ^ This is necessary since the current working directory
@@ -64,11 +63,15 @@ fishCreateProcess name args = do
   --   automatically inherited when a child is spawned.
   env <- currentEnvironment
   pid <- forkWithFileDescriptors $
-    executeFile nameString True argsStrings ( Just env )
+    executeFile 
+      nameString
+      True{-search path-}
+      argsStrings
+      ( Just env )
   lastPid .= Just pid
   return pid
   where
-    nameString = T.unpack $ extractText name
+    nameString = T.unpack name
     argsStrings = map T.unpack args
 
 fishExec :: T.Text -> [T.Text] -> Fish a
@@ -81,7 +84,11 @@ fishExec name args = do
   --   automatically inherited when a child is spawned.
   env <- currentEnvironment
   realiseFileDescriptors
-  liftIO $ executeFile nameString True argsStrings ( Just env )
+  liftIO $ executeFile 
+    nameString 
+    True{-search path-}
+    argsStrings
+    ( Just env )
   where
     nameString = T.unpack name
     argsStrings = map T.unpack args

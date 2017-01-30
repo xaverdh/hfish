@@ -7,6 +7,7 @@ module HFish.Interpreter.Builtins.Eval (
 import HFish.Interpreter.Parsing
 import HFish.Interpreter.Core
 import HFish.Interpreter.Interpreter (progA)
+import HFish.Interpreter.Process.Process (fishExec)
 import qualified Data.Text as T
 import Fish.Lang
 import System.Posix.Process
@@ -24,7 +25,6 @@ evalF :: Builtin
 evalF _ ts = void (onArgs ts progA)
 
 execF :: Builtin
-execF _ ts = 
-  map T.unpack ts & \(name:args) ->
-   liftIO $ executeFile name True args Nothing
+execF _ (name:args) = fishExec name args
+
 

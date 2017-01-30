@@ -1,6 +1,7 @@
 {-# LANGUAGE TemplateHaskell, LambdaCase, OverloadedStrings #-}
 module HFish.Interpreter.Process.FdSetup (
   forkWithFileDescriptors
+  ,realiseFileDescriptors
 ) where
 
 import HFish.Interpreter.Util
@@ -79,10 +80,38 @@ setupFds = forM_ [0..9] setupFd
           lift $ P.dupTo pfd (toEnum i)
           return ()
 
+
 -- | Execute an IO action in an environment
 --   where the interal fd state has been translated
 --   into OS calls.
 --
+withFileDescriptorsSetup :: (IO () -> Fish a) -> Fish a
+withFileDescriptorsSetup k = do
+  max_num_fds <- getMaxNumFds
+  FdTable fdescs closed weakClosed <- askFdTable
+  map fromEnum ( M.fold (:) [] fdescs ) & \used ->
+    k $ do
+      -- close all fds marked closed:
+      forM_ closed P.closeFd
+      forM_ weakClosed fdWeakClose
+      
+      -- set up the redirections
+      void $ execStateT setupFds FdSetupState
+        { _table = fdescs
+         ,_fdsInUse = S.fromList used
+         ,_allocIndex = max_num_fds-1 }
+
+forkWithFileDescriptors :: IO () -> Fish PT.ProcessID
+forkWithFileDescriptors action =
+  withFileDescriptorsSetup $ \setup ->
+    (liftIO . forkProcess) (setup >> action)
+
+-- Realise Fd setup in the current process (used by fishExec).
+realiseFileDescriptors :: Fish ()
+realiseFileDescriptors = 
+  withFileDescriptorsSetup liftIO
+
+{-
 forkWithFileDescriptors :: IO () -> Fish PT.ProcessID
 forkWithFileDescriptors action = do
   max_num_fds <- getMaxNumFds
@@ -101,4 +130,4 @@ forkWithFileDescriptors action = do
       
       -- run the action
       action
-
+-}

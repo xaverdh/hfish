@@ -80,11 +80,8 @@ setupFds = forM_ [0..9] setupFd
           lift $ P.dupTo pfd (toEnum i)
           return ()
 
-
--- | Execute an IO action in an environment
---   where the interal fd state has been translated
---   into OS calls.
---
+-- | Takes a continuation which gets passed
+--   an IO action for properly setting up the file descriptors.
 withFileDescriptorsSetup :: (IO () -> Fish a) -> Fish a
 withFileDescriptorsSetup k = do
   max_num_fds <- getMaxNumFds
@@ -101,6 +98,10 @@ withFileDescriptorsSetup k = do
          ,_fdsInUse = S.fromList used
          ,_allocIndex = max_num_fds-1 }
 
+-- | Execute an IO action in an environment
+--   where the interal fd state has been translated
+--   into OS calls.
+--
 forkWithFileDescriptors :: IO () -> Fish PT.ProcessID
 forkWithFileDescriptors action =
   withFileDescriptorsSetup $ \setup ->
@@ -111,7 +112,8 @@ realiseFileDescriptors :: Fish ()
 realiseFileDescriptors = 
   withFileDescriptorsSetup liftIO
 
-{-
+{- Old impl. :
+
 forkWithFileDescriptors :: IO () -> Fish PT.ProcessID
 forkWithFileDescriptors action = do
   max_num_fds <- getMaxNumFds

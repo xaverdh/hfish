@@ -18,6 +18,7 @@ import HFish.Interpreter.Init
 import HFish.Interpreter.Parsing
 import HFish.Interpreter.Var
 import HFish.Interpreter.Version (version)
+import HFish.Interpreter.Description (description)
 import Fish.Lang
 
 import System.Console.Haskeline
@@ -28,7 +29,7 @@ import Options.Applicative.Builder as OB
 
 import Fish.Pretty
 import Text.PrettyPrint.GenericPretty (doc)
--- import Text.PrettyPrint.ANSI.Leijen
+
 
 main :: IO ()
 main = execParserPure conf parser <$> getArgs
@@ -43,8 +44,7 @@ main = execParserPure conf parser <$> getArgs
     parser = info (helper <*> (versionOpt <|> hfishOptions))
       (fullDesc
         <> header "hfish: a fish-like shell, written in haskell"
-        -- <> progDesc(Doc?)
-        --      "TODO: insert elaborate description here ..."
+        <> progDescDoc (Just description)
         <> failureCode 1)
     
     versionOpt = flag' (putStrLn version)

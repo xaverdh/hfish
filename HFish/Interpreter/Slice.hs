@@ -14,6 +14,9 @@ import HFish.Interpreter.Util
 
 import qualified Data.List as L
 import qualified Data.Text as T
+import qualified Data.Foldable as F
+import qualified Data.Sequence as Seq
+import Data.Sequence
 import Data.Tuple
 import Data.Monoid
 import Data.Bool
@@ -41,11 +44,11 @@ showSlices slcs =
     sugar (i,j) = show i ++ ".." ++ show j
     
 -- | Create 'Slices' from the length of an array and given indices.
-mkSlices :: Int -> [(Int,Int)] -> Either T.Text Slices
+mkSlices :: Int -> Seq (Int,Int) -> Either T.Text Slices
 mkSlices l xs = 
   L.sortOn (fst . snd)
   . map markSwap
-  <$> forM xs normalise
+  <$> forM (F.toList xs) normalise
   where
     normalise (i,j) = do
       a <- index i
@@ -59,40 +62,40 @@ mkSlices l xs =
         "Index \"" <> showText i <> "\" is out of bounds"
 
 -- | Variant of 'mkSlices'.
-makeSlices :: Int -> [(Int,Int)] -> Fish Slices
+makeSlices :: Int -> Seq (Int,Int) -> Fish Slices
 makeSlices len = 
   either errork return
   . mkSlices len
 
 -- | Read values at given indices from variable.
-readIndices :: [(Int,Int)] -> Var -> Fish [T.Text]
+readIndices :: Seq (Int,Int) -> Var -> Fish (Seq Str)
 readIndices indices (Var _ l xs) = do
   slcs <- makeSlices l indices
   work 0 slcs xs & maybe err return
   where
-    work :: Int -> Slices -> [T.Text] -> Maybe [T.Text]
+    work :: Int -> Slices -> Seq Str -> Maybe (Seq Str)
     work n slcs xs = slcs & \case
-      [] -> Just []
+      [] -> Just empty
       (b,(i,j)):rest -> do
         (_,xs') <- splitAtMaybe (i-n) xs
         (ys,_) <- splitAtMaybe (j-i+1) xs'
-        (++) (mbRev b ys) <$> work i rest xs'
+        (<>) (mbRev b ys) <$> work i rest xs'
     err = errork
       $ "readIndices: something went wrong..."
     
 
 -- | Write values into variable at given indices.
 --   May fail if the ranges overlap.
-writeIndices :: [(Int,Int)] -> Var -> [T.Text] -> Fish Var
+writeIndices :: Seq (Int,Int) -> Var -> Seq Str -> Fish Var
 writeIndices indices (Var ex l xs) ys = do
   slcs <- makeSlices l indices
   Var ex l
     <$> either errork return
       (work 0 slcs xs ys)
   where
-    work :: Int -> Slices -> [T.Text] -> [T.Text] -> Either T.Text [T.Text]
+    work :: Int -> Slices -> Seq Str -> Seq Str -> Either T.Text (Seq Str)
     work n slcs xs ys = slcs & \case
-      [] -> if isEmpty ys then Right xs else Left tooManyErr
+      [] -> if Seq.null ys then Right xs else Left tooManyErr
       (b,(i,j)):rest -> do
         (zs,_,xs') <- triSplit (i-n) (j-n) xs
             `maybeToEither` invalidIndicesErr (b,(i,j))
@@ -100,7 +103,7 @@ writeIndices indices (Var ex l xs) ys = do
         (rs,ys') <- splitAtMaybe (j-i+1) ys
             `maybeToEither` tooFewErr
         
-        (++) (zs ++ mbRev b rs) <$> work (j+1) rest xs' ys'
+        (<>) (zs <> mbRev b rs) <$> work (j+1) rest xs' ys'
     
     tooFewErr = "Too few values to write."
     tooManyErr = "Too many values to write."
@@ -109,18 +112,18 @@ writeIndices indices (Var ex l xs) ys = do
        <> showSlices [slc]
 
 -- | Drop indices from a variable.
-dropIndices :: [(Int,Int)] -> Var -> Fish Var
+dropIndices :: Seq (Int,Int) -> Var -> Fish Var
 dropIndices indices (Var ex l xs) = do
   slcs <- makeSlices l indices
   ys <- maybe (err slcs) return (work 0 slcs xs)
-  return $ Var ex (length ys) ys
+  return $ Var ex (Seq.length ys) ys
   where
-    work :: Int -> [(t, (Int, Int))] -> [a] -> Maybe [a]
+    work :: Int -> [(t, (Int, Int))] -> Seq a -> Maybe (Seq a)
     work n slcs xs = case slcs of
       [] -> Just xs
       (_,(i,j)):rest -> do
         (ys,_,zs) <- triSplit (i-n) (j-n) xs
-        (++) ys <$> work (j+1) rest zs
+        (<>) ys <$> work (j+1) rest zs
     err = errork . invalidIndicesErr
     invalidIndicesErr slcs =
       "Invalid indices (out of bounds or overlapping) at slice: "
@@ -129,17 +132,13 @@ dropIndices indices (Var ex l xs) = do
 
 {- Helpers: -}
 
-triSplit :: Int -> Int -> [a] -> Maybe ([a],[a],[a])
+triSplit :: Int -> Int -> Seq a -> Maybe (Seq a,Seq a,Seq a)
 triSplit i j xs = do
   (zs,xs') <- splitAtMaybe i xs
   (xs'',ts) <- splitAtMaybe (j-i+1) xs'
   Just (zs,xs'',ts)
 
-mbRev :: Bool -> [a] -> [a]
-mbRev = bool id reverse
+mbRev :: Bool -> Seq a -> Seq a
+mbRev = bool id Seq.reverse
 
-isEmpty :: [a] -> Bool
-isEmpty = \case
-  [] -> True
-  _ -> False
 

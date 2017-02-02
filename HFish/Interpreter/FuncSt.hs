@@ -9,14 +9,17 @@ import HFish.Interpreter.Util
 import HFish.Interpreter.Events
 import HFish.Interpreter.Env as Env
 
-import Control.Lens
+import Control.Lens hiding ((:<))
 import Control.Applicative
 import Control.Monad
 import Control.Monad.State
-import Data.NText
-import Data.Monoid
 import qualified Data.Text as T
 import qualified Data.Map as M
+import qualified Data.Foldable as F
+import qualified Data.Sequence as Seq
+import Data.Sequence
+import Data.NText
+import Data.Monoid
 
 import Options.Applicative
 import Options.Applicative.Builder as OB
@@ -24,11 +27,11 @@ import Options.Applicative.Builder as OB
 
 funcStA :: (Prog T.Text t -> Fish ())
   -> FunIdent T.Text t
-  -> [T.Text]
+  -> Seq Str
   -> Prog T.Text t
   -> Fish ()
 funcStA progA (FunIdent _ name) ts prog =
-  execParserPure defaultPrefs parser (map T.unpack ts)
+  execParserPure defaultPrefs parser (map T.unpack . F.toList $ ts)
   & \case
     Success f -> f
     Failure err ->
@@ -73,6 +76,7 @@ funcWorker progA
     forM_ events $ flip setupEventHandler $ EventHandler name
     forM_ signals $ flip setupSignalHandler $ SignalHandler name
   where
+    f :: Env Var -> Seq Str -> Fish ()
     f inherited args = 
       ( if noShadow 
           then id
@@ -83,17 +87,17 @@ funcWorker progA
         assignLoop args idents
         progA prog
     
-    assignLoop :: [T.Text] -> [NText] -> Fish ()
-    assignLoop = \case
-      [] -> \idents -> forM_ idents $ flip setFLocal []
-      (arg:args) -> \case
+    assignLoop :: Seq Str -> [NText] -> Fish ()
+    assignLoop vs = case viewl vs of
+      EmptyL -> \idents -> forM_ idents $ flip setFLocal mempty
+      arg :< args -> \case
         [] -> return ()
-        -- [ident] -> setFLocal ident $ arg:args
+        -- [ident] -> setFLocal ident vs
         -- would be more natural but break fish compat
         ident:idents -> 
-          setFLocal ident [arg]
+          setFLocal ident (pure arg)
           >> assignLoop args idents
 
-    setFLocal ident vs = (Var UnExport (length vs) vs)
+    setFLocal ident vs = (Var UnExport (Seq.length vs) vs)
       & setVarSafe FLocalScope ident
 

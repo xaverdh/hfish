@@ -9,14 +9,17 @@ import HFish.Interpreter.Env as Env
 import Control.Lens
 import Control.Monad
 import Control.Monad.IO.Class
-import Data.Monoid
 import qualified Data.Set as S
 import qualified Data.Text as T
+import qualified Data.Sequence as Seq
+import Data.Sequence
+import Data.Monoid
+
 
 import System.Posix.Signals
 import System.Posix.Types
 
-handleEvent :: NText -> [T.Text] -> Fish ()
+handleEvent :: NText -> Seq Str -> Fish ()
 handleEvent evName args =
   uses eventHandlers (`Env.lookup` evName)
   >>= flip whenJust ( mapM_ call . S.toList )
@@ -34,7 +37,7 @@ handleSignal sig =
     call :: SignalHandler -> Fish ()
     call (SignalHandler fname) =
       uses functions (`Env.lookup` fname)
-      >>= flip whenJust ($[])
+      >>= flip whenJust ($mempty)
 
 setupEventHandler :: NText -> EventHandler -> Fish ()
 setupEventHandler evName h =

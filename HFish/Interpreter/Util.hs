@@ -1,18 +1,23 @@
 {-# language LambdaCase, TupleSections #-}
 module HFish.Interpreter.Util where
 
+import Data.Sequence
 import Data.Bifunctor
 import Text.Read
 import qualified Data.Text as T
-import Data.Foldable (foldr1)
+import qualified Data.Foldable as F
 import Data.Monoid
 import Control.Monad.IO.Class
 
 
-mintcal :: Monoid m => m -> [m] -> m
-mintcal m = \case
-  [] -> mempty
-  ms -> foldr1 (\x y -> x <> m <> y) ms
+mintcal :: (Foldable t,Monoid m) => m -> t m -> m
+mintcal m ms = 
+  if F.null ms then mempty else
+  F.foldr1 (\x y -> x <> m <> y) ms
+
+collapse :: (Traversable t,Monoid m)
+  => t m -> m
+collapse = F.foldr (<>) mempty
 
 infixl 4 <$$>
 (<$$>) :: Functor f => f a -> (a -> b) -> f b
@@ -29,13 +34,13 @@ onMaybe ma b f = maybe b f ma
 maybeToEither :: Maybe a -> b -> Either b a
 maybeToEither ma b = maybe (Left b) Right ma
 
-splitAtMaybe :: Int -> [a] -> Maybe ([a],[a])
-splitAtMaybe i
-  | i < 0 = const Nothing
-  | i == 0 = Just . ([],)
-  | otherwise = \case
-    [] -> Nothing
-    x:xs -> first (x:)
+splitAtMaybe :: Int -> Seq a -> Maybe (Seq a,Seq a)
+splitAtMaybe i xs
+  | i < 0 = Nothing
+  | i == 0 = Just (empty,xs)
+  | True = case viewl xs of
+    EmptyL -> Nothing
+    x :< xs -> first (x <|)
       <$> splitAtMaybe (i-1) xs
 
 readText :: Read a => T.Text -> a

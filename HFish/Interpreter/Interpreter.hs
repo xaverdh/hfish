@@ -22,13 +22,16 @@ import HFish.Interpreter.Env as Env
 import qualified HFish.Interpreter.SetCmd as SetCmd
 import qualified HFish.Interpreter.FuncSt as FuncSt
 
+import qualified Data.List.NonEmpty as N
+import qualified Data.Text as T
+import qualified Data.Foldable as F
+import qualified Data.Sequence as Seq
+import Data.Sequence
 import Data.NText
 import Data.Monoid
 import Data.Maybe
 import Data.Bool
-import qualified Data.List.NonEmpty as N
-import qualified Data.Text as T
-import Control.Lens
+import Control.Lens hiding ((:<))
 import Control.Monad
 import Control.Monad.State
 import Control.Applicative
@@ -84,17 +87,19 @@ stmtA mode = \case
 cmdStA :: ExMode -> CmdIdent T.Text t -> Args T.Text t -> Fish ()
 cmdStA mode (CmdIdent _ ident) args = do
   ts <- evalArgs args
+  let ts' = F.toList ts
   bn <- views builtins (`Env.lookup` ident)
   fn <- uses functions (`Env.lookup` ident)
   case (bn,fn) of
-    (Just b,_) -> b (isFork mode) ts
+    (Just b,_) -> b (isFork mode) ts'
     (_,Just f) -> setReturnK $ f ts
     (Nothing,Nothing) -> do
-      pid <- fishCreateProcess identText ts
+      pid <- fishCreateProcess identText ts'
       if isInOrder mode
         then fishWaitForProcess identText pid
         else return ()
   where
+    
     identText = extractText ident
 
 setStA :: SetCommand T.Text t -> Fish ()
@@ -119,15 +124,18 @@ forStA (VarIdent _ varIdent) args prog = do
   xs <- evalArgs args
   setBreakK (loop xs)
   where
-    lbind x f = localise localEnv
-      (setVarSafe LocalScope varIdent (mkVar [x]) >> f)
+    lbind x f = localise localEnv $
+      setVarSafe
+        LocalScope
+        varIdent
+        (mkVar $ pure x)
+      >> f
     
     body = progA prog
     
-    loop [] = return ()
-    loop (x:xs) = do
-      lbind x $ setContinueK body
-      loop xs
+    loop =
+      let f x m = lbind x (setContinueK body) >> m
+       in F.foldr f $ return ()
 
 ifStA :: [(Stmt T.Text t,Prog T.Text t)] -> Maybe (Prog T.Text t) -> Fish ()
 ifStA [] (Just prog) = progA prog
@@ -161,9 +169,10 @@ switchStA e brnchs = view fishCompatible >>=
 --   will not be evaluated. This seems to agree with the fish impl.
 hfishSwitch ::  Expr T.Text t -> [(Expr T.Text t,Prog T.Text t)] -> Fish ()
 hfishSwitch e branches = do
-  text <- T.unwords <$> evalArg e
+  text <- T.unwords . F.toList <$> evalArg e
   loop text branches
   where
+    loop :: T.Text -> [(Expr T.Text t1, Prog T.Text t2)] -> Fish ()
     loop _ [] = return ()
     loop text ((e,prog):branches) = do
       glob <- mintcal " " <$> evalExpr e
@@ -172,10 +181,14 @@ hfishSwitch e branches = do
         Nothing -> loop text branches
 
 fishSwitch :: Expr T.Text t -> [(Expr T.Text t,Prog T.Text t)] -> Fish ()
-fishSwitch e branches = evalArg e >>= \case
-  [text] -> loop text branches
-  _ -> tooManyErr
+fishSwitch e branches =
+  fmap viewl (evalArg e) >>= \case
+    EmptyL -> errork "switch: empty statement"
+    text :< rest -> if Seq.null rest 
+      then loop text branches
+      else tooManyErr
   where
+    loop :: T.Text -> [(Expr T.Text t1, Prog T.Text t2)] -> Fish ()
     loop _ [] = return ()
     loop text ((e,prog):branches) = do
       globText <- mintcal " " <$> evalArg e
@@ -204,8 +217,10 @@ notStA st =
 redirectedStmtA :: Fish () -> [Redirect T.Text t] -> Fish ()
 redirectedStmtA f redirects = void (setupAll f)
   where
+    setupAll :: Fish () -> Fish ()
     setupAll = foldr ((.) . setup) id redirects
 
+    -- setup :: Redirect T.Text t1 -> Fish () -> Fish ()
     setup red f = red & \case
       RedirectClose fd -> close fd f
       RedirectIn fd t -> t & \case
@@ -219,67 +234,66 @@ redirectedStmtA f redirects = void (setupAll f)
           name <- evalArg e >>= checkSingleton
           withFileW name mode fd f
     
-    checkSingleton :: [a] -> Fish a
-    checkSingleton = \case
-      [] -> errork "missing file name in redirection"
-      [x] -> return x
-      _ -> errork "more then one file name in redirection"
+    checkSingleton :: Seq a -> Fish a
+    checkSingleton xs = case viewl xs of
+      EmptyL -> errork "missing file name in redirection"
+      x :< xs' -> if Seq.null xs' 
+        then return x
+        else errork "more then one file name in redirection"
 
 {- Expression evaluation -}
-evalArgs :: Args T.Text t -> Fish [T.Text]
-evalArgs (Args _ es) = join <$> forM es evalArg
+evalArgs :: Args T.Text t -> Fish (Seq Str)
+evalArgs (Args _ es) = join . Seq.fromList <$> forM es evalArg
 
-evalArg :: Expr T.Text t -> Fish [T.Text]
+evalArg :: Expr T.Text t -> Fish (Seq Str)
 evalArg arg = do
   globs <- evalExpr arg
   vs <- forM globs globExpand
   return (join vs)
 
-evalExpr :: Expr T.Text t -> Fish [Globbed]
+evalExpr :: Expr T.Text t -> Fish (Seq Globbed)
 evalExpr = \case
-  GlobE _ g -> return [Globbed [Left g]]
+  GlobE _ g -> return . pure $ fromGlob g
   ProcE _ e -> evalProcE e
   HomeDirE _ -> evalHomeDirE
-  StringE _ t -> return [fromText t]
+  StringE _ t -> return . pure $ fromText t
   VarRefE _ q vref -> evalVarRefE q vref
   BracesE _ es -> evalBracesE es
   CmdSubstE _ cmdref -> evalCmdSubstE cmdref
   ConcatE _ e1 e2 -> evalConcatE e1 e2
 
-evalProcE :: Expr T.Text t -> Fish [Globbed]
-evalProcE e = 
-  evalArg e >>= (getPID . T.intercalate "")
+evalProcE :: Expr T.Text t -> Fish (Seq Globbed)
+evalProcE e =
+  evalArg e >>= (getPID . collapse)
 
-evalHomeDirE :: Fish [Globbed]
-evalHomeDirE = do
-  home <- getHOME
-  return [fromString home]
+evalHomeDirE :: Fish (Seq Globbed)
+evalHomeDirE = getHOME
+  <$$> pure . fromString
 
-evalBracesE :: [Expr T.Text t] -> Fish [Globbed]
+evalBracesE :: [Expr T.Text t] -> Fish (Seq Globbed)
 evalBracesE es = 
-  join <$> forM es evalExpr
+  join . Seq.fromList <$> forM es evalExpr
 
-evalCmdSubstE :: CmdRef T.Text t -> Fish [Globbed]
+evalCmdSubstE :: CmdRef T.Text t -> Fish (Seq Globbed)
 evalCmdSubstE (CmdRef _ prog ref) = do
   (mvar,wE) <- createHandleMVarPair
   FDT.insert Fd1 wE (progA prog) `finally` PIO.closeFd wE
   text <- liftIO $ takeMVar mvar
-  T.lines text & \ts ->
-    map fromText <$> case ref of
+  Seq.fromList (T.lines text) & \ts ->
+    fmap fromText <$> case ref of
       Nothing -> return ts
       Just _ -> do
-        let l = length ts
+        let l = Seq.length ts
         indices <- evalRef ref
         readIndices indices (Var UnExport l ts)
 
-evalVarRefE :: Bool -> VarRef T.Text t -> Fish [Globbed]
-evalVarRefE s vref = do
-  vs <- evalVarRef vref
-  return $ map fromText (ser vs)
+evalVarRefE :: Bool -> VarRef T.Text t -> Fish (Seq Globbed)
+evalVarRefE s vref = evalVarRef vref
+  <$$> if s then ser else fmap fromText
   where
-    ser = if s then pure . T.unwords else id
+    ser = pure . fromText . T.unwords . F.toList
 
-evalVarRef :: VarRef T.Text t -> Fish [T.Text]
+evalVarRef :: VarRef T.Text t -> Fish (Seq Str)
 evalVarRef (VarRef _ name ref) = do
   varIdents <- evalName name
   vs <- forM varIdents lookupVar
@@ -294,32 +308,33 @@ evalVarRef (VarRef _ name ref) = do
           readIndices indices var
     
     evalName = \case
-      Left vref -> map mkNText <$> evalVarRef vref
-      Right (VarIdent _ i) -> return [i]
+      Left vref -> fmap mkNText <$> evalVarRef vref
+      Right (VarIdent _ i) -> return (pure i)
     
 
-evalRef :: Ref (Expr T.Text t) -> Fish [(Int,Int)]
+evalRef :: Ref (Expr T.Text t) -> Fish (Seq (Int,Int))
 evalRef ref =
-  join <$> forM (onMaybe ref [] id) indices
+  join . Seq.fromList <$> forM (onMaybe ref mempty id) indices
   where
     indices = \case
-      Index a -> (\xs -> zip xs xs) <$> evalInt a
-      Range a b -> liftA2 (,) <$> evalInt a <*> evalInt b  
+      Index a -> (\xs -> Seq.zip xs xs) <$> evalInt a
+      Range a b -> liftA2 (,) <$> evalInt a <*> evalInt b
   
-evalConcatE :: Expr T.Text t -> Expr T.Text t -> Fish [Globbed]
+evalConcatE :: Expr T.Text t -> Expr T.Text t -> Fish (Seq Globbed)
 evalConcatE e1 e2 = do
   gs1 <- evalExpr e1
   gs2 <- evalExpr e2
-  return $ map Globbed (cartesian (map unGlob gs1) (map unGlob gs2))
+  return $ fmap Globbed
+    (cartesian (fmap unGlob gs1) (fmap unGlob gs2))
   where
     cartesian = liftA2 (<>)
 
 {- Try to interpret Expression as an Int -}
 
-evalInt :: Expr T.Text t -> Fish [Int]
+evalInt :: Expr T.Text t -> Fish (Seq Int)
 evalInt e = do
   vs <- evalArg e
-  forM (T.words =<< vs) f
+  forM (Seq.fromList . T.words =<< vs) f
   where
     f v = case readTextMaybe v of
       Just x -> return x

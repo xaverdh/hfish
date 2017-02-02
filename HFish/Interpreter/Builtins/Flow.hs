@@ -10,6 +10,8 @@ import HFish.Interpreter.Status
 import HFish.Interpreter.Util
 
 import qualified Data.Text as T
+import qualified Data.Sequence as Seq
+import Data.Sequence hiding (drop)
 import Data.Monoid
 import Control.Lens
 import System.Exit
@@ -21,9 +23,9 @@ jumpWith l e i
   | i < 1 = mkInvalidErr e
   | otherwise = do
       ks <- view l
-      case splitAtMaybe (i-1) ks of
-        Nothing -> mkNoLoopErr e
-        Just (_,k:_) -> k () >> return undefined
+      case drop (i-1) ks of
+        [] -> mkNoLoopErr e
+        k:_ -> k () >> return undefined
 
 continueF :: Bool -> [T.Text] -> Fish a
 continueF _ = \case

@@ -4,12 +4,13 @@ module HFish.Interpreter.Core where
 import Fish.Lang
 import HFish.Interpreter.Util
 import HFish.Interpreter.FdTable as FDT
-import Data.NText as NText
 import HFish.Interpreter.Env as Env
+import Data.NText as NText
 
 import qualified Data.Map as M
 import qualified Data.Set as S
 import qualified Data.Text as T
+import Data.Sequence
 import Data.Monoid
 import Control.Monad
 import Control.Monad.State
@@ -61,17 +62,20 @@ projectIO f = do
 asIO :: Fish () -> (IO FishState -> Fish a) -> Fish a
 asIO f g = projectIO f >>= g
 
+-- The /string/ type
+type Str = T.Text
+
 -- | The type of a fish /variable/
 data Var = Var {
     _exported :: Export
     ,_len :: Int
-    ,_value :: [T.Text]
+    ,_value :: Seq Str
   }
   deriving (Eq,Ord)
 
 -- | The type of a (fish) function.
 type Function =
-  [T.Text] -- ^ The arguments to the function call, already evaluated.
+  Seq Str -- ^ The arguments to the function call, already evaluated.
   -> Fish ()
 
 -- | The type of an event handler

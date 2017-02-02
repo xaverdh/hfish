@@ -4,30 +4,30 @@ module HFish.Interpreter.Process.Pid where
 import Fish.Lang
 import HFish.Interpreter.Core
 import HFish.Interpreter.Globbed
+import HFish.Interpreter.Util
 
 import Control.Lens
 import Control.Monad
 import Control.Monad.IO.Class
 import qualified Data.Text as T
+import qualified Data.Sequence as Seq
+import Data.Sequence
 import Text.Read
 import System.Process
 import System.Posix.Process
 
-getPID :: T.Text -> Fish [Globbed]
+getPID :: T.Text -> Fish (Seq Globbed)
 getPID = \case
-  "self" -> do
-    pid <- liftIO getProcessID
-    return [fromString $ show pid]
+  "self" -> toSeq <$> liftIO getProcessID
   "last" ->
     use lastPid >>= \case
-      Just pid -> return [fromString $ show pid]
+      Just pid -> return $ toSeq pid
       Nothing -> errork "Cannot obtain pid of last process."
   x -> case readMaybe $ T.unpack x of
-    Just i -> do  
-      gpid <- liftIO (getProcessGroupIDOf i)
-      return [fromString $ show gpid]
-    Nothing -> do
-      pids <- liftIO $ readProcess "pidof" [T.unpack x] ""
+    Just i -> toSeq <$> liftIO (getProcessGroupIDOf i)
+    Nothing -> toSeq
+      <$> liftIO (readProcess "pidof" [T.unpack x] "")
       -- ^ todo: do something better then calling pidof ?
-      return (map fromString $ words pids)
-
+  where
+    toSeq :: Show a => a -> Seq Globbed
+    toSeq = pure . fromString . show

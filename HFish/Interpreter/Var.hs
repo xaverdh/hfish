@@ -10,6 +10,9 @@ import HFish.Interpreter.Env as Env
 
 import qualified Data.Map as M
 import qualified Data.Text as T
+import qualified Data.Foldable as Fold
+import qualified Data.Sequence as Seq
+import Data.Sequence
 import Data.Monoid
 import Data.Maybe
 import Data.Bool
@@ -31,17 +34,17 @@ instance Show Var where
   show (Var UnExport vs _) = show vs
   show (Var Export vs _) = "(exported) " ++ show vs
 
-mkVar :: [T.Text] -> Var
-mkVar ts = Var UnExport (length ts) ts
+mkVar :: Seq Str -> Var
+mkVar ts = Var UnExport (Seq.length ts) ts
 
 emptyVar :: Var
-emptyVar = Var UnExport 0 []
+emptyVar = Var UnExport 0 mempty
 
 emptyVarXp :: Var
-emptyVarXp = Var Export 0 []
+emptyVarXp = Var Export 0 mempty
 
-mkVarXp :: [T.Text] -> Var
-mkVarXp ts = Var Export (length ts) ts
+mkVarXp :: Seq Str -> Var
+mkVarXp ts = Var Export (Seq.length ts) ts
 
 getOccurs :: NText -> Fish [(Scope,Var)]
 getOccurs ident =
@@ -64,7 +67,7 @@ getVar ident = getVarMaybe ident >>= \case
   Nothing -> errork
     $ "Lookup of variable " <> extractText ident <> " failed."
 
-getVarValue :: NText -> Fish [T.Text]
+getVarValue :: NText -> Fish (Seq Str)
 getVarValue t = do
   v <- getVar t
   return (v ^. value)
@@ -82,7 +85,8 @@ showVarEnv namesOnly env = T.unlines $
   Env.toList env <$$>
   ( if namesOnly
     then extractText . fst
-    else \(k,Var _ _ vs) -> T.unwords (extractText k : vs) )
+    else \(k,Var _ _ vs) -> 
+      T.unwords (extractText k : Fold.toList vs) )
 
 isExport :: Var -> Bool
 isExport (Var ex _ _) = 
@@ -94,7 +98,7 @@ setVar :: Scope -> NText -> Var -> Fish  ()
 setVar scp ident var = asLens scp %= insert ident var
 
 modifyVar :: Scope -> NText -> (Var -> Var) -> Fish  ()
-modifyVar scp ident f = asLens scp %= adjust f ident
+modifyVar scp ident f = asLens scp %= Env.adjust f ident
 
 setVarSafe :: Scope -> NText -> Var -> Fish  ()
 setVarSafe scp ident var
@@ -106,17 +110,17 @@ delVarSafe scp ident
   | ReadOnlyScope <- scp = errork "Will not delete readonly variable"  
   | True = asLens scp %= Env.delete ident
 
-withTextVar :: (T.Text -> a) -> Var -> a
-withTextVar f var = f $ T.unwords (var ^. value)
+withVarText :: Var -> (T.Text -> a) -> a
+withVarText var f = f . T.unwords . Fold.toList $ (var ^. value)
 
 readVar :: Read a => Var -> a
-readVar = withTextVar readText
+readVar var = withVarText var readText
 
 readVarMaybe :: Read a => Var -> Maybe a
-readVarMaybe = withTextVar readTextMaybe
+readVarMaybe var = withVarText var readTextMaybe
 
 mapSerialVar :: (Read a,Show b) => (a -> b) -> Var -> Var
-mapSerialVar f = value %~ map (showText . f . readText)
+mapSerialVar f = value %~ fmap (showText . f . readText)
 
 
 

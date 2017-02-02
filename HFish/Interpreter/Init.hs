@@ -50,7 +50,7 @@ mkInitialFishState = do
       <$> (mv >>= readVarMaybe)
     
     incShlvl = Env.alter inc "SHLVL"
-    initStatus = Env.insert "status" (mkVar ["0"])
+    initStatus = Env.insert "status" $ mkVar (pure "0")
 
 
 mkInitialFishReader :: Fish () -> Bool -> IO FishReader

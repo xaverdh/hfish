@@ -10,6 +10,7 @@ import HFish.Interpreter.Util
 import HFish.Interpreter.Events
 
 import qualified Data.Text as T
+import qualified Data.Sequence as Seq
 import Data.NText
 import Data.Functor
 import Data.Monoid
@@ -25,4 +26,4 @@ import System.IO
 emitF :: Bool -> [T.Text] -> Fish ()
 emitF _ = \case
   [] -> errork "emit: too few arguments given"
-  name:ts -> handleEvent (mkNText name) ts
+  name:ts -> handleEvent (mkNText name) (Seq.fromList ts)

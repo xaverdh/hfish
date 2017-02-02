@@ -6,6 +6,7 @@ import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.State.Class
 import Control.Monad.Reader.Class
+import qualified Data.Sequence as Seq
 import Data.Monoid
 import Data.Maybe
 import Data.List as L
@@ -98,7 +99,7 @@ hfishMain
     
     injectArgs xs = runFish
       $ setVar FLocalScope "argv"
-        (mkVar $ map T.pack xs)
+        (mkVar . Seq.fromList $ map T.pack xs)
     
     execute = if isCommand then exDirect else exPaths
     

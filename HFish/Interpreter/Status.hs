@@ -7,6 +7,8 @@ import HFish.Interpreter.Var
 import HFish.Interpreter.Env as Env
 
 import qualified Data.Text as T
+import qualified Data.Sequence as Seq
+import Data.Sequence
 import Data.Monoid
 import Control.Lens
 import Control.Monad
@@ -27,14 +29,16 @@ setStatus :: ExitCode -> Fish ()
 setStatus exCode = do
   status .= exCode
   readOnlyEnv %= insert "status"
-    (mkVar [T.pack . show $ fromEnum exCode])
+    (mkVar . pure
+      . T.pack . show $ fromEnum exCode)
 
 modifyStatus :: (ExitCode -> ExitCode) -> Fish ()
 modifyStatus f = do
   status %= f
   exCode <- use status
   readOnlyEnv %= insert "status"
-    (mkVar [T.pack . show $ fromEnum exCode])
+    (mkVar . pure
+      . T.pack . show $ fromEnum exCode)
 
 invertStatus :: Fish ()
 invertStatus =

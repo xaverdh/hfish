@@ -1,7 +1,8 @@
-{-# language LambdaCase, OverloadedStrings #-}
+{-# language LambdaCase, OverloadedStrings, GeneralizedNewtypeDeriving #-}
 module HFish.Interpreter.Globbed (
   Globbed(..)
   ,fromText
+  ,fromGlob
   ,fromString
   ,globExpand
   ,matchGlobbed
@@ -10,9 +11,13 @@ module HFish.Interpreter.Globbed (
 
 import Fish.Lang
 import HFish.Interpreter.Core
+import HFish.Interpreter.Util
 
-import Data.Maybe
 import qualified Data.Text as T
+import qualified Data.Foldable as F
+import qualified Data.Sequence as Seq
+import Data.Sequence
+import Data.Maybe
 import Data.Monoid
 import Data.String (IsString (..))
 import Control.Lens
@@ -23,74 +28,78 @@ import System.FilePath
 
 import Text.Regex.Applicative
 
-data Globbed = Globbed {
-    unGlob :: [Either Glob T.Text]
-  }
-  deriving (Eq,Ord,Show)
+instance Monoid m => Monoid (RE a m) where
+  mempty = pure mempty
+  re1 `mappend` re2 = (<>) <$> re1 <*> re2
 
+newtype Globbed = Globbed {
+    unGlob :: Seq (Either Glob Str)
+  }
+  deriving (Eq,Ord,Show,Monoid)
+
+{-
 instance Monoid Globbed where
-  mempty = Globbed []
+  mempty = Globbed mempty
   mappend a b = Globbed (unGlob a <> unGlob b)
+-}
 
 fromText :: T.Text -> Globbed
-fromText t = Globbed [Right t]
+fromText t = Globbed $ pure (Right t)
+
+fromGlob :: Glob -> Globbed
+fromGlob g = Globbed $ pure (Left g)
 
 instance IsString Globbed where
   fromString = fromText . T.pack
 
 showGlobbed :: Globbed -> T.Text
-showGlobbed = 
-  (\f (Globbed g) -> mconcat $ map f g)
-  $ \case
-    Left g -> case g of
-      StarGl -> "*"
-      DiStarGl -> "**"
-      QMarkGl -> "?"
-    Right s -> s
+showGlobbed = collapse . fmap f . unGlob
+  where
+    f :: Either Glob T.Text -> T.Text
+    f = \case
+      Left g -> case g of
+        StarGl -> "*"
+        DiStarGl -> "**"
+        QMarkGl -> "?"
+      Right s -> s
 
 
-globExpand :: Globbed -> Fish [T.Text]
+globExpand :: Globbed -> Fish (Seq Str)
 globExpand globbed = 
   case optimisticCast globbed of
-    Just s -> return [s]
+    Just s -> return (pure s)
     Nothing -> do
       wdir <- use cwdir
       paths <- recurseDirRel True wdir
       genParser globbed & \re ->
         mapMaybe (=~ re) paths & \case
           [] -> noMatchErr globbed
-          ms -> return (map T.pack ms)
+          ms -> return . fmap T.pack $ Seq.fromList ms
   where
     noMatchErr globbed = errork
       $ "No matches for glob pattern: "
         <> showGlobbed globbed
 
 optimisticCast :: Globbed -> Maybe T.Text
-optimisticCast (Globbed g) = work g
+optimisticCast = F.foldrM f "" . unGlob
   where
-    work = \case
-      [] -> Just ""
-      (mg:mgs) -> case mg of
-        Left _ -> Nothing
-        Right s -> (<>) <$> Just s <*> work mgs
+    f mg text = case mg of
+      Left _ -> Nothing
+      Right s -> Just $ s <> text
 
 matchGlobbed :: Globbed -> T.Text -> Maybe String
 matchGlobbed globbed text = 
   genParser globbed & (T.unpack text =~)
 
 genParser :: Globbed -> RE Char String
-genParser (Globbed g) = work g
-  where 
-    work = \case
-      [] -> pure ""
-      (mg:mgs) ->
-        (\p -> (++) <$> p <*> work mgs)
-        $ case mg of
-          Right s -> string $ T.unpack s
-          Left g -> case g of
-            StarGl -> few $ psym (/='/')
-            DiStarGl -> few anySym
-            QMarkGl -> pure <$> psym (/='/') 
+genParser = collapse . fmap f . unGlob
+  where
+    f = \case
+      Right s -> string $ T.unpack s
+      Left g -> case g of
+        StarGl -> few $ psym (/='/')
+        DiStarGl -> few anySym
+        QMarkGl -> pure <$> psym (/='/') 
 
 -- Used by fishSwitch
 genParserFromText :: T.Text -> RE Char String
@@ -120,7 +129,7 @@ recurseDir :: Bool -> FilePath -> IO [FilePath]
 recurseDir ignoreHidden p = do
   content <-
     map (p </>)
-    . filter (not . isHidden)
+    . Prelude.filter (not . isHidden)
     <$> listDirectory p
   mpaths <- forM content continue
   return $ content ++ join (catMaybes mpaths)

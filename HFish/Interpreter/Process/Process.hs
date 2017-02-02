@@ -6,6 +6,7 @@ module HFish.Interpreter.Process.Process (
 ) where
 
 import qualified Data.Text as T
+import Data.Foldable
 import Data.Bifunctor
 import Data.Monoid
 import Data.NText
@@ -97,7 +98,7 @@ currentEnvironment :: Fish [(String,String)]
 currentEnvironment = 
   fmap (map $ bimap l r) exportVars
   where
-    r = T.unpack . T.unwords . _value
+    r = T.unpack . T.unwords . toList . _value
     l = T.unpack . extractText
 
 

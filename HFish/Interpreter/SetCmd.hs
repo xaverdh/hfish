@@ -17,6 +17,8 @@ import Control.Lens
 import Control.Monad
 import Control.Monad.State
 import Control.Monad.Trans
+import qualified Data.Sequence as Seq
+import Data.Sequence (Seq)
 import Data.Functor
 import Data.Monoid
 import Data.Maybe
@@ -28,8 +30,8 @@ import qualified Data.Map as M
 
 -- | Evaluate a SetCommand. We have to pass evalArgs,evalRef
 --   explicitly due to the recursive modules problem.
-setCommandA :: ( Args T.Text t -> Fish [T.Text] )
-  -> ( Ref (Expr T.Text t) -> Fish [(Int,Int)] )
+setCommandA :: ( Args T.Text t -> Fish (Seq Str) )
+  -> ( Ref (Expr T.Text t) -> Fish (Seq (Int,Int)) )
   -> SetCommand T.Text t
   -> Fish ()
 setCommandA evalArgs evalRef = \case
@@ -50,7 +52,7 @@ setCommandA evalArgs evalRef = \case
 collectSetupData :: NText
   -> Maybe L.Scope
   -> Maybe Export
-  -> (Scope -> Export -> Maybe ([T.Text],Int) -> Fish a)
+  -> (Scope -> Export -> Maybe (Seq Str,Int) -> Fish a)
   -> Fish a
 collectSetupData ident mlscope mexport k =
   maybe guessScope haveScope mlscope
@@ -72,11 +74,11 @@ collectSetupData ident mlscope mexport k =
           ( k scp (defEx UnExport) Nothing )
           ( \(Var ex l vs) -> k scp (defEx ex) $ Just (vs,l) )
 
-setSetting :: (Ref a -> Fish [(Int,Int)])
+setSetting :: (Ref a -> Fish (Seq (Int,Int)))
   -> Maybe L.Scope
   -> Maybe Export
   -> (NText,Ref a)
-  -> [T.Text]
+  -> Seq Str
   -> Fish ()
 setSetting evalRef mscp mex (ident,ref) args =
   collectSetupData ident mscp mex $ \scp ex mvs ->
@@ -106,9 +108,9 @@ listVars mlscope mexport namesOnly =
           Export -> Env.filter isExport mp
           UnExport -> Env.filter (not . isExport) mp
 
-queryVars :: Maybe L.Scope -> Maybe Export -> [T.Text] -> Fish ()
+queryVars :: Maybe L.Scope -> Maybe Export -> Seq Str -> Fish ()
 queryVars mlscope mexport args = do
-  i <- (length . filter id) <$> mapM isNotSet (map mkNText args)
+  i <- (Seq.length . Seq.filter id) <$> mapM isNotSet (fmap mkNText args)
   echoLn $ showText i
   where
     isNotSet :: NText -> Fish Bool
@@ -126,7 +128,7 @@ queryVars mlscope mexport args = do
           Nothing -> False
           Just ex' -> ex /= ex'
 
-eraseVars :: (Ref a -> Fish [(Int,Int)])
+eraseVars :: (Ref a -> Fish (Seq (Int,Int)))
   -> Maybe L.Scope
   -> [(NText,Ref a)]
   -> Fish ()
@@ -151,9 +153,10 @@ eraseVars evalRef mlscope argsData =
     eraseVarIn scp (ident,ref) = do
       mv <- uses (asLens scp) (`Env.lookup` ident)
       onMaybe mv (return False) $ \var -> True <$ do
-        evalRef ref >>= \case
-          [] -> delVarSafe scp ident
-          indices -> 
-            setVarSafe scp ident
-            =<< dropIndices indices var
+        indices <- evalRef ref
+        if Seq.null indices 
+          then delVarSafe scp ident
+          else setVarSafe scp ident
+               =<< dropIndices indices var
+    
 

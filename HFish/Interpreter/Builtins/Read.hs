@@ -13,10 +13,13 @@ import HFish.Interpreter.SetCmd
 import HFish.Interpreter.Util
 
 import qualified Data.Text as T
+import qualified Data.List.NonEmpty as NL
+import qualified Data.Sequence as Seq
+import Data.Sequence
 import Data.NText
 import Data.Monoid
 import Data.Text.IO as TextIO
-import Control.Lens
+import Control.Lens hiding ((:<))
 import Control.Monad
 import Control.Monad.IO.Class
 import System.Exit
@@ -40,7 +43,7 @@ readOptions = readWorker
   <*> switch (short 'z' <> long "null")
   <*> scope
   <*> export
-  <*> some ( OB.argument text (metavar "NAMES...") )
+  <*> NL.some1 ( OB.argument text (metavar "NAMES...") )
   where
     text = maybeReader (Just . T.pack)
     
@@ -61,51 +64,55 @@ readWorker
   -> Bool
   -> Maybe L.Scope
   -> Maybe Export
-  -> [T.Text]
+  -> NL.NonEmpty T.Text
   -> Fish ()
 readWorker array nullTerm mscp mex names
-  | array && nullTerm =
-    case names of
-      [name] -> do
-        vs <- readFrom Fd0 >>= splitWords
-        setV (mkNText name) vs
-        ok
-      _ -> arrayWrongArgNumErr
-  | array = case names of
-    [name] -> do
+  | array && nullTerm = case NL.uncons names of
+    (name,Nothing) -> do
+      vs <- readFrom Fd0 >>= splitWords
+      setV (mkNText name) vs
+      ok
+    _ -> arrayWrongArgNumErr
+  | array = case NL.uncons names of
+    (name,Nothing) -> do
       vs <- readLineFrom Fd0 >>= splitWords
       setV (mkNText name) vs
       ok
     _ -> arrayWrongArgNumErr
   | nullTerm = do
     vs <- readFrom Fd0 >>= splitWords
-    assignLoop (map mkNText names) vs
+    assignLoop (fmap mkNText names) vs
     ok
   | otherwise = do
     vs <- readLineFrom Fd0 >>= splitWords
-    assignLoop (map mkNText names) vs
+    assignLoop (fmap mkNText names) vs
     ok
   where
-    splitWords :: T.Text -> Fish [T.Text]
-    splitWords s = getVarMaybe "IFS" <$$> \case
-      Just (Var _ _ vs) -> join (map T.unpack vs)
-        & \cs -> T.split (`elem` cs) s
-      Nothing -> T.foldr ((:) . T.singleton) [] s
+    splitWords :: T.Text -> Fish (Seq Str)
+    splitWords s = getVarMaybe "IFS"
+      <$$> Seq.fromList . \case
+        Just var -> withVarText var $ \text ->
+          let cs = T.unpack text
+           in T.split (`elem` cs) s
+        Nothing -> map T.singleton $ T.unpack s
     
+    setV :: NText -> Seq Str -> Fish ()
     setV = flip setIt
     
+    setIt :: Seq Str -> NText -> Fish ()
     setIt vs ident = 
       collectSetupData ident mscp mex
         $ \env ex _ -> 
-          setVarSafe env ident (Var ex (length vs) vs)
+          setVarSafe env ident (Var ex (Seq.length vs) vs)
     
-    assignLoop [name] wds =
-      void $ setIt wds name
-    assignLoop (name:names) (w:wds) = do
-      setIt [w] name
-      assignLoop names wds
-    assignLoop names [] = 
-      forM_ names $ setIt []
+    assignLoop :: NL.NonEmpty NText -> Seq Str -> Fish ()
+    assignLoop names vs = case NL.uncons names of
+      (name,Nothing) -> void $ setIt vs name
+      (name,Just names') -> case viewl vs of
+        EmptyL -> forM_ names' $ setIt mempty
+        w :< ws -> do
+          setIt (pure w) name
+          assignLoop names' ws
     
     arrayWrongArgNumErr = errork
       $ "read: expecting exactly one identifier with -a"

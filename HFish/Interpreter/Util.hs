@@ -6,6 +6,9 @@ import Data.Bifunctor
 import Text.Read
 import qualified Data.Text as T
 import qualified Data.Foldable as F
+import qualified Data.Sequence as Seq
+import Data.Sequence
+
 import Data.Monoid
 import Control.Monad.IO.Class
 
@@ -39,10 +42,7 @@ splitAtMaybe :: Int -> Seq a -> Maybe (Seq a,Seq a)
 splitAtMaybe i xs
   | i < 0 = Nothing
   | i == 0 = Just (empty,xs)
-  | True = case viewl xs of
-    EmptyL -> Nothing
-    x :< xs -> first (x <|)
-      <$> splitAtMaybe (i-1) xs
+  | True = Just $ Seq.splitAt i xs
 
 readText :: Read a => T.Text -> a
 readText = read . T.unpack

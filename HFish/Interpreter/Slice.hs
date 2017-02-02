@@ -50,6 +50,7 @@ mkSlices l xs =
   . map markSwap
   <$> forM (F.toList xs) normalise
   where
+    -- sortOn f = Seq.unstableSortBy $ \x y -> compare (f x) (f y)
     normalise (i,j) = do
       a <- index i
       b <- index j

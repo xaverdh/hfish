@@ -17,7 +17,8 @@ mintcal m ms =
 
 collapse :: (Traversable t,Monoid m)
   => t m -> m
-collapse = F.foldr (<>) mempty
+collapse = F.fold
+  -- F.foldr (<>) mempty
 
 infixl 4 <$$>
 (<$$>) :: Functor f => f a -> (a -> b) -> f b

@@ -70,24 +70,26 @@ globExpand globbed =
     Just s -> return (pure s)
     Nothing -> do
       wdir <- use cwdir
-      paths <- recurseDirRel True wdir
-      genParser globbed & \re ->
-        mapMaybe (=~ re) paths & \case
-          [] -> noMatchErr globbed
-          ms -> return . fmap T.pack $ Seq.fromList ms
+      paths <- getMatches <$> recurseDirRel True wdir
+      if Seq.null paths
+        then noMatchErr globbed
+        else return . fmap T.pack $ paths
   where
+    parser = genParser globbed
+    getMatches = Seq.filter $ isJust . (=~ parser)
+    
     noMatchErr globbed = errork
       $ "No matches for glob pattern: "
         <> showGlobbed globbed
 
-optimisticCast :: Globbed -> Maybe T.Text
+optimisticCast :: Globbed -> Maybe Str
 optimisticCast = F.foldrM f "" . unGlob
   where
     f mg text = case mg of
       Left _ -> Nothing
       Right s -> Just $ s <> text
 
-matchGlobbed :: Globbed -> T.Text -> Maybe String
+matchGlobbed :: Globbed -> Str -> Maybe String
 matchGlobbed globbed text = 
   genParser globbed & (T.unpack text =~)
 
@@ -119,22 +121,26 @@ matchText :: T.Text -> T.Text -> Maybe String
 matchText globText text =
   genParserFromText globText & (T.unpack text =~)
 
-recurseDirRel :: Bool -> FilePath -> Fish [FilePath]
+recurseDirRel :: Bool -> FilePath -> Fish (Seq FilePath)
 recurseDirRel b p = do
   wdir <- use cwdir
   paths <- liftIO (recurseDir b p)
-  return $ map (makeRelative wdir) paths
+  return $ fmap (makeRelative wdir) paths
 
-recurseDir :: Bool -> FilePath -> IO [FilePath]
+recurseDir :: Bool -> FilePath -> IO (Seq FilePath)
 recurseDir ignoreHidden p = do
-  content <-
-    map (p </>)
+  content <- Seq.fromList
+    . map (p </>)
     . Prelude.filter (not . isHidden)
-    <$> listDirectory p
+    <$> listDirectory p -- todo catch errors
   mpaths <- forM content continue
-  return $ content ++ join (catMaybes mpaths)
+  return $ content <> F.foldr catf mempty mpaths
   where
-    continue :: FilePath -> IO (Maybe [FilePath])
+    catf mx pths = case mx of
+      Just x -> x <> pths
+      Nothing -> pths
+    
+    continue :: FilePath -> IO (Maybe (Seq FilePath))
     continue p =
       doesDirectoryExist p >>= \case
         True -> do

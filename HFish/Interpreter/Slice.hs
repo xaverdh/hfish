@@ -69,8 +69,8 @@ makeSlices len =
 
 -- | Read values at given indices from variable.
 readIndices :: Seq (Int,Int) -> Var -> Fish (Seq Str)
-readIndices indices (Var _ l xs) = do
-  slcs <- makeSlices l indices
+readIndices indices (Var _ xs) = do
+  slcs <- makeSlices (Seq.length xs) indices
   work 0 slcs xs & maybe err return
   where
     work :: Int -> Slices -> Seq Str -> Maybe (Seq Str)
@@ -87,9 +87,9 @@ readIndices indices (Var _ l xs) = do
 -- | Write values into variable at given indices.
 --   May fail if the ranges overlap.
 writeIndices :: Seq (Int,Int) -> Var -> Seq Str -> Fish Var
-writeIndices indices (Var ex l xs) ys = do
-  slcs <- makeSlices l indices
-  Var ex l
+writeIndices indices (Var ex xs) ys = do
+  slcs <- makeSlices (Seq.length xs) indices
+  Var ex
     <$> either errork return
       (work 0 slcs xs ys)
   where
@@ -113,10 +113,10 @@ writeIndices indices (Var ex l xs) ys = do
 
 -- | Drop indices from a variable.
 dropIndices :: Seq (Int,Int) -> Var -> Fish Var
-dropIndices indices (Var ex l xs) = do
-  slcs <- makeSlices l indices
+dropIndices indices (Var ex xs) = do
+  slcs <- makeSlices (Seq.length xs) indices
   ys <- maybe (err slcs) return (work 0 slcs xs)
-  return $ Var ex (Seq.length ys) ys
+  return $ Var ex ys
   where
     work :: Int -> [(t, (Int, Int))] -> Seq a -> Maybe (Seq a)
     work n slcs xs = case slcs of

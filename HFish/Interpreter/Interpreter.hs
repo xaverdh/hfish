@@ -285,7 +285,7 @@ evalCmdSubstE (CmdRef _ prog ref) = do
       Just _ -> do
         let l = Seq.length ts
         indices <- evalRef ref
-        readIndices indices (Var UnExport l ts)
+        readIndices indices (Var UnExport ts)
 
 evalVarRefE :: Bool -> VarRef T.Text t -> Fish (Seq Globbed)
 evalVarRefE s vref = evalVarRef vref
@@ -300,7 +300,7 @@ evalVarRef (VarRef _ name ref) = do
   return (join vs)
   where
     lookupVar ident = do
-      var@(Var _ _ ts) <- getVar ident
+      var@(Var _ ts) <- getVar ident
       if isNothing ref
         then return ts
         else do

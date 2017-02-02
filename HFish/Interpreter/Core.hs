@@ -68,7 +68,6 @@ type Str = T.Text
 -- | The type of a fish /variable/
 data Var = Var {
     _exported :: Export
-    ,_len :: Int
     ,_value :: Seq Str
   }
   deriving (Eq,Ord)

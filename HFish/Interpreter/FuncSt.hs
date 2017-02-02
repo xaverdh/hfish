@@ -98,6 +98,6 @@ funcWorker progA
           setFLocal ident (pure arg)
           >> assignLoop args idents
 
-    setFLocal ident vs = (Var UnExport (Seq.length vs) vs)
+    setFLocal ident vs = (Var UnExport vs)
       & setVarSafe FLocalScope ident
 

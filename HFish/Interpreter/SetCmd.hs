@@ -52,7 +52,7 @@ setCommandA evalArgs evalRef = \case
 collectSetupData :: NText
   -> Maybe L.Scope
   -> Maybe Export
-  -> (Scope -> Export -> Maybe (Seq Str,Int) -> Fish a)
+  -> (Scope -> Export -> Maybe (Seq Str) -> Fish a)
   -> Fish a
 collectSetupData ident mlscope mexport k =
   maybe guessScope haveScope mlscope
@@ -64,7 +64,7 @@ collectSetupData ident mlscope mexport k =
     guessScope = getOccurs ident
       >>= \case
         [] -> k FLocalScope (defEx UnExport) Nothing
-        (scp,Var ex l vs):_ -> k scp (defEx ex) $ Just (vs,l)
+        (scp,Var ex vs):_ -> k scp (defEx ex) $ Just vs
     
     -- haveScope :: L.Scope -> Fish a
     haveScope scope = fromLangScope scope
@@ -72,7 +72,7 @@ collectSetupData ident mlscope mexport k =
         mv <- uses (asLens scp) (`Env.lookup` ident)
         onMaybe mv
           ( k scp (defEx UnExport) Nothing )
-          ( \(Var ex l vs) -> k scp (defEx ex) $ Just (vs,l) )
+          ( \(Var ex vs) -> k scp (defEx ex) $ Just vs )
 
 setSetting :: (Ref a -> Fish (Seq (Int,Int)))
   -> Maybe L.Scope
@@ -83,12 +83,12 @@ setSetting :: (Ref a -> Fish (Seq (Int,Int)))
 setSetting evalRef mscp mex (ident,ref) args =
   collectSetupData ident mscp mex $ \scp ex mvs ->
   if isNothing ref
-    then setVarSafe scp ident $ Var ex (length args) args
+    then setVarSafe scp ident $ Var ex args
     else case mvs of
       Nothing -> errork uninitErr
-      Just (vs,l) -> do
+      Just vs -> do
         indices <- evalRef ref
-        var <- writeIndices indices (Var ex l vs) args
+        var <- writeIndices indices (Var ex vs) args
         setVarSafe scp ident var
   where
     uninitErr = "set: Trying to set parts of uninitialised variable"
@@ -123,7 +123,7 @@ queryVars mlscope mexport args = do
     isNotSetIn :: Scope -> NText -> Fish Bool
     isNotSetIn scp ident =
       uses (asLens scp) (`Env.lookup` ident) >>= \mv ->
-      onMaybe mv (return True) $ \(Var ex _ _) -> 
+      onMaybe mv (return True) $ \(Var ex _) -> 
         return $ case mexport of
           Nothing -> False
           Just ex' -> ex /= ex'

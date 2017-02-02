@@ -103,7 +103,7 @@ readWorker array nullTerm mscp mex names
     setIt vs ident = 
       collectSetupData ident mscp mex
         $ \env ex _ -> 
-          setVarSafe env ident (Var ex (Seq.length vs) vs)
+          setVarSafe env ident (Var ex vs)
     
     assignLoop :: NL.NonEmpty NText -> Seq Str -> Fish ()
     assignLoop names vs = case NL.uncons names of

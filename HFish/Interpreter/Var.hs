@@ -31,20 +31,20 @@ scopes =
    {- ,UniversalScope -} ]
 
 instance Show Var where
-  show (Var UnExport vs _) = show vs
-  show (Var Export vs _) = "(exported) " ++ show vs
+  show (Var UnExport vs) = show vs
+  show (Var Export vs) = "(exported) " ++ show vs
 
 mkVar :: Seq Str -> Var
-mkVar ts = Var UnExport (Seq.length ts) ts
+mkVar ts = Var UnExport ts
 
 emptyVar :: Var
-emptyVar = Var UnExport 0 mempty
+emptyVar = Var UnExport mempty
 
 emptyVarXp :: Var
-emptyVarXp = Var Export 0 mempty
+emptyVarXp = Var Export mempty
 
 mkVarXp :: Seq Str -> Var
-mkVarXp ts = Var Export (Seq.length ts) ts
+mkVarXp ts = Var Export ts
 
 getOccurs :: NText -> Fish [(Scope,Var)]
 getOccurs ident =
@@ -85,11 +85,11 @@ showVarEnv namesOnly env = T.unlines $
   Env.toList env <$$>
   ( if namesOnly
     then extractText . fst
-    else \(k,Var _ _ vs) -> 
+    else \(k,Var _ vs) -> 
       T.unwords (extractText k : Fold.toList vs) )
 
 isExport :: Var -> Bool
-isExport (Var ex _ _) = 
+isExport (Var ex _) = 
   case ex of
     Export -> True
     UnExport -> False

@@ -1,10 +1,12 @@
 {-# language OverloadedStrings #-}
 module HFish.Interpreter.Description (
   description
+  ,setCommandHelp
 ) where
 
 import Prelude hiding ((<$>))
 import Text.PrettyPrint.ANSI.Leijen
+import Data.Text as T
 
 description :: Doc
 description = ""
@@ -29,3 +31,6 @@ compat = ""
 cmd = ""
 
 -- "-c / --command"
+
+setCommandHelp :: T.Text
+setCommandHelp = "The set command.\n"

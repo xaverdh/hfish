@@ -10,6 +10,7 @@ import HFish.Interpreter.IO
 import HFish.Interpreter.Var
 import HFish.Interpreter.Status
 import HFish.Interpreter.Slice
+import HFish.Interpreter.Description (setCommandHelp)
 import Data.NText
 import qualified HFish.Interpreter.Env as Env
 
@@ -44,6 +45,7 @@ setCommandA evalArgs evalRef = \case
     evalArgs args >>= queryVars mscp mex
   SetErase mscp varDefs -> 
     eraseVars evalRef mscp $ map extract $ N.toList varDefs
+  SetHelp -> echo setCommandHelp
   where
     extract :: VarDef T.Text t -> (NText,Ref (Expr T.Text t))
     extract (VarDef _ (VarIdent _ ident) ref) = (ident,ref)

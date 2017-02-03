@@ -24,7 +24,7 @@ createHandleMVarPair =
   liftIO $ do
     (rE,wE) <- P.createPipe
     mvar <- newEmptyMVar
-    forkOS
+    forkIO
       ( P.fdToHandle rE >>= TextIO.hGetContents >>= putMVar mvar )
     return (mvar,wE)
 

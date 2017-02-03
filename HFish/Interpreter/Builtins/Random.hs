@@ -1,4 +1,4 @@
-{-# language LambdaCase, OverloadedStrings #-}
+{-# language LambdaCase, OverloadedStrings, ScopedTypeVariables #-}
 module HFish.Interpreter.Builtins.Random (
   randomF
 ) where
@@ -18,8 +18,8 @@ import Data.Word (Word16)
 randomF :: Bool -> [T.Text] -> Fish ()
 randomF _ = \case
   [] -> do
-    r <- liftIO randomIO
-    echo (T.pack $ show (div r 2 :: Word16))
-    -- we use Word16 for fish compat.
+    r :: Word16 <- liftIO randomIO
+    echo (T.pack $ show (div r 2))
+    -- we use Word16 and (div r 2) for fish compat.
     ok
   _ -> errork "random: too many arguments given"

@@ -25,8 +25,6 @@ import Control.Lens hiding ((:<))
 import Control.Monad
 import Control.Monad.IO.Class
 
-import Debug.Trace (trace)
-
 -- | A collection of slices, each of which consists of:
 --
 --   * A boolean, indicating if the slice is "reversed"
@@ -65,7 +63,6 @@ readIndices indices (Var _ xs) = do
     
 
 -- | Write values into variable at given indices.
---   May fail if the ranges overlap.
 writeIndices :: Seq (Int,Int) -> Var -> Seq Str -> Fish Var
 writeIndices indices (Var ex xs) ys = do
   slcs <- makeSlices (Seq.length xs) indices

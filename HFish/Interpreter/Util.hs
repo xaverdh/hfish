@@ -45,8 +45,7 @@ maybeToEither ma b = maybe (Left b) Right ma
 
 splitAtMaybe :: Int -> Seq a -> Maybe (Seq a,Seq a)
 splitAtMaybe i xs
-  | i < 0 = Nothing
-  | i == 0 = Just (empty,xs)
+  | i < 0 || i > Seq.length xs = Nothing
   | True = Just $ Seq.splitAt i xs
 
 readText :: Read a => T.Text -> a

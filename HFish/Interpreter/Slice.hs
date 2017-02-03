@@ -64,15 +64,13 @@ mkSlices l xs =
 
 -- | Variant of 'mkSlices'.
 makeSlices :: Int -> Seq (Int,Int) -> Fish Slices
-makeSlices len = 
-  either errork return
-  . mkSlices len
+makeSlices len = eitherToFish . mkSlices len
 
 -- | Read values at given indices from variable.
 readIndices :: Seq (Int,Int) -> Var -> Fish (Seq Str)
 readIndices indices (Var _ xs) = do
   slcs <- makeSlices (Seq.length xs) indices
-  work 0 slcs xs & maybe err return
+  maybeToFish err $ work 0 slcs xs
   where
     work :: Int -> Slices -> Seq Str -> Maybe (Seq Str)
     work n slcs xs = slcs & \case
@@ -81,8 +79,7 @@ readIndices indices (Var _ xs) = do
         (_,xs') <- splitAtMaybe (i-n) xs
         (ys,_) <- splitAtMaybe (j-i+1) xs'
         (<>) (mbRev b ys) <$> work i rest xs'
-    err = errork
-      $ "readIndices: something went wrong..."
+    err = "readIndices: something went wrong..."
     
 
 -- | Write values into variable at given indices.
@@ -90,9 +87,7 @@ readIndices indices (Var _ xs) = do
 writeIndices :: Seq (Int,Int) -> Var -> Seq Str -> Fish Var
 writeIndices indices (Var ex xs) ys = do
   slcs <- makeSlices (Seq.length xs) indices
-  Var ex
-    <$> either errork return
-      (work 0 slcs xs ys)
+  Var ex <$> eitherToFish (work 0 slcs xs ys)
   where
     work :: Int -> Slices -> Seq Str -> Seq Str -> Either T.Text (Seq Str)
     work n slcs xs ys = slcs & \case
@@ -116,7 +111,7 @@ writeIndices indices (Var ex xs) ys = do
 dropIndices :: Seq (Int,Int) -> Var -> Fish Var
 dropIndices indices (Var ex xs) = do
   slcs <- makeSlices (Seq.length xs) indices
-  ys <- maybe (err slcs) return (work 0 slcs xs)
+  ys <- maybeToFish (invalidIndicesErr slcs) (work 0 slcs xs)
   return $ Var ex ys
   where
     work :: Int -> [(t, (Int, Int))] -> Seq a -> Maybe (Seq a)
@@ -125,7 +120,6 @@ dropIndices indices (Var ex xs) = do
       (_,(i,j)):rest -> do
         (ys,_,zs) <- triSplit (i-n) (j-n) xs
         (<>) ys <$> work (j+1) rest zs
-    err = errork . invalidIndicesErr
     invalidIndicesErr slcs =
       "Invalid indices (out of bounds or overlapping) at slice: "
        <> showSlices slcs

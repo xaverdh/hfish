@@ -7,10 +7,10 @@ import Prelude hiding ((<$>))
 import Text.PrettyPrint.ANSI.Leijen
 
 description :: Doc
-description =
-  "hfish is a fish-like shell."
-  </> " It has the following options:"
-  <> hang 4 options
+description = ""
+  -- "hfish is a fish-like shell."
+  -- </> " It has the following options:"
+  -- <> hang 4 options
 
 options :: Doc
 options = 

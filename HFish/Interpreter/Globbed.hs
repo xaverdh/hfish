@@ -37,11 +37,6 @@ newtype Globbed = Globbed {
   }
   deriving (Eq,Ord,Show,Monoid)
 
-{-
-instance Monoid Globbed where
-  mempty = Globbed mempty
-  mappend a b = Globbed (unGlob a <> unGlob b)
--}
 
 fromText :: T.Text -> Globbed
 fromText t = Globbed $ pure (Right t)
@@ -53,7 +48,7 @@ instance IsString Globbed where
   fromString = fromText . T.pack
 
 showGlobbed :: Globbed -> T.Text
-showGlobbed = collapse . fmap f . unGlob
+showGlobbed = F.fold . fmap f . unGlob
   where
     f :: Either Glob T.Text -> T.Text
     f = \case
@@ -94,7 +89,7 @@ matchGlobbed globbed text =
   genParser globbed & (T.unpack text =~)
 
 genParser :: Globbed -> RE Char String
-genParser = collapse . fmap f . unGlob
+genParser = F.fold . fmap f . unGlob
   where
     f = \case
       Right s -> string $ T.unpack s
@@ -148,5 +143,7 @@ recurseDir ignoreHidden p = do
           return $ Just files
         False -> return Nothing
     
-    isHidden p =
-      head (takeFileName p) == '.'
+    isHidden p = case takeFileName p of
+      '.' : _ -> True
+      _ -> False
+      -- head (takeFileName p) == '.'

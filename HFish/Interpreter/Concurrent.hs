@@ -25,9 +25,8 @@ createHandleMVarPair =
   liftIO $ do
     (rE,wE) <- P.createPipe
     mvar <- newEmptyMVar
-    forkIO
-      ( fdGetContents rE >>= putMVar mvar )
-      -- ( P.fdToHandle rE >>= TextIO.hGetContents >>= putMVar mvar )
+    forkIO ( fdGetContents rE >>= putMVar mvar )
+    -- ( P.fdToHandle rE >>= TextIO.hGetContents >>= putMVar mvar )
     return (mvar,wE)
 
 forkFish :: Fish () -> Fish (MVar FishState)
@@ -42,10 +41,5 @@ forkFish f = do
       s' <- runFish f r s
       putMVar mvar s'
     return mvar
-
-spliceInState :: MVar FishState -> Fish ()
-spliceInState mvar = do
-  st <- liftIO (takeMVar mvar)
-  put st
 
 

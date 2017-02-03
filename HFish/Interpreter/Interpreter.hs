@@ -264,7 +264,7 @@ evalExpr = \case
 
 evalProcE :: Expr T.Text t -> Fish (Seq Globbed)
 evalProcE e =
-  evalArg e >>= (getPID . collapse)
+  evalArg e >>= (getPID . F.fold)
 
 evalHomeDirE :: Fish (Seq Globbed)
 evalHomeDirE = getHOME
@@ -283,7 +283,6 @@ evalCmdSubstE (CmdRef _ prog ref) = do
     fmap fromText <$> case ref of
       Nothing -> return ts
       Just _ -> do
-        let l = Seq.length ts
         indices <- evalRef ref
         readIndices indices (Var UnExport ts)
 

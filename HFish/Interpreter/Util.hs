@@ -18,11 +18,6 @@ mintcal m ms =
   if F.null ms then mempty else
   F.foldr1 (\x y -> x <> m <> y) ms
 
-collapse :: (Traversable t,Monoid m)
-  => t m -> m
-collapse = F.fold
-  -- F.foldr (<>) mempty
-
 infixl 4 <$$>
 (<$$>) :: Functor f => f a -> (a -> b) -> f b
 (<$$>) = flip (<$>)

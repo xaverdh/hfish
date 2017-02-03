@@ -33,17 +33,6 @@ import Debug.Trace (trace)
 --   * A pair of Ints, corresponding to the ends of the slice.
 type Slices = Seq (Bool,(Int,Int))
 
--- | Pretty show slices.
-showSlices :: Slices -> T.Text
-showSlices slcs = 
-  T.pack . arrify . unwords
-  $ map (sugar . unNormalise . unMarkSwap) $ F.toList slcs
-  where
-    unMarkSwap (b,(i,j)) = bool id swap b (i,j)
-    unNormalise = bimap unIndex unIndex
-    unIndex i = i+1
-    arrify s = "[" ++ s ++ "]"
-    sugar (i,j) = show i ++ ".." ++ show j
     
 -- | Create 'Slices' from the length of an array and given indices.
 mkSlices :: Int -> Seq (Int,Int) -> Either T.Text Slices
@@ -58,7 +47,7 @@ mkSlices l xs =
       | otherwise = Left $
         "Index \"" <> showText i <> "\" is out of bounds"
 
--- | Variant of 'mkSlices'.
+-- | Fish variant of 'mkSlices'.
 makeSlices :: Int -> Seq (Int,Int) -> Fish Slices
 makeSlices len = eitherToFish . mkSlices len
 
@@ -90,23 +79,21 @@ writeIndices indices (Var ex xs) ys = do
        -> Either T.Text (Seq Str,Seq Str)
     f (xs,ys) slc@(b,(i,j)) = do
       (hs,_,ts) <- triSplit i j xs
-        `maybeToEither` invalidIndicesErr slc
+        `maybeToEither` err
       (rs,ys') <- splitAtMaybe (j-i+1) ys
         `maybeToEither` tooFewErr
       return (hs <> mbRev b rs <> ts, ys')
     
     tooFewErr = "Too few values to write."
     tooManyErr = "Too many values to write."
-    invalidIndicesErr slc =
-      "Invalid indices (out of bounds or overlapping) at slice: "
-       <> showSlices (pure slc)
+    err = "writeIndices: something went wrong..."
 
 -- | Drop indices from a variable.
 dropIndices :: Seq (Int,Int) -> Var -> Fish Var
 dropIndices indices (Var ex xs) = do
   slcs <- makeSlices (Seq.length xs) indices
     <$$> sortOn (fst . snd)
-  ys <- maybeToFish (invalidIndicesErr slcs) (work 0 slcs xs)
+  ys <- maybeToFish err (work 0 slcs xs)
   return $ Var ex ys
   where
     sortOn f = Seq.unstableSortBy $ \x y -> compare (f x) (f y)
@@ -114,14 +101,12 @@ dropIndices indices (Var ex xs) = do
     work :: Int -> Seq (t, (Int, Int)) -> Seq a -> Maybe (Seq a)
     work n slcs xs = case viewl slcs of
       EmptyL -> Just xs
-      (_,(i,j)) :< rest -> do
-        (ys,_,zs) <- triSplit (i-n) (j-n) xs
+      (_,(i,j)) :< rest ->
+        n > j ? work n rest xs $ do
+        (ys,_,zs) <- triSplit (max 0 (i-n)) (j-n) xs
         (<>) ys <$> work (j+1) rest zs
     
-    invalidIndicesErr slcs =
-      "Invalid indices (out of bounds or overlapping) at slice: "
-       <> showSlices slcs
-
+    err = "dropIndices: something went wrong..."
 
 {- Helpers: -}
 

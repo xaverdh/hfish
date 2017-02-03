@@ -21,21 +21,23 @@ import Data.Tuple
 import Data.Monoid
 import Data.Bool
 import Data.Bifunctor
-import Control.Lens
+import Control.Lens hiding ((:<))
 import Control.Monad
 import Control.Monad.IO.Class
+
+import Debug.Trace (trace)
 
 -- | A collection of slices, each of which consists of:
 --
 --   * A boolean, indicating if the slice is "reversed"
 --   * A pair of Ints, corresponding to the ends of the slice.
-type Slices = [(Bool,(Int,Int))]
+type Slices = Seq (Bool,(Int,Int))
 
 -- | Pretty show slices.
 showSlices :: Slices -> T.Text
 showSlices slcs = 
   T.pack . arrify . unwords
-  $ map (sugar . unNormalise . unMarkSwap) slcs
+  $ map (sugar . unNormalise . unMarkSwap) $ F.toList slcs
   where
     unMarkSwap (b,(i,j)) = bool id swap b (i,j)
     unNormalise = bimap unIndex unIndex
@@ -46,15 +48,9 @@ showSlices slcs =
 -- | Create 'Slices' from the length of an array and given indices.
 mkSlices :: Int -> Seq (Int,Int) -> Either T.Text Slices
 mkSlices l xs = 
-  L.sortOn (fst . snd)
-  . map markSwap
-  <$> forM (F.toList xs) normalise
+  fmap markSwap <$> forM xs normalise
   where
-    -- sortOn f = Seq.unstableSortBy $ \x y -> compare (f x) (f y)
-    normalise (i,j) = do
-      a <- index i
-      b <- index j
-      return (a,b)
+    normalise (i,j) = (,) <$> index i <*> index j
     markSwap (i,j) = bool (False,(i,j)) (True,(j,i)) (i>j)
     index i
       | 0 < i && i <= l = Right (i - 1)
@@ -70,15 +66,12 @@ makeSlices len = eitherToFish . mkSlices len
 readIndices :: Seq (Int,Int) -> Var -> Fish (Seq Str)
 readIndices indices (Var _ xs) = do
   slcs <- makeSlices (Seq.length xs) indices
-  maybeToFish err $ work 0 slcs xs
+  maybeToFish err $ F.foldrM f mempty slcs
   where
-    work :: Int -> Slices -> Seq Str -> Maybe (Seq Str)
-    work n slcs xs = slcs & \case
-      [] -> Just empty
-      (b,(i,j)):rest -> do
-        (_,xs') <- splitAtMaybe (i-n) xs
-        (ys,_) <- splitAtMaybe (j-i+1) xs'
-        (<>) (mbRev b ys) <$> work i rest xs'
+    f :: (Bool, (Int, Int)) -> Seq Str -> Maybe (Seq Str)
+    f (b,(i,j)) acc = do
+      (_,ys,_) <- triSplit i j xs
+      return $ mbRev b ys <> acc
     err = "readIndices: something went wrong..."
     
 
@@ -87,39 +80,44 @@ readIndices indices (Var _ xs) = do
 writeIndices :: Seq (Int,Int) -> Var -> Seq Str -> Fish Var
 writeIndices indices (Var ex xs) ys = do
   slcs <- makeSlices (Seq.length xs) indices
-  Var ex <$> eitherToFish (work 0 slcs xs ys)
+  (xs',ys') <- eitherToFish $ F.foldlM f (xs,ys) slcs
+  if Seq.null ys'
+    then return $ Var ex xs'
+    else errork tooManyErr
   where
-    work :: Int -> Slices -> Seq Str -> Seq Str -> Either T.Text (Seq Str)
-    work n slcs xs ys = slcs & \case
-      [] -> if Seq.null ys then Right xs else Left tooManyErr
-      (b,(i,j)):rest -> do
-        (zs,_,xs') <- triSplit (i-n) (j-n) xs
-            `maybeToEither` invalidIndicesErr (b,(i,j))
-        
-        (rs,ys') <- splitAtMaybe (j-i+1) ys
-            `maybeToEither` tooFewErr
-        
-        (<>) (zs <> mbRev b rs) <$> work (j+1) rest xs' ys'
+    f :: (Seq Str,Seq Str)
+       -> (Bool, (Int, Int))
+       -> Either T.Text (Seq Str,Seq Str)
+    f (xs,ys) slc@(b,(i,j)) = do
+      (hs,_,ts) <- triSplit i j xs
+        `maybeToEither` invalidIndicesErr slc
+      (rs,ys') <- splitAtMaybe (j-i+1) ys
+        `maybeToEither` tooFewErr
+      return (hs <> mbRev b rs <> ts, ys')
     
     tooFewErr = "Too few values to write."
     tooManyErr = "Too many values to write."
     invalidIndicesErr slc =
       "Invalid indices (out of bounds or overlapping) at slice: "
-       <> showSlices [slc]
+       <> showSlices (pure slc)
 
 -- | Drop indices from a variable.
 dropIndices :: Seq (Int,Int) -> Var -> Fish Var
 dropIndices indices (Var ex xs) = do
   slcs <- makeSlices (Seq.length xs) indices
+    <$$> sortOn (fst . snd)
   ys <- maybeToFish (invalidIndicesErr slcs) (work 0 slcs xs)
   return $ Var ex ys
   where
-    work :: Int -> [(t, (Int, Int))] -> Seq a -> Maybe (Seq a)
-    work n slcs xs = case slcs of
-      [] -> Just xs
-      (_,(i,j)):rest -> do
+    sortOn f = Seq.unstableSortBy $ \x y -> compare (f x) (f y)
+    
+    work :: Int -> Seq (t, (Int, Int)) -> Seq a -> Maybe (Seq a)
+    work n slcs xs = case viewl slcs of
+      EmptyL -> Just xs
+      (_,(i,j)) :< rest -> do
         (ys,_,zs) <- triSplit (i-n) (j-n) xs
         (<>) ys <$> work (j+1) rest zs
+    
     invalidIndicesErr slcs =
       "Invalid indices (out of bounds or overlapping) at slice: "
        <> showSlices slcs

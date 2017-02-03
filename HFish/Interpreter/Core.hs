@@ -223,6 +223,16 @@ disallowK = local
   where
     noA = repeat ( const $ return () )
 
+-- | Throws an error(k) if the value is Left _
+--   ,passes it into the monad if its a Right _ .
+eitherToFish :: Either T.Text a -> Fish a
+eitherToFish = either errork return
+
+-- | Throws given error(k) if the value is Nothing
+--   ,passes it into the monad otherwise.
+maybeToFish :: T.Text -> Maybe a -> Fish a
+maybeToFish err = maybe (errork err) return
+
 -- | An empty FishState
 emptyFishState :: FishState
 emptyFishState =

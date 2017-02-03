@@ -28,6 +28,11 @@ infixl 4 <$$>
 (<$$>) = flip (<$>)
 -- ^ A flipped version of (<$>)
 
+infixr 1 ?
+(?) :: Bool -> a -> a -> a
+(?) b x y = if b then x else y
+-- ^ A proper /if/ function
+
 whenJust :: Applicative f
   => Maybe a -> (a -> f ()) -> f ()
 whenJust = flip $ maybe (pure ())

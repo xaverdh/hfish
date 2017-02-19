@@ -1,4 +1,4 @@
-{-# language LambdaCase, OverloadedStrings, FlexibleInstances #-}
+{-# language LambdaCase, OverloadedStrings, FlexibleInstances, ScopedTypeVariables #-}
 module HFish.Interpreter.Main.SimpleMain where
 
 import Control.Lens
@@ -85,8 +85,8 @@ hfishMain
   | noExecute = execute args (const $ return ())
   | showAst = execute args printAST
   | otherwise = do
-    s <- mkInitialFishState
     r <- mkInitialFishReader atBreakpoint fishCompat
+    s <- executeStartupFile r =<< mkInitialFishState
     if isCommand
       then exDirect args (runProgram r s)
       else case args of
@@ -95,6 +95,13 @@ hfishMain
           s' <- injectArgs args' r s
           exPath path (runProgram r s')
   where
+    executeStartupFile r s =
+      try (parseFile fishCompat "/etc/hfish/config.hfish")
+      >>= \case
+        Left (e::IOException) -> return s
+        Right res -> withProg res (runProgram r s)
+          >>= return . fromMaybe s
+    
     printAST = print . doc
     
     injectArgs xs = runFish

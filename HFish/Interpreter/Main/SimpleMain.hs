@@ -86,27 +86,16 @@ hfishMain
   | showAst = execute args printAST
   | otherwise = do
     r <- mkInitialFishReader atBreakpoint fishCompat
-    s <- executeStartupFile r =<< mkInitialFishState
+    s <- executeStartupFiles fishCompat r =<< mkInitialFishState
     if isCommand
       then exDirect args (runProgram r s)
       else case args of
         [] -> runInterpreterLoop fishCompat False r s
         path:args' -> do
-          s' <- injectArgs args' r s
+          s' <- injectArgs (T.pack <$> args') r s
           exPath path (runProgram r s')
   where
-    executeStartupFile r s =
-      try (parseFile fishCompat "/etc/hfish/config.hfish")
-      >>= \case
-        Left (e::IOException) -> return s
-        Right res -> withProg res (runProgram r s)
-          >>= return . fromMaybe s
-    
     printAST = print . doc
-    
-    injectArgs xs = runFish
-      $ setVar FLocalScope "argv"
-        (mkVar . Seq.fromList $ map T.pack xs)
     
     execute = if isCommand then exDirect else exPaths
     
@@ -126,6 +115,26 @@ hfishMain
       s <- get
       liftIO $ runInterpreterLoop fishCompat True r s
 
+injectArgs :: [Str] -> FishReader -> FishState -> IO FishState
+injectArgs xs = runFish
+  $ setVar FLocalScope "argv"
+    (mkVar $ Seq.fromList xs)
+
+executeStartupFiles :: Bool
+  -> FishReader -> FishState -> IO FishState
+executeStartupFiles fishCompat r s =
+  foldM tryExecute s files
+  where
+    tryExecute :: FishState -> FilePath -> IO FishState
+    tryExecute s path = try (parseFile fishCompat path)
+      >>= \case
+        Left (e::IOException) -> return s
+        Right res -> withProg res (runProgram r s)
+          >>= return . fromMaybe s
+    
+    files = [ "/etc/hfish/config.hfish" ]
+    -- ^ todo: more elaborate logic here
+
 mkPrompt :: Bool -> FishState -> String
 mkPrompt isbrkpt s
   | isbrkpt = insStatus <> ": "
@@ -143,7 +152,7 @@ runInterpreterLoop fishCompat isbrkpt r s =
     ( interpreterLoop fishCompat (mkPrompt isbrkpt) r s )
 
 interpreterLoop :: Bool
-  -> (FishState -> String) -- The prompt
+  -> (FishState -> String) -- the prompt
   -> FishReader -> FishState -> InputT IO ()
 interpreterLoop fishCompat prompt r s =
   getInputLine (prompt s) >>= \case
@@ -154,23 +163,26 @@ interpreterLoop fishCompat prompt r s =
         (runProgram r s)
       interpreterLoop fishCompat prompt r (fromMaybe s ms')
 
-coerce :: IO (Either SomeException a) -> IO (Either SomeException a)
-coerce = id
+coerce :: MonadIO io
+  => IO (Either SomeException a)
+  -> io (Either SomeException a)
+coerce = liftIO
 
-runProgram :: MonadIO m
+runProgram :: MonadIO io
   => FishReader
   -> FishState
   -> Prog T.Text ()
-  -> m FishState
+  -> io FishState
 runProgram r s p =
-  ( liftIO . coerce . try $ runFish (progA p) r s ) >>= \case
+  ( coerce . try $ runFish (progA p) r s ) >>= \case
     Left e -> do
-      liftIO . putStr $
-        "~> Error:\n"
-        ++ show e
-        ++ "\n~> Occured while evaluating:\n"
-        ++ show (doc p)
-        ++ "\n"
+      liftIO $ putStr (showError e)
       return s
     Right s' -> return s'
+  where
+    showError :: SomeException -> String
+    showError e = 
+      "~> Error:\n" <> show e
+      <> "\n~> Occured while evaluating:\n"
+      <> show (doc p) <> "\n"
 

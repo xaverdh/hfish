@@ -35,7 +35,7 @@ import HFish.Interpreter.Builtins.Emit
 import HFish.Interpreter.Builtins.Count
 import HFish.Interpreter.Builtins.Functions
 
-allBuiltins :: Env (Bool -> [T.Text] -> Fish ())
+allBuiltins :: Env Builtin
 allBuiltins =
   Env.fromList [
     ("debug",debugF)

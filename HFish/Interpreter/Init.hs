@@ -69,4 +69,4 @@ mkInitialFishReader atBreakpoint fishcompat =
     warnB = error "no loop left to break"
     warnC = error "no loop left to continue"
     warnR = error "no function to return from"
-                    
+

@@ -194,8 +194,7 @@ parseTestE :: T.Text -> Fish (IO Bool)
 parseTestE t = either onErr return
   $ parseOnly (testE <* endOfInput) t
   where
-    onErr r = 
-      errork $ "test: malformed expression" <> showText r
+    onErr r = errork $ "test: malformed expression"
 
 int :: Parser Int
 int = signed decimal <* skipSpace

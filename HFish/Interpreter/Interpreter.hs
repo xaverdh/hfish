@@ -284,7 +284,7 @@ evalCmdSubstE (CmdRef _ prog ref) = do
       Nothing -> return ts
       Just _ -> do
         indices <- evalRef ref
-        readIndices indices (Var UnExport ts)
+        readIndices indices (mkVar ts)
 
 evalVarRefE :: Bool -> VarRef T.Text t -> Fish (Seq Globbed)
 evalVarRefE s vref = evalVarRef vref
@@ -335,10 +335,9 @@ evalInt e = do
   vs <- evalArg e
   forM (Seq.fromList . T.words =<< vs) f
   where
-    f v = case readTextMaybe v of
-      Just x -> return x
-      Nothing -> errork
-        $ "failed to interpret expression "
-          <> "as integer: " <> v
+    f v = maybe (errork $ mkerr v) return $ readTextMaybe v
+    mkerr v = "failed to interpret expression "
+           <> "as integer: " <> v
+
 
     

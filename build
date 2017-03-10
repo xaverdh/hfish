@@ -1,11 +1,11 @@
 #!/bin/sh
 
-git clone https://github.com/xaverdh/posix-fd-io
-git clone https://github.com/xaverdh/nfc-text
-git clone https://github.com/xaverdh/hfish
-git clone https://github.com/xaverdh/hfish-parser
-git clone https://github.com/xaverdh/fish-parser
-git clone https://github.com/xaverdh/fish-lang
+git clone https://gitlab.com/hfish-shell/posix-fd-io
+git clone https://gitlab.com/hfish-shell/nfc-text
+git clone https://gitlab.com/hfish-shell/hfish
+git clone https://gitlab.com/hfish-shell/hfish-parser
+git clone https://gitlab.com/hfish-shell/fish-parser
+git clone https://gitlab.com/hfish-shell/fish-lang
 cd hfish
 cabal sandbox init
 cabal sandbox add-source ../posix-fd-io ../nfc-text ../fish-lang ../fish-parser ../hfish-parser

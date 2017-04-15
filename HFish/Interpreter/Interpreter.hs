@@ -41,8 +41,6 @@ import Control.Concurrent
 import Control.Concurrent.MVar
 import qualified System.Posix.IO as PIO
 
-import Debug.Trace
-
 
 progA :: Prog T.Text t -> Fish ()
 progA (Prog _ cstmts) = forM_ cstmts compStmtA

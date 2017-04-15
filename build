@@ -12,5 +12,7 @@ cabal sandbox add-source ../posix-fd-io ../nfc-text ../fish-lang ../fish-parser 
 command -v sed > /dev/null && sed -i -E \
   's/^[[:space:]]*version[[:space:]]*=[[:space:]]*".*"$/version = "'$(git log -1 --pretty=format:%H)'"/' \
   HFish/Interpreter/Version.hs
-cabal install --ghc-option=-threaded
+command -v nproc > /dev/null \
+  && cabal install --ghc-options="-threaded -j$(nproc)" \
+  || cabal install --ghc-option=-threaded
 

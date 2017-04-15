@@ -13,13 +13,11 @@ import HFish.Interpreter.Util
 import qualified HFish.Interpreter.Stringy as Str
 
 import Control.Lens
+import Control.Monad
 import Control.Monad.IO.Class
 import Control.Concurrent
-import qualified Data.Text.IO as TextIO
-import qualified Data.Text as T
-import qualified Data.Text.Lazy as LT
-import qualified Data.Text.Lazy.Builder.Int as BI
-import qualified Data.Text.Lazy.Builder as B
+import qualified Data.ByteString.Builder.Prim as BP
+import qualified Data.ByteString.Builder as B
 import Text.Read
 import Data.Functor
 import Data.Monoid
@@ -50,14 +48,18 @@ writeList a b c
     fishCreateProcess "seq" (map show [a,b,c])
     >>= fishWaitForProcess "seq"
   | otherwise = echo
-      . B.toLazyTextWith ubound
+      . B.toLazyByteString
       $ createList a b c
-  where
-    ubound = (round $ logBase 10 (fromIntegral c) + 1) * c `div` b
+  -- where
+    -- ubound = (round $ logBase 10 (fromIntegral c) + 1) * c `div` b
 
 createList :: Int -> Int -> Int -> B.Builder
-createList a b c
-  | a <= c = BI.decimal a <> ( B.singleton '\n' <> createList (a+b) b c )
-  | otherwise = mempty
+createList a b c = BP.primUnfoldrBounded intLn next a
+  where
+    next i = do
+      guard (i <= c)
+      Just ((i,'\n'),i+b)
+    intLn = BP.intDec BP.>*< BP.charUtf8
+
 
 

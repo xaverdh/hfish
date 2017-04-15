@@ -20,7 +20,7 @@ import Data.Functor
 -- import Data.Text.IO as TextIO
 import Data.Text as T
 
-createHandleMVarPair :: Fish (MVar T.Text,PT.Fd)
+createHandleMVarPair :: Fish (MVar Str,PT.Fd)
 createHandleMVarPair =
   liftIO $ do
     (rE,wE) <- P.createPipe

@@ -30,9 +30,10 @@ import HFish.Interpreter.Var
 import HFish.Interpreter.Cwd
 import HFish.Interpreter.Process.Pid
 import HFish.Interpreter.Process.FdSetup
+import qualified HFish.Interpreter.Stringy as Str
 
 
-fishWaitForProcess :: T.Text -> ProcessID -> Fish ()
+fishWaitForProcess :: String -> ProcessID -> Fish ()
 fishWaitForProcess name pid = 
   liftIO ( getProcessStatus True{-block-} False pid )
   >>= \case
@@ -48,15 +49,15 @@ fishWaitForProcess name pid =
     errTerm sig = errork
       $ "\"" <> name
        <> "\" was terminated by signal: "
-       <> showText sig
+       <> show sig
     errStop sig = errork
       $ "\"" <> name
        <> "\" was stopped by signal: "
-       <> showText sig    
+       <> show sig
 
-fishCreateProcess :: T.Text -> [T.Text] -> Fish ProcessID
+fishCreateProcess :: String -> [String] -> Fish ProcessID
 fishCreateProcess name args = do
-  getCWD >>= liftIO . setCurrentDirectory
+  getCWD >>= liftIO . setCurrentDirectory . Str.toString
   -- ^ This is necessary since the current working directory
   --   is separate from the environment passed to the process.
   --
@@ -65,19 +66,16 @@ fishCreateProcess name args = do
   env <- currentEnvironment
   pid <- forkWithFileDescriptors $
     executeFile 
-      nameString
+      name
       True{-search path-}
-      argsStrings
+      args
       ( Just env )
   lastPid .= Just pid
   return pid
-  where
-    nameString = T.unpack name
-    argsStrings = map T.unpack args
 
-fishExec :: T.Text -> [T.Text] -> Fish a
+fishExec :: String -> [String] -> Fish a
 fishExec name args = do
-  getCWD >>= liftIO . setCurrentDirectory
+  getCWD >>= liftIO . setCurrentDirectory . Str.toString
   -- ^ This is necessary since the current working directory
   --   is separate from the environment passed to the process.
   --
@@ -86,19 +84,16 @@ fishExec name args = do
   env <- currentEnvironment
   realiseFileDescriptors
   liftIO $ executeFile 
-    nameString 
+    name
     True{-search path-}
-    argsStrings
+    args
     ( Just env )
-  where
-    nameString = T.unpack name
-    argsStrings = map T.unpack args
 
 currentEnvironment :: Fish [(String,String)]
 currentEnvironment = 
   fmap (map $ bimap l r) exportVars
   where
-    r = T.unpack . T.unwords . toList . _value
+    r = Str.toString . Str.unwords . toList . _value
     l = T.unpack . extractText
 
 

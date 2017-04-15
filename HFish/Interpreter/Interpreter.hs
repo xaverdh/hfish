@@ -1,5 +1,5 @@
-{-# language LambdaCase, OverloadedStrings #-} module
-HFish.Interpreter.Interpreter where
+{-# language LambdaCase, OverloadedStrings #-}
+module HFish.Interpreter.Interpreter where
 
 import Fish.Lang hiding (Scope)
 import qualified Fish.Lang as L
@@ -19,6 +19,7 @@ import HFish.Interpreter.Slice
 import HFish.Interpreter.Util
 import HFish.Interpreter.ExMode
 import HFish.Interpreter.Env as Env
+import qualified HFish.Interpreter.Stringy as Str
 import qualified HFish.Interpreter.SetCmd as SetCmd
 import qualified HFish.Interpreter.FuncSt as FuncSt
 
@@ -26,6 +27,7 @@ import qualified Data.List.NonEmpty as N
 import qualified Data.Text as T
 import qualified Data.Foldable as F
 import qualified Data.Sequence as Seq
+import Data.Text.Encoding (encodeUtf8,decodeUtf8)
 import Data.Sequence
 import Data.NText
 import Data.Monoid
@@ -88,19 +90,19 @@ cmdStA :: ExMode -> CmdIdent T.Text t -> Args T.Text t -> Fish ()
 cmdStA mode (CmdIdent _ ident) args = do
   ts <- evalArgs args
   let ts' = F.toList ts
+  let argStrings = map Str.toString ts'
   bn <- views builtins (`Env.lookup` ident)
   fn <- uses functions (`Env.lookup` ident)
   case (bn,fn) of
     (Just b,_) -> b (isFork mode) ts'
     (_,Just f) -> setReturnK $ f ts
     (Nothing,Nothing) -> do
-      pid <- fishCreateProcess identText ts'
+      pid <- fishCreateProcess identString argStrings
       if isInOrder mode
-        then fishWaitForProcess identText pid
+        then fishWaitForProcess identString pid
         else return ()
   where
-    
-    identText = extractText ident
+    identString = T.unpack $ extractText ident
 
 setStA :: SetCommand T.Text t -> Fish ()
 setStA = SetCmd.setCommandA evalArgs evalRef
@@ -169,32 +171,32 @@ switchStA e brnchs = view fishCompatible >>=
 --   will not be evaluated. This seems to agree with the fish impl.
 hfishSwitch ::  Expr T.Text t -> [(Expr T.Text t,Prog T.Text t)] -> Fish ()
 hfishSwitch e branches = do
-  text <- T.unwords . F.toList <$> evalArg e
-  loop text branches
+  str <- Str.unwords . F.toList <$> evalArg e
+  loop str branches
   where
-    loop :: T.Text -> [(Expr T.Text t1, Prog T.Text t2)] -> Fish ()
+    loop :: Str -> [(Expr T.Text t1, Prog T.Text t2)] -> Fish ()
     loop _ [] = return ()
-    loop text ((e,prog):branches) = do
+    loop str ((e,prog):branches) = do
       glob <- mintcal " " <$> evalExpr e
-      matchGlobbed glob text & \case
+      matchGlobbed glob str & \case
         Just _ -> progA prog
-        Nothing -> loop text branches
+        Nothing -> loop str branches
 
 fishSwitch :: Expr T.Text t -> [(Expr T.Text t,Prog T.Text t)] -> Fish ()
 fishSwitch e branches =
   fmap viewl (evalArg e) >>= \case
     EmptyL -> errork "switch: empty statement"
-    text :< rest -> if Seq.null rest 
-      then loop text branches
+    str :< rest -> if Seq.null rest
+      then loop str branches
       else tooManyErr
   where
-    loop :: T.Text -> [(Expr T.Text t1, Prog T.Text t2)] -> Fish ()
+    loop :: Str -> [(Expr T.Text t1, Prog T.Text t2)] -> Fish ()
     loop _ [] = return ()
-    loop text ((e,prog):branches) = do
-      globText <- mintcal " " <$> evalArg e
-      matchText globText text & \case
+    loop str ((e,prog):branches) = do
+      globStr <- mintcal " " <$> evalArg e
+      matchStr globStr str & \case
         Just _ -> progA prog
-        Nothing -> loop text branches
+        Nothing -> loop str branches
     
     tooManyErr = errork
       $ "switch: too many arguments given"
@@ -227,12 +229,12 @@ redirectedStmtA f redirects = void (setupAll f)
         Left fd2 -> duplicate fd2 fd f
         Right e -> do
           name <- evalArg e >>= checkSingleton
-          withFileR name fd f
+          withFileR (Str.toString name) fd f
       RedirectOut fd t -> t & \case
         Left fd2 -> duplicate fd2 fd f
         Right (mode,e) -> do
           name <- evalArg e >>= checkSingleton
-          withFileW name mode fd f
+          withFileW (Str.toString name) mode fd f
     
     checkSingleton :: Seq a -> Fish a
     checkSingleton xs = case viewl xs of
@@ -256,7 +258,7 @@ evalExpr = \case
   GlobE _ g -> return . pure $ fromGlob g
   ProcE _ e -> evalProcE e
   HomeDirE _ -> evalHomeDirE
-  StringE _ t -> return . pure $ fromText t
+  StringE _ t -> return . pure . fromStr $ encodeUtf8 t
   VarRefE _ q vref -> evalVarRefE q vref
   BracesE _ es -> evalBracesE es
   CmdSubstE _ cmdref -> evalCmdSubstE cmdref
@@ -268,7 +270,7 @@ evalProcE e =
 
 evalHomeDirE :: Fish (Seq Globbed)
 evalHomeDirE = getHOME
-  <$$> pure . fromString
+  <$$> pure . fromStr
 
 evalBracesE :: [Expr T.Text t] -> Fish (Seq Globbed)
 evalBracesE es = 
@@ -279,8 +281,8 @@ evalCmdSubstE (CmdRef _ prog ref) = do
   (mvar,wE) <- createHandleMVarPair
   FDT.insert Fd1 wE (progA prog) `finally` PIO.closeFd wE
   text <- liftIO $ takeMVar mvar
-  Seq.fromList (T.lines text) & \ts ->
-    fmap fromText <$> case ref of
+  Seq.fromList (Str.lines text) & \ts ->
+    fmap fromStr <$> case ref of
       Nothing -> return ts
       Just _ -> do
         indices <- evalRef ref
@@ -288,9 +290,9 @@ evalCmdSubstE (CmdRef _ prog ref) = do
 
 evalVarRefE :: Bool -> VarRef T.Text t -> Fish (Seq Globbed)
 evalVarRefE s vref = evalVarRef vref
-  <$$> if s then ser else fmap fromText
+  <$$> if s then ser else fmap fromStr
   where
-    ser = pure . fromText . T.unwords . F.toList
+    ser = pure . fromStr . Str.unwords . F.toList
 
 evalVarRef :: VarRef T.Text t -> Fish (Seq Str)
 evalVarRef (VarRef _ name ref) = do
@@ -307,7 +309,7 @@ evalVarRef (VarRef _ name ref) = do
           readIndices indices var
     
     evalName = \case
-      Left vref -> fmap mkNText <$> evalVarRef vref
+      Left vref -> fmap (mkNText . decodeUtf8) <$> evalVarRef vref
       Right (VarIdent _ i) -> return (pure i)
     
 
@@ -333,11 +335,12 @@ evalConcatE e1 e2 = do
 evalInt :: Expr T.Text t -> Fish (Seq Int)
 evalInt e = do
   vs <- evalArg e
-  forM (Seq.fromList . T.words =<< vs) f
+  forM (Seq.fromList . Str.words =<< vs) f
   where
-    f v = maybe (errork $ mkerr v) return $ readTextMaybe v
+    f :: Str -> Fish Int
+    f v = maybe (errork $ mkerr v) return $ Str.readStrMaybe v
     mkerr v = "failed to interpret expression "
-           <> "as integer: " <> v
+           <> "as integer: " <> Str.toString v
 
 
     

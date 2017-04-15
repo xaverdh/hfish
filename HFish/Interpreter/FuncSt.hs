@@ -8,6 +8,7 @@ import HFish.Interpreter.Var
 import HFish.Interpreter.Util
 import HFish.Interpreter.Events
 import HFish.Interpreter.Env as Env
+import qualified HFish.Interpreter.Stringy as Str
 
 import Control.Lens hiding ((:<))
 import Control.Applicative
@@ -31,12 +32,11 @@ funcStA :: (Prog T.Text t -> Fish ())
   -> Prog T.Text t
   -> Fish ()
 funcStA progA (FunIdent _ name) ts prog =
-  execParserPure defaultPrefs parser (map T.unpack . F.toList $ ts)
+  execParserPure defaultPrefs parser (map Str.toString . F.toList $ ts)
   & \case
     Success f -> f
-    Failure err ->
-      (errork . T.pack . fst)
-       (renderFailure err "read: invalid arguments given\n")
+    Failure err -> errork . fst
+      $ renderFailure err "read: invalid arguments given\n"
   where
     parser = info funcOptions idm
     funcOptions = funcWorker progA name prog

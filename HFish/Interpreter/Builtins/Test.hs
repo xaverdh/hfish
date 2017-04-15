@@ -7,6 +7,7 @@ import HFish.Interpreter.Core
 import HFish.Interpreter.IO
 import HFish.Interpreter.Util
 import HFish.Interpreter.Status
+import qualified HFish.Interpreter.Stringy as Str
 
 import Data.Monoid
 import Data.Functor
@@ -24,13 +25,13 @@ import System.Posix.User
 import System.Posix.Terminal (queryTerminal)
 
 import Text.Parser.Expression
-import Data.Attoparsec.Text
+import Data.Attoparsec.ByteString.Char8
 import Text.Parser.Char (alphaNum)
 
 
-testF :: Bool -> [T.Text] -> Fish ()
+testF :: Builtin
 testF _ ts = do
-  f <- parseTestE (T.unwords ts)
+  f <- parseTestE (Str.unwords ts)
   b <- liftIO $ catch f onIOErr
   if b then ok else bad
   where
@@ -90,7 +91,7 @@ isExecutable p =
 fileE :: Parser (IO Bool)
 fileE = file1E <|> file2E <|> file3E <|> file4E
   where
-    file = T.unpack
+    file = Str.toString
       <$> takeWhile1 (not . C.isSpace)
       <* skipSpace
 
@@ -134,7 +135,7 @@ fileE = file1E <|> file2E <|> file3E <|> file4E
 strE :: Parser Bool
 strE = strUnary <|> strBinary
   where
-    str = T.unpack
+    str = Str.toString
       <$> takeWhile1 (not . C.isSpace)
       <* skipSpace
     strBinary = do
@@ -190,7 +191,7 @@ term =
 testE :: Parser (IO Bool)
 testE = skipSpace *> buildExpressionParser opTable term
 
-parseTestE :: T.Text -> Fish (IO Bool)
+parseTestE :: Str -> Fish (IO Bool)
 parseTestE t = either onErr return
   $ parseOnly (testE <* endOfInput) t
   where
@@ -199,6 +200,6 @@ parseTestE t = either onErr return
 int :: Parser Int
 int = signed decimal <* skipSpace
 
-sym :: T.Text -> Parser ()
+sym :: Str -> Parser ()
 sym s = string s *> skipSpace
 

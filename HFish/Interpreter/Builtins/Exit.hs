@@ -5,6 +5,7 @@ module HFish.Interpreter.Builtins.Exit (
 
 import HFish.Interpreter.Core
 import HFish.Interpreter.Status
+import qualified HFish.Interpreter.Stringy as Str
 
 import qualified Data.Text as T
 import Data.Monoid
@@ -13,13 +14,15 @@ import Text.Read
 import System.Exit
 import System.Posix.Process
 
-exitF :: Bool -> [T.Text] -> Fish ()
+exitF :: Builtin
 exitF _ = \case
   [] -> getStatus >>= (liftIO . exitImmediately) -- exitWith
-  [arg] -> case readMaybe $ T.unpack arg of
+  [arg] -> case Str.readStrMaybe arg of
     Just i -> do
       liftIO . exitImmediately $ toEnum i
       ok
-    Nothing -> errork $ "exit: invalid argument: " <> arg
+    Nothing -> errork
+      $ "exit: invalid argument: "
+      <> Str.toString arg
   _ -> errork "exit: too many arguments given"
 

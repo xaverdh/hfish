@@ -11,8 +11,10 @@ import HFish.Interpreter.Var
 import HFish.Interpreter.Status
 import HFish.Interpreter.SetCmd
 import HFish.Interpreter.Util
+import qualified HFish.Interpreter.Stringy as Str
 
 import qualified Data.Text as T
+import qualified Data.ByteString.Char8 as BC
 import qualified Data.List.NonEmpty as NL
 import qualified Data.Sequence as Seq
 import Data.Sequence
@@ -28,12 +30,12 @@ import Options.Applicative
 import Options.Applicative.Builder as OB
 
 
-readF :: Bool -> [T.Text] -> Fish ()
+readF :: Builtin
 readF _ ts =
-  execParserPure defaultPrefs parser (map T.unpack ts)
+  execParserPure defaultPrefs parser (map Str.toString ts)
   & \case
     Success f -> f
-    Failure err -> errork . T.pack . fst
+    Failure err -> errork . fst
       $ renderFailure err "read: invalid arguments given\n"
   where
     parser = info readOptions idm
@@ -88,13 +90,13 @@ readWorker array nullTerm mscp mex names
     assignLoop (fmap mkNText names) vs
     ok
   where
-    splitWords :: T.Text -> Fish (Seq Str)
+    splitWords :: Str -> Fish (Seq Str)
     splitWords s = getVarMaybe "IFS"
       <$$> Seq.fromList . \case
-        Just var -> withVarText var $ \text ->
-          let cs = T.unpack text
-           in T.split (`elem` cs) s
-        Nothing -> map T.singleton $ T.unpack s
+        Just var -> withVarStr var $ \str ->
+          let cs = Str.toString str
+           in BC.splitWith (`elem` cs) s
+        Nothing -> map BC.singleton $ Str.toString s
     
     setV :: NText -> Seq Str -> Fish ()
     setV = flip setIt

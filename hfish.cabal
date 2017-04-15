@@ -2,7 +2,7 @@ name:                hfish
 version:             0.1.0.0
 synopsis:            Interpreter for a fish-like language
 -- description:         
-license:             MIT
+license:             GPL-3
 license-file:        LICENSE
 -- author:              
 -- maintainer:          

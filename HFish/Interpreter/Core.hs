@@ -5,11 +5,13 @@ import Fish.Lang
 import HFish.Interpreter.Util
 import HFish.Interpreter.FdTable as FDT
 import HFish.Interpreter.Env as Env
+
 import Data.NText as NText
 
 import qualified Data.Map as M
 import qualified Data.Set as S
 import qualified Data.Text as T
+import qualified Data.ByteString as B
 import Data.Sequence
 import Data.Monoid
 import Control.Monad
@@ -63,7 +65,7 @@ asIO :: Fish () -> (IO FishState -> Fish a) -> Fish a
 asIO f g = projectIO f >>= g
 
 -- The /string/ type
-type Str = T.Text
+type Str = B.ByteString
 
 -- | The type of a fish /variable/
 data Var = Var {
@@ -94,8 +96,8 @@ data FishState = FishState {
     ,_readOnlyEnv :: Env Var
     ,_functions :: Env Function
     ,_status :: ExitCode
-    ,_cwdir :: FilePath
-    ,_dirstack :: [FilePath]
+    ,_cwdir :: Str
+    ,_dirstack :: [Str]
     ,_lastPid :: Maybe CPid
     ,_eventHandlers :: Env (S.Set EventHandler)
     ,_signalHandlers :: M.Map Signal (S.Set SignalHandler)
@@ -117,7 +119,7 @@ type Builtin =
   -- ^ whether the builtin is forked (executed in background)
   --
   --   builtins may or may not honour this hint. Most don't.
-  -> [T.Text]
+  -> [Str]
   -- ^ The arguments to the call, already evaluated.
   -> Fish ()
 
@@ -130,7 +132,7 @@ data FishReader = FishReader {
     ,_breakK :: [() -> Fish ()]
     ,_continueK :: [() -> Fish ()]
     ,_returnK :: [() -> Fish ()]
-    ,_errorK :: [T.Text -> Fish ()]
+    ,_errorK :: [String -> Fish ()]
     ,_breakpoint :: Fish ()
     ,_fishCompatible :: Bool
   }
@@ -161,15 +163,15 @@ setReturnK :: Fish () -> Fish ()
 setReturnK f = callCC (\k -> local (returnK %~ (k:)) f)
 
 -- | Sets a breakpoint which is jumped to by a call to 'errork'.
-setErrorK :: Fish T.Text -> Fish T.Text
+setErrorK :: Fish String -> Fish String
 setErrorK f = callCC (\k -> local (errorK %~ (k:)) f)
 
 -- | Calls the top '_errorK' continuation.
 --   Use this instead of 'error'
-errork :: T.Text -> Fish a
-errork t = view errorK >>= \case
-  [] -> error $ T.unpack t
-  k:_ -> k t >> return undefined
+errork :: String -> Fish a
+errork s = view errorK >>= \case
+  [] -> error s
+  k:_ -> k s >> return undefined
 
 -- | Takes a lens to one of the continuation stacks,
 --   an interrupt routine and a fish action.
@@ -225,12 +227,12 @@ disallowK = local
 
 -- | Throws an error(k) if the value is Left _
 --   ,passes it into the monad if its a Right _ .
-eitherToFish :: Either T.Text a -> Fish a
+eitherToFish :: Either String a -> Fish a
 eitherToFish = either errork return
 
 -- | Throws given error(k) if the value is Nothing
 --   ,passes it into the monad otherwise.
-maybeToFish :: T.Text -> Maybe a -> Fish a
+maybeToFish :: String -> Maybe a -> Fish a
 maybeToFish err = maybe (errork err) return
 
 -- | An empty FishState

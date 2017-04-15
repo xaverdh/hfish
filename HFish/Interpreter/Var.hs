@@ -5,8 +5,10 @@ import Fish.Lang hiding (Scope)
 import HFish.Interpreter.Scope
 import HFish.Interpreter.Core
 import HFish.Interpreter.Util
-import Data.NText as NText
+import qualified Data.NText as NText
+import Data.NText (NText,extractText)
 import HFish.Interpreter.Env as Env
+import qualified HFish.Interpreter.Stringy as Str
 
 import qualified Data.Map as M
 import qualified Data.Text as T
@@ -65,7 +67,9 @@ getVar :: NText -> Fish Var
 getVar ident = getVarMaybe ident >>= \case
   Just v -> return v
   Nothing -> errork
-    $ "Lookup of variable " <> extractText ident <> " failed."
+    $ "Lookup of variable "
+    <> Str.toString (extractText ident)
+    <> " failed."
 
 getVarValue :: NText -> Fish (Seq Str)
 getVarValue t = do
@@ -80,13 +84,14 @@ allVars = do
 exportVars :: Fish [(NText,Var)]
 exportVars = Prelude.filter (isExport . snd) <$> allVars
 
-showVarEnv :: Bool -> Env Var -> T.Text
-showVarEnv namesOnly env = T.unlines $
+showVarEnv :: Bool -> Env Var -> String
+showVarEnv namesOnly env = unlines $
   Env.toList env <$$>
   ( if namesOnly
-    then extractText . fst
-    else \(k,Var _ vs) -> 
-      T.unwords (extractText k : Fold.toList vs) )
+    then T.unpack . extractText . fst
+    else \(k,Var _ vs) -> unwords
+      ( T.unpack (extractText k)
+        : Fold.toList (fmap Str.toString vs) ) )
 
 isExport :: Var -> Bool
 isExport (Var ex _) = 
@@ -107,20 +112,19 @@ setVarSafe scp ident var
 
 delVarSafe :: Scope -> NText -> Fish  ()
 delVarSafe scp ident
-  | ReadOnlyScope <- scp = errork "Will not delete readonly variable"  
+  | ReadOnlyScope <- scp = errork "Will not delete readonly variable"
   | True = asLens scp %= Env.delete ident
 
-withVarText :: Var -> (T.Text -> a) -> a
-withVarText var f = f . T.unwords . Fold.toList $ (var ^. value)
+withVarStr :: Var -> (Str -> a) -> a
+withVarStr var f = f . Str.unwords . Fold.toList $ (var ^. value)
 
 readVar :: Read a => Var -> a
-readVar var = withVarText var readText
+readVar var = withVarStr var Str.readStr
 
 readVarMaybe :: Read a => Var -> Maybe a
-readVarMaybe var = withVarText var readTextMaybe
+readVarMaybe var = withVarStr var Str.readStrMaybe
 
-mapSerialVar :: (Read a,Show b) => (a -> b) -> Var -> Var
-mapSerialVar f = value %~ fmap (showText . f . readText)
+
 
 
 

@@ -5,6 +5,7 @@ import HFish.Interpreter.Core
 import HFish.Interpreter.Util
 import Data.NText
 import HFish.Interpreter.Env as Env
+import qualified HFish.Interpreter.Stringy as Str
 
 import Control.Lens
 import Control.Monad
@@ -58,7 +59,9 @@ parseSigSpec :: T.Text -> Fish Signal
 parseSigSpec sigspec
   | Just i <- readTextMaybe sigspec = return i
   | Just sig <- sigFromName sigspec = return sig
-  | otherwise = errork $ "unknown signal: " <> sigspec
+  | otherwise = errork
+    $ "unknown signal: "
+    <> Str.toString sigspec
 
 sigFromName :: T.Text -> Maybe Signal
 sigFromName t =

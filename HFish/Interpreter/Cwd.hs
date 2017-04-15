@@ -5,6 +5,7 @@ import HFish.Interpreter.Core
 import HFish.Interpreter.Var
 import HFish.Interpreter.Status
 import HFish.Interpreter.Env as Env
+import qualified HFish.Interpreter.Stringy as Str
 
 import qualified Data.Text as T
 import qualified Data.Sequence as Seq
@@ -16,30 +17,36 @@ import Control.Monad.IO.Class
 import System.Directory
 import System.Exit
 
-getHOME :: Fish FilePath
-getHOME = liftIO getHomeDirectory
+getHOME :: Fish Str
+getHOME = Str.fromString <$> liftIO getHomeDirectory
 
-setCWD :: FilePath -> Fish ExitCode
+setCWD :: Str -> Fish ExitCode
 setCWD dir = do
-  d <- liftIO $ makeAbsolute dir
-  liftIO (doesDirectoryExist d) >>= \case
+  d <- liftIO $ makeAbsoluteStr dir
+  liftIO (doesDirectoryExistStr d) >>= \case
     True -> do
       cwdir .= d
       readOnlyEnv %= Env.adjust
-        (value .~ pure (T.pack d)) "PWD"
+        (value .~ pure d) "PWD"
       return ExitSuccess
     False -> return $ ExitFailure 1
+  where
+    makeAbsoluteStr :: Str -> IO Str
+    makeAbsoluteStr = fmap Str.fromString . makeAbsolute . Str.toString
 
-getCWD :: Fish FilePath
+    doesDirectoryExistStr :: Str -> IO Bool
+    doesDirectoryExistStr = doesDirectoryExist . Str.toString
+
+getCWD :: Fish Str
 getCWD = use cwdir
 
-pushCWD :: FilePath -> Fish ()
+pushCWD :: Str -> Fish ()
 pushCWD dir = do
   oldDir <- getCWD
   setCWD dir >>= setStatus
   ifOk ( dirstack %= (oldDir:) )
 
-popCWD :: Fish (Maybe FilePath)
+popCWD :: Fish (Maybe Str)
 popCWD = use dirstack >>= \case
   [] -> return Nothing
   (dir:dirs) -> do

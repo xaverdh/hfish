@@ -11,12 +11,12 @@ import qualified Data.Text as T
 import Data.Monoid
 import System.Exit
 
-cdF :: Bool -> [T.Text] -> Fish ()
+cdF :: Builtin
 cdF fork = \case
   [] -> do
     home <- getHOME
-    cdF fork [T.pack home]
+    cdF fork [home]
     ok
-  [dir] -> setCWD (T.unpack dir) >>= setStatus
+  [dir] -> setCWD dir >>= setStatus
   _ -> errork "cd: too many arguments given"
 

@@ -10,12 +10,12 @@ import HFish.Interpreter.Status
 import qualified Data.Text as T
 import System.Exit
 
-trueF :: Bool -> [T.Text] -> Fish ()
+trueF :: Builtin
 trueF _ = \case
   [] -> setStatus ExitSuccess
   _ -> errork "true: too many arguments given"
 
-falseF :: Bool -> [T.Text] -> Fish ()
+falseF :: Builtin
 falseF _  = \case
   [] -> setStatus (ExitFailure 1)
   _ -> errork "false: too many arguments given"

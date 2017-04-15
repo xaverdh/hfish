@@ -8,6 +8,7 @@ module HFish.Interpreter.Builtins.Flow (
 import HFish.Interpreter.Core
 import HFish.Interpreter.Status
 import HFish.Interpreter.Util
+import qualified HFish.Interpreter.Stringy as Str
 
 import qualified Data.Text as T
 import qualified Data.Sequence as Seq
@@ -27,38 +28,40 @@ jumpWith l e i
         [] -> mkNoLoopErr e
         k:_ -> k () >> return undefined
 
-continueF :: Bool -> [T.Text] -> Fish a
+continueF :: Builtin
 continueF _ = \case
   [] -> jump 1
   args -> onMaybe
-    (readTextMaybe $ mconcat args)
+    (Str.readStrMaybe $ mconcat args)
     (mkInvalidErr "continue:")
     jump
   where
     jump = jumpWith continueK "continue:"
     
 
-breakF :: Bool -> [T.Text] -> Fish a
+breakF :: Builtin
 breakF _ = \case
   [] -> jump 1
   args -> onMaybe
-    (readTextMaybe $ mconcat args)
+    (Str.readStrMaybe $ mconcat args)
     (mkInvalidErr "break:")
     jump
   where
     jump = jumpWith breakK "break:"
 
-returnF :: Bool -> [T.Text] -> Fish a
+returnF :: Builtin
 returnF _ = \case
   [] -> ret
   [t] -> maybe
            (noIntErr t)
            (setStatus . toEnum)
-           (readTextMaybe t)
+           (Str.readStrMaybe t)
          >> ret
   _ -> errork "return: too many arguments given"
   where
-    noIntErr t = errork ("return: expected integer, got: " <> t)
+    noIntErr t = errork
+      $ "return: expected integer, got: "
+      <> Str.toString t
     ret = view returnK >>= \case
       [] -> errork "no function to return from"
       k:_ -> k () >> return undefined

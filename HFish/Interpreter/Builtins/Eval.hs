@@ -8,6 +8,8 @@ import HFish.Interpreter.Parsing
 import HFish.Interpreter.Core
 import HFish.Interpreter.Interpreter (progA)
 import HFish.Interpreter.Process.Process (fishExec)
+import qualified HFish.Interpreter.Stringy as Str
+
 import qualified Data.Text as T
 import Fish.Lang
 import System.Posix.Process
@@ -16,15 +18,18 @@ import Control.Lens
 import Control.Monad
 import Control.Monad.IO.Class
 
-onArgs :: [T.Text] -> (Prog T.Text () -> Fish a) -> Fish (Maybe a)
+onArgs :: [Str] -> (Prog T.Text () -> Fish a) -> Fish (Maybe a)
 onArgs ts k = do
-  res <- parseFishInteractive $ (T.unpack . T.unwords) ts
+  res <- parseFishInteractive $ (Str.toString . Str.unwords) ts
   withProg res k
 
 evalF :: Builtin
 evalF _ ts = void (onArgs ts progA)
 
 execF :: Builtin
-execF _ (name:args) = fishExec name args
+execF _ (name:args) =
+  fishExec
+    (Str.toString name)
+    (map Str.toString args)
 
 

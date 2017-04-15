@@ -8,6 +8,7 @@ import HFish.Interpreter.IO
 import HFish.Interpreter.Util
 import HFish.Interpreter.Concurrent
 import HFish.Interpreter.Status
+import qualified HFish.Interpreter.Stringy as Str
 
 import Data.Functor
 import Control.Applicative
@@ -29,23 +30,23 @@ import GHC.Real ((%))
 import Data.Scientific hiding (scientific)
 import Text.Parser.Combinators
 import Text.Parser.Expression
-import Data.Attoparsec.Text 
+import Data.Attoparsec.ByteString.Char8
 -- import Text.Parser.Token
 -- import Text.Parser.Char
 
-mathF :: Bool -> [T.Text] -> Fish ()
+mathF :: Builtin
 mathF _ = \case
   [] -> errork "math: not enough arguments given"
   args ->
-    compMath (T.unwords args)
+    compMath (Str.unwords args)
     >>= (return . ser)
     >>= echo
 
-ser :: Scientific -> T.Text
-ser s = T.pack
+ser :: Scientific -> Str
+ser s = Str.fromString
   $ either show show (floatingOrInteger s)
 
-compMath :: T.Text -> Fish Scientific
+compMath :: Str -> Fish Scientific
 compMath ex = parseMath ex >>= eval
 
 eval :: Math -> Fish Scientific
@@ -111,7 +112,7 @@ intArith f a b = do
   return . fromInteger $ f i j
   where
     castInt a = either
-      (const . errork $ "math: expected integer, got " <> T.pack (show a))
+      (const . errork $ "math: expected integer, got " <> show a)
       return
       (floatingOrInteger a)
 
@@ -145,7 +146,7 @@ term = ( bracketed <|> sfc ) <* skipSpace
 math :: Parser Math
 math = skipSpace *> buildExpressionParser opTable term
 
-parseMath :: T.Text -> Fish Math
+parseMath :: Str -> Fish Math
 parseMath t = either onErr return
   $ parseOnly (math <* endOfInput) t
   where
@@ -154,7 +155,7 @@ parseMath t = either onErr return
 
 {- Unparse -}
 
-unparse :: Math -> T.Text
+unparse :: Math -> Str
 unparse = \case
   Sfc s -> ser s
   Neg a -> "-" <> unparse a
@@ -166,8 +167,6 @@ unparse = \case
   Div a b -> "(" <> unparse a <> " / " <> unparse b <>  ")"
   Pow a b -> "(" <> unparse a <> " ^ " <> "(" <> unparse b <> ") )"
   Mod a b -> "(" <> unparse a <> " % " <> unparse b <> ")"
-  where
-    showT ::  Show a => a -> T.Text
-    showT = T.pack . show
+
 
 

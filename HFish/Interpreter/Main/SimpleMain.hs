@@ -23,6 +23,7 @@ import HFish.Interpreter.Parsing
 import HFish.Interpreter.Var
 import HFish.Interpreter.Version (version)
 import HFish.Interpreter.Description (description)
+import qualified HFish.Interpreter.Stringy as Str
 import Fish.Lang
 
 import System.Console.Haskeline
@@ -103,7 +104,7 @@ hfishMain
       else case args of
         [] -> runInterpreterLoop fishCompat False r s
         path:args' -> do
-          s' <- injectArgs (T.pack <$> args') r s
+          s' <- injectArgs (map Str.fromString args') r s
           exPath path (runProgram r s')
   where
     printAST = print . doc

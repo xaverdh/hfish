@@ -7,9 +7,11 @@ import HFish.Interpreter.Core
 import HFish.Interpreter.IO
 import HFish.Interpreter.Status
 import HFish.Interpreter.Util
+import qualified HFish.Interpreter.Stringy as Str
 import Fish.Lang
 
 import qualified Data.Text as T
+import qualified Data.ByteString.Char8 as BC
 import Data.Text.IO as TextIO
 import Data.Functor
 import Data.Monoid
@@ -21,19 +23,19 @@ import Control.Monad.IO.Class
 import System.Exit
 import System.IO
 
-import Data.Attoparsec.Text as Atto
+import Data.Attoparsec.ByteString.Char8 as Atto
 import Text.Parser.Char (hexDigit,octDigit)
 
 import Options.Applicative
 import Options.Applicative.Builder as OB
 
 
-echoF :: Bool -> [T.Text] -> Fish ()
+echoF :: Builtin
 echoF _ ts =
-  execParserPure defaultPrefs parser (map T.unpack ts)
+  execParserPure defaultPrefs parser (map Str.toString ts)
   & \case
     Success f -> f
-    Failure err -> errork . T.pack . fst
+    Failure err -> errork . fst
       $ renderFailure err "read: invalid arguments given\n"
   where
     parser = info echoOptions idm
@@ -45,27 +47,27 @@ echoOptions = echoWorker
   <*> switch (short 'n')
   <*> many ( OB.argument text (metavar "STRINGS...") )
   where
-    text = maybeReader (Just . T.pack)
+    text = maybeReader (Just . Str.fromString)
 
 echoWorker :: Bool -- ^ Interpret escapes
   -> Bool -- ^ No space
   -> Bool -- ^ No newline
-  -> [T.Text] -- ^ Arguments
+  -> [Str] -- ^ Arguments
   -> Fish ()
 echoWorker esc noSpace noNewl args =
-  T.intercalate (bool " " "" noSpace) args
+  Str.intercalate (bool " " "" noSpace) args
   & bool return escape esc
   >>= \t -> bool echoLn echo noNewl t >> ok
 
 
-escape :: T.Text -> Fish T.Text
+escape :: Str -> Fish Str
 escape t = either onErr return
   $ parseOnly (escaper <* endOfInput) t
   where
     onErr _ = errork $
       "echo: malformed escape sequence"
 
-escaper :: Atto.Parser T.Text
+escaper :: Atto.Parser Str
 escaper = do
   t1 <- takeTill (=='\\')
   end <- atEnd
@@ -87,7 +89,7 @@ escaper = do
         ,char 't' $> "\t"
         ,char 'v' $> "\v" ]
     
-    cancel = char 'c' *> takeLazyText *> return ""
+    cancel = char 'c' *> takeLazyByteString *> return ""
     
     oct = char '0' *> do
       d1 <- octDigit
@@ -102,9 +104,9 @@ escaper = do
     
     ctoi c = ord c - 48
     
-    compChar :: Int -> [Int] -> T.Text
+    compChar :: Int -> [Int] -> Str
     compChar base = 
-      T.singleton . chr
+      BC.singleton . chr
       . foldr (\x y -> y + base * x) 0
       
       

@@ -15,7 +15,7 @@ import System.Exit
 import System.Random
 import Data.Word (Word16)
 
-randomF :: Bool -> [T.Text] -> Fish ()
+randomF :: Builtin
 randomF _ = \case
   [] -> do
     r :: Word16 <- liftIO randomIO

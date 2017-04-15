@@ -65,10 +65,10 @@ duplicate fd1 fd2 k = do
   pfd <- lookupFd' fd1
   insert fd2 pfd k
 
-withFileR :: T.Text -> L.Fd -> Fish () -> Fish ()
+withFileR :: String -> L.Fd -> Fish () -> Fish ()
 withFileR fpath fd k = do
   pfd <- liftIO $ P.openFd
-    (T.unpack fpath)
+    fpath
     P.ReadOnly
     Nothing
     P.defaultFileFlags
@@ -76,9 +76,9 @@ withFileR fpath fd k = do
     ( k `finally` P.closeFd pfd )
 
 
-withFileW :: T.Text -> L.FileMode -> L.Fd -> Fish () -> Fish ()
+withFileW :: String -> L.FileMode -> L.Fd -> Fish () -> Fish ()
 withFileW fpath mode fd k =
-  P.openFd (T.unpack fpath) P.WriteOnly
+  P.openFd fpath P.WriteOnly
   & \popen -> do
     mpfd <- treatExceptions $ case mode of
       L.FModeWrite -> popen (Just accessMode)
@@ -147,9 +147,10 @@ lookupFd' fd = lookupFd fd >>=
 
 -- Errors:
 
-mkFdErr :: T.Text -> L.Fd -> Fish a
-mkFdErr t fd = errork
-  $ "file descriptor " <> (showText . fromEnum) fd <> " is " <> t
+mkFdErr :: String -> L.Fd -> Fish a
+mkFdErr s fd = errork
+  $ "file descriptor "
+  <> (show . fromEnum) fd <> " is " <> s
 
 invalidFdErr = mkFdErr "invalid"
 notOpenErr = mkFdErr "not open"

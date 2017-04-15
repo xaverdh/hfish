@@ -11,6 +11,7 @@ import HFish.Interpreter.IO
 import HFish.Interpreter.Concurrent
 import HFish.Interpreter.Cwd
 import HFish.Interpreter.Status
+import qualified HFish.Interpreter.Stringy as Str
 
 import qualified Data.Text as T
 import Data.Monoid
@@ -20,28 +21,28 @@ import Control.Monad.IO.Class
 import System.Exit
 import System.IO
 
-pushdF :: Bool -> [T.Text] -> Fish ()
+pushdF :: Builtin
 pushdF fork = \case
   [] -> do
     home <- getHOME
-    pushdF fork [T.pack home]
+    pushdF fork [home]
     ok
-  [dir] -> pushCWD $ T.unpack dir
+  [dir] -> pushCWD dir
   _ -> errork "pushd: too many arguments given"
 
-popdF :: Bool -> [T.Text] -> Fish ()
+popdF :: Builtin
 popdF _ = \case
   [] -> popCWD >>= \case
     Nothing -> errork "popd: directory stack is empty"
     Just dir -> setCWD dir >>= setStatus
   _ -> errork "popd: too many arguments given"
 
-dirsF :: Bool -> [T.Text] -> Fish ()
+dirsF :: Builtin
 dirsF _ = \case 
   [] -> do
-    dirs <- map T.pack <$> use dirstack
-    wdir <- T.pack <$> getCWD
-    writeTo Fd1 $ T.unwords (wdir:dirs)
+    dirs <- use dirstack
+    wdir <- getCWD
+    writeTo Fd1 $ Str.unwords (wdir:dirs)
     {- Adding the current working directory to the stack
        does not make a lot of sense to my mind, but since
        fish does that ... here we go -}

@@ -12,6 +12,7 @@ import HFish.Interpreter.Status
 import HFish.Interpreter.Slice
 import HFish.Interpreter.Description (setCommandHelp)
 import Data.NText
+import qualified HFish.Interpreter.Stringy as Str
 import qualified HFish.Interpreter.Env as Env
 
 import Control.Lens
@@ -112,8 +113,8 @@ listVars mlscope mexport namesOnly =
 
 queryVars :: Maybe L.Scope -> Maybe Export -> Seq Str -> Fish ()
 queryVars mlscope mexport args = do
-  i <- (Seq.length . Seq.filter id) <$> mapM isNotSet (fmap mkNText args)
-  echoLn $ showText i
+  i <- (Seq.length . Seq.filter id) <$> mapM isNotSet (fmap (mkNText . Str.toText) args)
+  echoLn $ show i
   where
     isNotSet :: NText -> Fish Bool
     isNotSet ident = case mlscope of

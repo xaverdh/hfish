@@ -13,7 +13,7 @@ import Data.List as L
 import Data.Bool
 import Data.Functor
 
-containsF :: Bool -> [T.Text] -> Fish ()
+containsF :: Builtin
 containsF _ = \case
   [] -> errork "contains: too few arguments given"
   "i":"--":key:vals ->
@@ -24,11 +24,10 @@ containsF _ = \case
     bool bad ok (key `elem` vals)
   key:vals -> 
     bool bad ok (key `elem` vals)
-
-containsI :: T.Text -> [T.Text] -> Fish ()
-containsI key vals = 
-  case L.findIndex (==key) vals of
-    Just i -> do
-      echo (showText i)
-      ok
-    Nothing -> bad
+  where
+    containsI key vals = 
+      case L.findIndex (==key) vals of
+        Just i -> do
+          echo (showText i)
+          ok
+        Nothing -> bad

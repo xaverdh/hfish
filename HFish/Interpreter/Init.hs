@@ -11,6 +11,7 @@ import HFish.Interpreter.FdTable (initialFdTable)
 import HFish.Interpreter.Var
 import HFish.Interpreter.Builtins (allBuiltins)
 import HFish.Interpreter.Env as Env
+import qualified HFish.Interpreter.Stringy as Str
 
 import Control.Lens
 import Control.Monad
@@ -27,8 +28,8 @@ readOnly = ["SHLVL","PWD"]
 
 mkInitialFishState :: IO FishState
 mkInitialFishState = do
-  wdir <- getCurrentDirectory
-  inherited <- map (bimap T.pack (mkVarXp . pure . T.pack)) <$> getEnvironment
+  wdir <- Str.fromString <$> getCurrentDirectory
+  inherited <- map (bimap Str.fromString (mkVarXp . pure . Str.fromString)) <$> getEnvironment
   teeVars inherited & \(ro,rw) ->
     return $ emptyFishState {
       _functions = Env.empty
@@ -46,7 +47,7 @@ mkInitialFishState = do
     
     inc :: Maybe Var -> Maybe Var
     inc mv =
-      (mkVarXp . pure . T.pack . show . (+1))
+      (mkVarXp . pure . Str.fromString . show . (+1))
       <$> (mv >>= readVarMaybe)
     
     incShlvl = Env.alter inc "SHLVL"
@@ -61,7 +62,7 @@ mkInitialFishReader atBreakpoint fishcompat =
     ,_breakK = [const warnB]
     ,_continueK = [const warnC]
     ,_returnK = [const warnR]
-    ,_errorK = [error . T.unpack]
+    ,_errorK = []
     ,_breakpoint = atBreakpoint
     ,_fishCompatible = fishcompat
   }

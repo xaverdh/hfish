@@ -7,6 +7,7 @@ import HFish.Interpreter.Core hiding (value)
 import HFish.Interpreter.IO
 import HFish.Interpreter.Concurrent
 import HFish.Interpreter.Status
+import qualified HFish.Interpreter.Stringy as Str
 
 import qualified Data.Text as T
 import Data.Functor
@@ -28,14 +29,13 @@ import Options.Applicative.Builder as OB
 {- TODO: escape -> wait for UnParser,
          match, replace -}
 
-stringF :: Bool -> [T.Text] -> Fish ()
+stringF :: Builtin
 stringF _ ts = 
-  execParserPure defaultPrefs parser (map T.unpack ts)
+  execParserPure defaultPrefs parser (map Str.toString ts)
   & \case
     Success f -> f
-    Failure err -> 
-      (errork . T.pack . fst)
-      (renderFailure err "string: invalid arguments given\n")
+    Failure err -> errork . fst
+      $ renderFailure err "string: invalid arguments given\n"
   where
     parser = info opts idm
     opts = subparser $ mconcat

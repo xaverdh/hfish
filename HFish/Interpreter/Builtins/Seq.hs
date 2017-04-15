@@ -10,6 +10,7 @@ import HFish.Interpreter.Concurrent
 import HFish.Interpreter.Process.Process
 import HFish.Interpreter.Status
 import HFish.Interpreter.Util
+import qualified HFish.Interpreter.Stringy as Str
 
 import Control.Lens
 import Control.Monad.IO.Class
@@ -25,7 +26,7 @@ import Data.Monoid
 import System.Exit
 import System.IO
 
-seqF :: Bool -> [T.Text] -> Fish ()
+seqF :: Builtin
 seqF fork = \case
   [] -> errork "seq: too few arguments given"
   [l] -> seqFWorker fork ((1,1,) <$> mread l)
@@ -33,7 +34,7 @@ seqF fork = \case
   [f,i,l] -> seqFWorker fork ((,,) <$> mread f <*> mread i <*> mread l)
   _ -> errork "seq: too many arguments given"
   where
-    mread = readTextMaybe
+    mread = Str.readStrMaybe
 
 seqFWorker :: Bool -> Maybe (Int,Int,Int) -> Fish ()
 seqFWorker fork = \case
@@ -46,7 +47,7 @@ seqFWorker fork = \case
 writeList :: Int -> Int -> Int -> Fish ()
 writeList a b c
   | b == 1 && c `div` b > 10^5 =
-    fishCreateProcess "seq" (map showText [a,b,c])
+    fishCreateProcess "seq" (map show [a,b,c])
     >>= fishWaitForProcess "seq"
   | otherwise = echo
       . B.toLazyTextWith ubound

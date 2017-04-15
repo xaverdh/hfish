@@ -8,6 +8,7 @@ import HFish.Interpreter.Util
 import HFish.Interpreter.IO
 import HFish.Interpreter.Status
 import qualified HFish.Interpreter.Env as Env
+import qualified HFish.Interpreter.Stringy as Str
 
 import Control.Applicative
 import Control.Monad
@@ -25,10 +26,10 @@ import Options.Applicative.Builder as OB
 
 functionsF :: Builtin
 functionsF _  ts =
-  execParserPure defaultPrefs parser (map T.unpack ts)
+  execParserPure defaultPrefs parser (map Str.toString ts)
   & \case
     Success f -> f
-    Failure err -> errork . T.pack . fst
+    Failure err -> errork . fst
       $ renderFailure err "read: invalid arguments given\n"
   where
     parser = info functionsOptions idm
@@ -81,7 +82,9 @@ functionsCopy src dst = do
   onMaybe mf doesNotExist
     $ \f -> functions %= Env.insert (mkNText dst) f
   where
-    doesNotExist = errork $ "does not exist " <> src
+    doesNotExist = errork
+      $ "does not exist "
+      <> Str.toString src
 
 functionsDesc :: T.Text -> T.Text -> Fish ()
 functionsDesc = undefined

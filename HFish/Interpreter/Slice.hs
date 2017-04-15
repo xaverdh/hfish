@@ -33,7 +33,7 @@ type Slices = Seq (Bool,(Int,Int))
 
     
 -- | Create 'Slices' from the length of an array and given indices.
-mkSlices :: Int -> Seq (Int,Int) -> Either T.Text Slices
+mkSlices :: Int -> Seq (Int,Int) -> Either String Slices
 mkSlices l xs = 
   fmap markSwap <$> forM xs normalise
   where
@@ -43,7 +43,7 @@ mkSlices l xs =
       | 0 < i && i <= l = Right (i - 1)
       | -l <= i && i < 0 = Right (l + i)
       | otherwise = Left $
-        "Index \"" <> showText i <> "\" is out of bounds"
+        "Index \"" <> show i <> "\" is out of bounds"
 
 -- | Fish variant of 'mkSlices'.
 makeSlices :: Int -> Seq (Int,Int) -> Fish Slices
@@ -73,7 +73,7 @@ writeIndices indices (Var ex xs) ys = do
   where
     f :: (Seq Str,Seq Str)
        -> (Bool, (Int, Int))
-       -> Either T.Text (Seq Str,Seq Str)
+       -> Either String (Seq Str,Seq Str)
     f (xs,ys) slc@(b,(i,j)) = do
       (hs,_,ts) <- triSplit i j xs
         `maybeToEither` err

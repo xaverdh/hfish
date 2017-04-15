@@ -1,17 +1,18 @@
 {-# language LambdaCase, OverloadedStrings, GeneralizedNewtypeDeriving #-}
 module HFish.Interpreter.Globbed (
   Globbed(..)
-  ,fromText
+  ,fromStr
   ,fromGlob
   ,fromString
   ,globExpand
   ,matchGlobbed
-  ,matchText
+  ,matchStr
 ) where
 
 import Fish.Lang
 import HFish.Interpreter.Core
 import HFish.Interpreter.Util
+import qualified HFish.Interpreter.Stringy as Str
 
 import qualified Data.Text as T
 import qualified Data.Foldable as F
@@ -38,25 +39,25 @@ newtype Globbed = Globbed {
   deriving (Eq,Ord,Show,Monoid)
 
 
-fromText :: T.Text -> Globbed
-fromText t = Globbed $ pure (Right t)
+fromStr :: Str -> Globbed
+fromStr t = Globbed $ pure (Right t)
 
 fromGlob :: Glob -> Globbed
 fromGlob g = Globbed $ pure (Left g)
 
 instance IsString Globbed where
-  fromString = fromText . T.pack
+  fromString = fromStr . fromString
 
-showGlobbed :: Globbed -> T.Text
+showGlobbed :: Globbed -> String
 showGlobbed = F.fold . fmap f . unGlob
   where
-    f :: Either Glob T.Text -> T.Text
+    f :: Either Glob Str -> String
     f = \case
       Left g -> case g of
         StarGl -> "*"
         DiStarGl -> "**"
         QMarkGl -> "?"
-      Right s -> s
+      Right s -> Str.toString s
 
 
 globExpand :: Globbed -> Fish (Seq Str)
@@ -65,10 +66,11 @@ globExpand globbed =
     Just s -> return (pure s)
     Nothing -> do
       wdir <- use cwdir
-      paths <- getMatches <$> recurseDirRel True wdir
+      paths <- getMatches
+        <$> recurseDirRel True (Str.toString wdir)
       if Seq.null paths
         then noMatchErr globbed
-        else return . fmap T.pack $ paths
+        else return . fmap Str.fromString $ paths
   where
     parser = genParser globbed
     getMatches = Seq.filter $ isJust . (=~ parser)
@@ -85,22 +87,22 @@ optimisticCast = F.foldrM f "" . unGlob
       Right s -> Just $ s <> text
 
 matchGlobbed :: Globbed -> Str -> Maybe String
-matchGlobbed globbed text = 
-  genParser globbed & (T.unpack text =~)
+matchGlobbed globbed str = 
+  genParser globbed & (Str.toString str =~)
 
 genParser :: Globbed -> RE Char String
 genParser = F.fold . fmap f . unGlob
   where
     f = \case
-      Right s -> string $ T.unpack s
+      Right s -> string $ Str.toString s
       Left g -> case g of
         StarGl -> few $ psym (/='/')
         DiStarGl -> few anySym
         QMarkGl -> pure <$> psym (/='/') 
 
 -- Used by fishSwitch
-genParserFromText :: T.Text -> RE Char String
-genParserFromText = work . T.unpack
+genParserFromStr :: Str -> RE Char String
+genParserFromStr = work . Str.toString
   where
     work :: String -> RE Char String
     work = \case
@@ -112,15 +114,16 @@ genParserFromText = work . T.unpack
           _ -> pure <$> sym g
 
 -- Used by fishSwitch
-matchText :: T.Text -> T.Text -> Maybe String
-matchText globText text =
-  genParserFromText globText & (T.unpack text =~)
+matchStr :: Str -> Str -> Maybe String
+matchStr globStr str =
+  genParserFromStr globStr & (Str.toString str =~)
 
 recurseDirRel :: Bool -> FilePath -> Fish (Seq FilePath)
 recurseDirRel b p = do
   wdir <- use cwdir
   paths <- liftIO (recurseDir b p)
-  return $ fmap (makeRelative wdir) paths
+  return $ fmap (makeRelative $ Str.toString wdir) paths
+
 
 recurseDir :: Bool -> FilePath -> IO (Seq FilePath)
 recurseDir ignoreHidden p = do

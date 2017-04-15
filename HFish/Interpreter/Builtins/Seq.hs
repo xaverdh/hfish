@@ -43,15 +43,9 @@ seqFWorker fork = \case
         else writeList a b c >> ok
 
 writeList :: Int -> Int -> Int -> Fish ()
-writeList a b c
-  | b == 1 && c `div` b > 10^5 =
-    fishCreateProcess "seq" (map show [a,b,c])
-    >>= fishWaitForProcess "seq"
-  | otherwise = echo
-      . B.toLazyByteString
-      $ createList a b c
-  -- where
-    -- ubound = (round $ logBase 10 (fromIntegral c) + 1) * c `div` b
+writeList a b c = echo
+  . B.toLazyByteString
+  $ createList a b c
 
 createList :: Int -> Int -> Int -> B.Builder
 createList a b c = BP.primUnfoldrBounded intLn next a

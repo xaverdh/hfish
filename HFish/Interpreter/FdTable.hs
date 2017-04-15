@@ -20,8 +20,6 @@ data FdTable = FdTable {
     -- ^ The main table
     ,_closed :: [PT.Fd]
     -- ^ Fds marked for closing
-    ,_weakClosed :: [PT.Fd]
-    -- ^ Fds marked for "weak" closing, ignoring any errors
   } deriving (Show)
 makeLenses ''FdTable
 
@@ -54,29 +52,16 @@ insert :: HasFdTable m => L.Fd -> PT.Fd -> m a -> m a
 insert fd pfd =
   localFdTable (mainTable %~ M.insert fd pfd)
 
--- | Mark this OS fd as closed.
---
---   It will appear closed to builtins and child processes.
---
---   Silently ignores the case where fd does not exits.
-close_ :: HasFdTable m => PT.Fd -> m a -> m a
-close_ pfd k = 
-  flip localFdTable k
-      (  ( closed %~ (pfd:) )
-       . ( mainTable %~ M.mapMaybe (erase pfd) ) )
-  where
-    erase y x = if x == y then Nothing else Just x
-
 -- | Mark this OS fd as /weakly/ closed.
 --
 --   It will appear closed to builtins and child processes.
 --
 --   Silently ignores the case where fd does not exits and
 --   /ignores any errors thrown on close/.
-weakClose_ :: HasFdTable m => PT.Fd -> m a -> m a
-weakClose_ pfd k =
+close_ :: HasFdTable m => PT.Fd -> m a -> m a
+close_ pfd k =
   flip localFdTable k
-      (  ( weakClosed %~ (pfd:) )
+      (  ( closed %~ (pfd:) )
        . ( mainTable %~ M.mapMaybe (erase pfd) ) )
   where
     erase y x = if x == y then Nothing else Just x  
@@ -87,16 +72,6 @@ weakClose_ pfd k =
 --
 --   Silently ignores the case where fd does not exits and
 --   /ignores any errors thrown on close/.
-weakClose :: HasFdTable m => L.Fd -> m a -> m a
-weakClose fd k = lookupFd fd >>= \case
-  Nothing -> k
-  Just pfd -> weakClose_ pfd k
-
--- | Mark the OS fd corresponding to this (abstract) fd as closed.
---
---   It will appear closed to builtins and child processes.
---
---   Silently ignores the case where fd does not exits.
 close :: HasFdTable m => L.Fd -> m a -> m a
 close fd k = lookupFd fd >>= \case
   Nothing -> k
@@ -110,7 +85,7 @@ fdWeakClose pfd = E.catch (P.closeFd pfd)
 -- | The initial FdTable stdin / -out / -err.
 --
 initialFdTable :: FdTable
-initialFdTable = FdTable fds [] []
+initialFdTable = FdTable fds []
   where
     fds = M.fromList
       [ ( L.Fd0, P.stdInput )

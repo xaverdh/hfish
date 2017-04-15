@@ -48,7 +48,7 @@ pipeFish fd f1 f2 = do
   where
     setup :: L.Fd -> PT.Fd -> PT.Fd -> Fish a -> Fish a
     setup fd' clsH insH =
-      weakClose_ clsH . insert fd' insH
+      close_ clsH . insert fd' insH
 
 
 -- | Make an abstract fd a duplicate of another abstract fd, i.e. a fd pointing

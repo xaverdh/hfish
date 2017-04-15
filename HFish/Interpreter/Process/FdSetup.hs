@@ -85,12 +85,11 @@ setupFds = forM_ [0..9] setupFd
 withFileDescriptorsSetup :: (IO () -> Fish a) -> Fish a
 withFileDescriptorsSetup k = do
   max_num_fds <- getMaxNumFds
-  FdTable fdescs closed weakClosed <- askFdTable
+  FdTable fdescs closed <- askFdTable
   map fromEnum ( M.fold (:) [] fdescs ) & \used ->
     k $ do
-      -- close all fds marked closed:
-      forM_ closed P.closeFd
-      forM_ weakClosed fdWeakClose
+      -- weakly close all fds marked closed:
+      forM_ closed fdWeakClose
       
       -- set up the redirections
       void $ execStateT setupFds FdSetupState

@@ -283,7 +283,7 @@ evalCmdSubstE (CmdRef _ prog ref) = do
   str <- liftIO $ takeMVar mvar
   Seq.fromList (Str.lines str) & \xs ->
     fmap fromStr <$> case ref of
-      Nothing -> return $ xs
+      Nothing -> return xs
       Just _ -> do
         indices <- evalRef ref
         readIndices indices (mkVar xs)

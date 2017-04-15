@@ -32,20 +32,22 @@ import Options.Applicative.Builder as OB
 
 echoF :: Builtin
 echoF _ ts =
-  execParserPure defaultPrefs parser (map Str.toString ts)
+  let (mbOpts,rest) = splitAt 5 ts 
+  in execParserPure defaultPrefs
+    (parser rest) (map Str.toString mbOpts)
   & \case
     Success f -> f
     Failure err -> errork . fst
       $ renderFailure err "read: invalid arguments given\n"
   where
-    parser = info echoOptions idm
+    parser rest = info (echoOptions rest) idm
 
-echoOptions = echoWorker
+echoOptions rest = echoWorker
   <$> ( flag False True (short 'e')
         <|> flag False False (short 'E') )
   <*> switch (short 's')
   <*> switch (short 'n')
-  <*> many ( OB.argument text (metavar "STRINGS...") )
+  <*> (fmap (<>rest) . many) ( OB.argument text (metavar "STRINGS...") )
   where
     text = maybeReader (Just . Str.fromString)
 

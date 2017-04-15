@@ -41,6 +41,8 @@ import Control.Concurrent
 import Control.Concurrent.MVar
 import qualified System.Posix.IO as PIO
 
+import Debug.Trace
+
 
 progA :: Prog T.Text t -> Fish ()
 progA (Prog _ cstmts) = forM_ cstmts compStmtA
@@ -280,13 +282,13 @@ evalCmdSubstE :: CmdRef T.Text t -> Fish (Seq Globbed)
 evalCmdSubstE (CmdRef _ prog ref) = do
   (mvar,wE) <- createHandleMVarPair
   FDT.insert Fd1 wE (progA prog) `finally` PIO.closeFd wE
-  text <- liftIO $ takeMVar mvar
-  Seq.fromList (Str.lines text) & \ts ->
+  str <- liftIO $ takeMVar mvar
+  Seq.fromList (Str.lines str) & \xs ->
     fmap fromStr <$> case ref of
-      Nothing -> return ts
+      Nothing -> return $ xs
       Just _ -> do
         indices <- evalRef ref
-        readIndices indices (mkVar ts)
+        readIndices indices (mkVar xs)
 
 evalVarRefE :: Bool -> VarRef T.Text t -> Fish (Seq Globbed)
 evalVarRefE s vref = evalVarRef vref

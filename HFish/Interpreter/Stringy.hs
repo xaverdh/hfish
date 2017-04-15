@@ -56,5 +56,7 @@ splitBs s = splitOff
     l = B.length s
     splitOff bs =
       let (hd,tl) = B.breakSubstring s bs
-       in hd : splitOff (B.drop l tl)
+       in if B.null tl
+          then [hd]
+          else hd : splitOff (B.drop l tl)
 

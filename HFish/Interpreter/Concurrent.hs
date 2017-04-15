@@ -17,8 +17,8 @@ import System.Unix.IO
 import qualified System.Posix.IO as P
 import qualified System.Posix.Types as PT
 import Data.Functor
--- import Data.Text.IO as TextIO
-import Data.Text as T
+-- import Data.ByteString as B
+
 
 createHandleMVarPair :: Fish (MVar Str,PT.Fd)
 createHandleMVarPair =
@@ -26,7 +26,7 @@ createHandleMVarPair =
     (rE,wE) <- P.createPipe
     mvar <- newEmptyMVar
     forkIO ( fdGetContents rE >>= putMVar mvar )
-    -- ( P.fdToHandle rE >>= TextIO.hGetContents >>= putMVar mvar )
+    -- forkIO ( P.fdToHandle rE >>= B.hGetContents >>= putMVar mvar )
     return (mvar,wE)
 
 forkFish :: Fish () -> Fish (MVar FishState)

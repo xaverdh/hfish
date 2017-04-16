@@ -32,7 +32,6 @@ class (Eq c,Eq s,Monoid s,IsString s) => StringLike s c | s -> c where
   
   split :: c -> s -> [s]
   split c = splitOn (singleton c)
-  split c = splitWith (==c)
   
   splitOn :: s -> s -> [s]
   splitAt :: Int -> s -> (s,s)

@@ -11,7 +11,6 @@ import HFish.Interpreter.Events
 import qualified HFish.Interpreter.Stringy as Str
 
 import qualified Data.Text as T
-import Data.Text.Encoding (decodeUtf8)
 import qualified Data.Sequence as Seq
 import Data.NText
 import Data.Functor
@@ -28,4 +27,4 @@ import System.IO
 emitF :: Builtin
 emitF _ = \case
   [] -> errork "emit: too few arguments given"
-  name:ts -> handleEvent (mkNText $ decodeUtf8 name) (Seq.fromList ts)
+  name:ts -> handleEvent (mkNText $ Str.toText name) (Seq.fromList ts)

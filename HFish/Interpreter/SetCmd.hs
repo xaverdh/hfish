@@ -12,7 +12,6 @@ import HFish.Interpreter.Status
 import HFish.Interpreter.Slice
 import HFish.Interpreter.Description (setCommandHelp)
 import Data.NText
-import System.Unix.IO.Text (toUnicode)
 import qualified HFish.Interpreter.Stringy as Str
 import qualified HFish.Interpreter.Env as Env
 
@@ -114,7 +113,7 @@ listVars mlscope mexport namesOnly =
 
 queryVars :: Maybe L.Scope -> Maybe Export -> Seq Str -> Fish ()
 queryVars mlscope mexport args = do
-  ts <- liftIO $ forM args toUnicode 
+  let ts = fmap Str.toText args
   i <- Seq.length . Seq.filter id
     <$> mapM isNotSet (fmap mkNText ts)
   echoLn $ show i

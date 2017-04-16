@@ -9,7 +9,6 @@ import HFish.Interpreter.Core
 import HFish.Interpreter.Interpreter (progA)
 import HFish.Interpreter.Process.Process (fishExec)
 import qualified HFish.Interpreter.Stringy as Str
-import System.Unix.IO.Text (toUnicode)
 
 import qualified Data.Text as T
 import Fish.Lang
@@ -21,8 +20,7 @@ import Control.Monad.IO.Class
 
 onArgs :: [Str] -> (Prog T.Text () -> Fish a) -> Fish (Maybe a)
 onArgs ts k = do
-  text <- liftIO $ toUnicode (Str.unwords ts)
-  res <- parseFishInteractive text
+  res <- parseFishInteractive $ Str.toText (Str.unwords ts)
   withProg res k
 
 evalF :: Builtin

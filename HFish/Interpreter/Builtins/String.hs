@@ -31,12 +31,14 @@ import Options.Applicative.Builder as OB
 
 stringF :: Builtin
 stringF _ ts = 
-  execParserPure defaultPrefs parser (map Str.toString ts)
+  execParserPure defaultPrefs parser (map Str.toString mbOpts)
   & \case
     Success f -> f
     Failure err -> errork . fst
       $ renderFailure err "string: invalid arguments given\n"
   where
+    (mbOpts,rest) = splitAt 10 ts
+    
     parser = info opts idm
     opts = subparser $ mconcat
       [ cmd "length" lengthOpt
@@ -46,32 +48,33 @@ stringF _ ts =
        ,cmd "trim" trimOpt ]
     
     cmd n p = OB.command n (info p idm)
-    rest = many $ OB.argument text (metavar "STRINGS...")
+    remainer = fmap (<> map Str.toText rest) . many
+      $ OB.argument text (metavar "STRINGS...")
     
     lengthOpt = lengthF
       <$> switch (short 'q' <> long "quiet")
-      <*> rest
+      <*> remainer
     subOpt = subF
       <$> switch (short 'q' <> long "quiet")
       <*> option auto (short 's' <> long "start" <> metavar "START" <> value 1)
       <*> option (Just <$> auto) (short 'l' <> long "length" <> metavar "LENGTH" <> value Nothing)
-      <*> rest
+      <*> remainer
     joinOpt = joinF
       <$> switch (short 'q' <> long "quiet")
       <*> OB.argument text (metavar "SEP")
-      <*> rest
+      <*> remainer
     trimOpt = trimF
       <$> switch (short 'q' <> long "quiet")
       <*> switch (short 'l' <> long "left")
       <*> switch (short 'r' <> long "right")
       <*> option text (short 'c' <> long "chars" <> metavar "CHARS")
-      <*> rest
+      <*> remainer
     splitOpt = splitF
       <$> switch (short 'q' <> long "quiet")
       <*> option (Just <$> auto) (short 'm' <> long "max" <> metavar "MAX" <> value Nothing)
       <*> switch (short 'r' <> long "right")
       <*> OB.argument text (metavar "SEP")
-      <*> rest
+      <*> remainer
     text = maybeReader (Just . T.pack)
     
 lengthF :: Bool -> [T.Text] -> Fish ()

@@ -11,10 +11,10 @@ import Data.String (IsString(..))
 import Text.Read
 
 class IsString s => Stringy s where
-  toString :: s -> String
-  toText :: s -> T.Text
+  toString :: s -> String -- ^ deprecated
+  toText :: s -> T.Text -- ^ deprecated
   toText = T.pack . toString
-  fromText :: T.Text -> s
+  fromText :: T.Text -> s -- ^ deprecated
   fromText = fromString . T.unpack
   -- splitWith :: (s -> Bool) -> s -> [s]
   split :: s -> s -> [s]

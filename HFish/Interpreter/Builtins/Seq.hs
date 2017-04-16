@@ -50,8 +50,6 @@ writeList a b c
   | otherwise = echo
       . B.toLazyByteString
       $ createList a b c
-  -- where
-    -- ubound = (round $ logBase 10 (fromIntegral c) + 1) * c `div` b
 
 createList :: Int -> Int -> Int -> B.Builder
 createList a b c = BP.primUnfoldrBounded intLn next a

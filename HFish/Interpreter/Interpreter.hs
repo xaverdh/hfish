@@ -27,7 +27,8 @@ import qualified Data.List.NonEmpty as N
 import qualified Data.Text as T
 import qualified Data.Foldable as F
 import qualified Data.Sequence as Seq
-import Data.Text.Encoding (encodeUtf8,decodeUtf8)
+import System.Unix.IO.Text (toUnicode,fromUnicode)
+-- import Data.Text.Encoding (encodeUtf8,decodeUtf8)
 import Data.Sequence
 import Data.NText
 import Data.Monoid
@@ -258,7 +259,9 @@ evalExpr = \case
   GlobE _ g -> return . pure $ fromGlob g
   ProcE _ e -> evalProcE e
   HomeDirE _ -> evalHomeDirE
-  StringE _ t -> return . pure . fromStr $ encodeUtf8 t
+  StringE _ t -> do
+    bs <- liftIO $ fromUnicode t
+    return . pure $ fromStr bs
   VarRefE _ q vref -> evalVarRefE q vref
   BracesE _ es -> evalBracesE es
   CmdSubstE _ cmdref -> evalCmdSubstE cmdref
@@ -309,9 +312,12 @@ evalVarRef (VarRef _ name ref) = do
           readIndices indices var
     
     evalName = \case
-      Left vref -> fmap (mkNText . decodeUtf8) <$> evalVarRef vref
+      Left vref -> do
+        strs <- evalVarRef vref
+        ts <- liftIO $ forM strs toUnicode 
+        pure $ fmap mkNText ts
       Right (VarIdent _ i) -> return (pure i)
-    
+
 
 evalRef :: Ref (Expr T.Text t) -> Fish (Seq (Int,Int))
 evalRef ref =

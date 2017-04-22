@@ -20,7 +20,7 @@ import Control.Monad.IO.Class
 
 onArgs :: [Str] -> (Prog T.Text () -> Fish a) -> Fish (Maybe a)
 onArgs ts k = do
-  res <- parseFishInteractive $ Str.toText (Str.unwords ts)
+  res <- parseFishInteractive $ Str.toText (Str.unwords ts <> "\n")
   withProg res k
 
 evalF :: Builtin

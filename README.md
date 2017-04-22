@@ -41,6 +41,14 @@ Build time from scratch is ~10min on a i5-4200U with -j4 so I suggest that you g
 
 TODO
 
+## Legal
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    any later version.
+    
+    See LICENSE for more details.
+
 
 [hfish-cabal-file]: https://gitlab.com/hfish-shell/hfish/blob/master/hfish.cabal
 [hfish-build-script]: https://gitlab.com/hfish-shell/hfish/blob/master/build

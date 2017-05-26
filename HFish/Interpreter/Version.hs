@@ -1,3 +1,7 @@
+{-# language TemplateHaskell #-}
 module HFish.Interpreter.Version where
 
-version = "unknown version"
+import Development.GitRev
+
+version :: String
+version = $(gitHash)

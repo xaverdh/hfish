@@ -57,7 +57,7 @@ main = execParserPure conf parser <$> getArgs
     parser = info (helper <*> (versionOpt <|> hfishOptions))
       (fullDesc
         <> header "hfish: a fish-like shell, written in haskell"
-        <> footerDoc (Just description)
+        <> progDescDoc (Just description)
         <> failureCode 1)
     
     versionOpt = flag' (putStrLn version)

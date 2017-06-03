@@ -47,7 +47,7 @@ main = execParserPure conf parser <$> getArgs
   where
     showError :: ParserFailure ParserHelp -> IO ()
     showError e = putStrLn . fst
-      $ renderFailure e ""
+      $ renderFailure e "hfish"
     
     conf = OB.defaultPrefs {
       prefDisambiguate = True

@@ -1,4 +1,5 @@
 {-# LANGUAGE LambdaCase, OverloadedStrings, PackageImports #-}
+{-# LANGUAGE FlexibleContexts #-}
 module HFish.Interpreter.IO (
   pipeFish
   ,duplicate
@@ -18,7 +19,10 @@ import HFish.Interpreter.Concurrent
 import HFish.Interpreter.Core
 import HFish.Interpreter.Status
 import qualified Fish.Lang as L
+
+import System.Unix.ByteString.Class
 import System.Unix.IO
+import System.Unix.IO.String
 
 import Control.Lens
 import Control.Monad
@@ -114,25 +118,25 @@ withFileW fpath mode fd k =
       <> fpath <> " due to: "
       <> showText err -}
 
-readFrom :: FdReadable a => L.Fd -> Fish a
+readFrom :: FromByteString Fish a => L.Fd -> Fish a
 readFrom fd = do
   pfd <- lookupFd' fd
-  liftIO $ fdGetContents pfd
+  fdGetContents pfd
 
-readLineFrom :: FdReadable a => L.Fd -> Fish a
+readLineFrom :: FromByteString Fish a => L.Fd -> Fish a
 readLineFrom fd = do
   pfd <- lookupFd' fd
-  liftIO $ fdGetLine pfd  
+  fdGetLine pfd  
 
-writeTo :: FdWritable a => L.Fd -> a -> Fish ()
+writeTo :: ToByteString Fish a => L.Fd -> a -> Fish ()
 writeTo fd text = do
   pfd <- lookupFd' fd
-  liftIO $ fdPut pfd text
+  fdPut pfd text
 
-echo :: FdWritable a => a -> Fish ()
+echo :: ToByteString Fish a => a -> Fish ()
 echo = writeTo L.Fd1
 
-echoLn :: (Monoid a,IsString a,FdWritable a) => a -> Fish ()
+echoLn :: (Monoid a,IsString a,ToByteString Fish a) => a -> Fish ()
 echoLn t = echo (t <> fromString "\n")
 
 -- | 'warn' bypasses the whole Fd passing machinery

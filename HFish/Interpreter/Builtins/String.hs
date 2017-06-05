@@ -9,7 +9,9 @@ import HFish.Interpreter.IO
 import HFish.Interpreter.Concurrent
 import HFish.Interpreter.Status
 import qualified HFish.Interpreter.Stringy as Str
-import System.Unix.IO (FdWritable(..))
+
+import System.Unix.ByteString.Class
+import System.Unix.IO
 
 import qualified Data.Text as T
 import Data.Functor
@@ -89,7 +91,7 @@ lengthF q ts = do
   unless q $ forM_ ts (echo . show . Str.length)
   if all (==Str.empty) ts then bad else ok
 
-subF :: (FdWritable s,Str.Stringy s)
+subF :: (ToByteString Fish s,Str.Stringy s)
   => Bool -> Int -> Maybe Int -> [s] -> Fish ()
 subF q start mlen ts = 
   map sub ts & \ts' -> do
@@ -98,7 +100,7 @@ subF q start mlen ts =
   where
     sub = (maybe id Str.take mlen) . Str.drop (start-1)    
 
-joinF :: (FdWritable s,Str.Stringy s)
+joinF :: (ToByteString Fish s,Str.Stringy s)
   => Bool -> s -> [s] -> Fish ()
 joinF q sep ts = 
   Str.intercalate sep ts & \ts' -> do
@@ -108,7 +110,7 @@ joinF q sep ts =
     [_] -> bad
     _ -> ok
 
-trimF :: (FdWritable s,Str.Stringy s)
+trimF :: (ToByteString Fish s,Str.Stringy s)
   => Bool -> Bool -> Bool -> s -> [s] -> Fish ()
 trimF q l r cs ts = 
   map trim ts & \ts' -> do
@@ -123,7 +125,7 @@ trimF q l r cs ts =
     inStr c t = isJust (Str.find (==c) t)
 
 
-splitF :: (FdWritable s,Str.Stringy s)
+splitF :: (ToByteString Fish s,Str.Stringy s)
   => Bool -> Maybe Int -> Bool -> s -> [s] -> Fish ()
 splitF q m r sep ts = 
   let ts' = map (workSplitF m r sep) ts

@@ -5,7 +5,7 @@ module HFish.Interpreter.Builtins.Seq (
 
 import Fish.Lang
 import HFish.Interpreter.Core
-import HFish.Interpreter.IO
+import HFish.Interpreter.IO.Lazy
 import HFish.Interpreter.Concurrent
 import HFish.Interpreter.Process.Process
 import HFish.Interpreter.Status

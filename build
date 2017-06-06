@@ -10,6 +10,6 @@ cd hfish
 cabal sandbox init
 cabal sandbox add-source ../posix-fd-io ../nfc-text ../fish-lang ../fish-parser ../hfish-parser
 command -v nproc > /dev/null \
-  && cabal install --ghc-options="-threaded -j$(nproc)" \
-  || cabal install --ghc-option=-threaded
+  && cabal install --bindir . --ghc-options="-threaded -j$(nproc)" \
+  || cabal install --bindir . --ghc-option=-threaded
 

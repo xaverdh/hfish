@@ -19,7 +19,7 @@ import qualified Data.Foldable as F
 import qualified Data.Sequence as Seq
 import Data.Sequence
 import Data.Maybe
-import Data.Monoid
+import Data.Semigroup
 import Data.String (IsString (..))
 import Control.Lens
 import Control.Monad
@@ -29,9 +29,12 @@ import System.FilePath
 
 import Text.Regex.Applicative
 
-instance Monoid m => Monoid (RE a m) where
+instance Semigroup g => Semigroup (RE a g) where
+  re1 <> re2 = (<>) <$> re1 <*> re2
+
+instance (Semigroup m,Monoid m) => Monoid (RE a m) where
   mempty = pure mempty
-  re1 `mappend` re2 = (<>) <$> re1 <*> re2
+  mappend = (<>)
 
 newtype Globbed = Globbed {
     unGlob :: Seq (Either Glob Str)

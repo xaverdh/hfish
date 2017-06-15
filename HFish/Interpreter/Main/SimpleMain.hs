@@ -75,7 +75,7 @@ hfishOptions = hfishMain
   <*> switchAs ShowAst (short 'a' <> long "ast"
     <> help "Show the ast instead of executing")
   <*> switchAs IsCommand (short 'c' <> long "command"
-    <> help "Execute command given on commandline")
+    <> help "Execute commands given on commandline")
   <*> switchAs FishCompat (short 'f' <> long "fish-compat"
     <> help "Try to be more fish compatible")
   <*> many (strArgument (metavar "ARGS"))

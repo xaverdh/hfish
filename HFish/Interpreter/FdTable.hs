@@ -70,7 +70,7 @@ close_ pfd k =
 --
 --   It will appear closed to builtins and child processes.
 --
---   Silently ignores the case where fd does not exits and
+--   Silently ignores the case where fd does not exist and
 --   /ignores any errors thrown on close/.
 close :: HasFdTable m => L.Fd -> m a -> m a
 close fd k = lookupFd fd >>= \case

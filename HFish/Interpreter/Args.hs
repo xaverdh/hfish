@@ -6,6 +6,8 @@ module HFish.Interpreter.Args
   , args3
   , args4
   , argsRange
+  , argsFrom
+  , argsUpto
   , argsChoice
   , argsCond )
 where
@@ -47,13 +49,22 @@ argsRange i j = argsCond
   ("between " <> show i <> " and " <> show j <> " arguments.")
   (\n -> i <= n && n <= j)
 
+argsUpto :: Int -> ([a] -> Fish b) -> [a] -> Fish b
+argsUpto j = argsCond
+  ("up to " <> show j <> "arguments.")
+  (<= j)
 
-argsChoice :: S.IntSet -> ([a] -> Fish b) -> [a] -> Fish b
-argsChoice choice = argsCond msg (`S.member` choice)
+argsFrom :: Int -> ([a] -> Fish b) -> [a] -> Fish b
+argsFrom i = argsCond
+  ("at least " <> show i <> "arguments.")
+  (>= i)
+
+argsChoice :: [Int] -> ([a] -> Fish b) -> [a] -> Fish b
+argsChoice choice = argsCond msg (`S.member` choiceSet)
   where
     msg = "number of arguments to be one of "
-      <> (L.intercalate "," $ map show $ S.toList choice)
-
+      <> (L.intercalate "," $ map show choice)
+    choiceSet = S.fromList choice
 
 argsCond :: String
   -> (Int -> Bool)

@@ -10,6 +10,7 @@ import HFish.Interpreter.Concurrent
 import HFish.Interpreter.Process.Process
 import HFish.Interpreter.Status
 import HFish.Interpreter.Util
+import HFish.Interpreter.Args
 import qualified HFish.Interpreter.Stringy as Str
 
 import Control.Lens
@@ -25,12 +26,10 @@ import System.Exit
 import System.IO
 
 seqF :: Builtin
-seqF fork = \case
-  [] -> errork "seq: too few arguments given"
+seqF fork = argsRange 1 3 $ \case
   [l] -> seqFWorker fork ((1,1,) <$> mread l)
   [f,l] -> seqFWorker fork ((,1,) <$> mread f <*> mread l)
   [f,i,l] -> seqFWorker fork ((,,) <$> mread f <*> mread i <*> mread l)
-  _ -> errork "seq: too many arguments given"
   where
     mread = Str.readStrMaybe
 

@@ -4,27 +4,17 @@ module HFish.Interpreter.Builtins.Emit (
 ) where
 
 import HFish.Interpreter.Core
-import HFish.Interpreter.IO
-import HFish.Interpreter.Status
 import HFish.Interpreter.Util
 import HFish.Interpreter.Events
+import HFish.Interpreter.Args
 import qualified HFish.Interpreter.Stringy as Str
 
-import qualified Data.Text as T
 import qualified Data.Sequence as Seq
 import Data.NText
-import Data.Functor
-import Data.Monoid
-import Data.Bool
-import Data.Char (ord,chr)
-import Control.Lens
 import Control.Monad
-import Control.Monad.IO.Class
-import System.Exit
-import System.IO
 
 
 emitF :: Builtin
-emitF _ = \case
-  [] -> errork "emit: too few arguments given"
+emitF _ = argsFrom 1 $ \case
   name:ts -> handleEvent (mkNText $ Str.toText name) (Seq.fromList ts)
+

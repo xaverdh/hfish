@@ -11,6 +11,7 @@ import HFish.Interpreter.IO
 import HFish.Interpreter.Concurrent
 import HFish.Interpreter.Cwd
 import HFish.Interpreter.Status
+import HFish.Interpreter.Args
 import qualified HFish.Interpreter.Stringy as Str
 
 import qualified Data.Text as T
@@ -22,23 +23,21 @@ import System.Exit
 import System.IO
 
 pushdF :: Builtin
-pushdF fork = \case
+pushdF fork = argsChoice [0,1] $ \case
   [] -> do
     home <- getHOME
     pushdF fork [home]
     ok
   [dir] -> pushCWD dir
-  _ -> errork "pushd: too many arguments given"
 
 popdF :: Builtin
-popdF _ = \case
-  [] -> popCWD >>= \case
+popdF _ = args0 $
+  popCWD >>= \case
     Nothing -> errork "popd: directory stack is empty"
     Just dir -> setCWD dir >>= setStatus
-  _ -> errork "popd: too many arguments given"
 
 dirsF :: Builtin
-dirsF _ = \case 
+dirsF _ = argsChoice [0,1] $ \case
   [] -> do
     dirs <- use dirstack
     wdir <- getCWD
@@ -50,4 +49,4 @@ dirsF _ = \case
   ["-c"] -> do
     dirstack .= []
     ok
-  _ -> errork "dirs: too many arguments given"
+

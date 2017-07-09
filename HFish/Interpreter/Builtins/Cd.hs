@@ -6,17 +6,14 @@ module HFish.Interpreter.Builtins.Cd (
 import HFish.Interpreter.Cwd
 import HFish.Interpreter.Core
 import HFish.Interpreter.Status
+import HFish.Interpreter.Args
 
-import qualified Data.Text as T
-import Data.Monoid
-import System.Exit
 
 cdF :: Builtin
-cdF fork = \case
+cdF fork = argsChoice [0,1] $ \case
   [] -> do
     home <- getHOME
     cdF fork [home]
     ok
   [dir] -> setCWD dir >>= setStatus
-  _ -> errork "cd: too many arguments given"
 

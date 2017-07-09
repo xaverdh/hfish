@@ -8,6 +8,7 @@ import HFish.Interpreter.IO
 import HFish.Interpreter.Util
 import HFish.Interpreter.Concurrent
 import HFish.Interpreter.Status
+import HFish.Interpreter.Args
 import qualified HFish.Interpreter.Stringy as Str
 
 import Data.Functor
@@ -35,12 +36,10 @@ import Data.Attoparsec.ByteString.Char8
 -- import Text.Parser.Char
 
 mathF :: Builtin
-mathF _ = \case
-  [] -> errork "math: not enough arguments given"
-  args ->
-    compMath (Str.unwords args)
-    >>= (return . ser)
-    >>= echo
+mathF _ = argsFrom 1 $ \args ->
+  compMath (Str.unwords args)
+  >>= (return . ser)
+  >>= echo
 
 ser :: Scientific -> Str
 ser s = Str.fromString

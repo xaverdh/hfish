@@ -6,14 +6,13 @@ module HFish.Interpreter.Builtins.Breakpoint (
 
 import HFish.Interpreter.Core
 import HFish.Interpreter.IO
+import HFish.Interpreter.Args
 
-import qualified Data.Text as T
 import Fish.Lang
 import Control.Monad
 
 breakpointF :: Builtin
-breakpointF _ = \case
-  [] -> do
+breakpointF _ = args0 $ do
     warn "Entering breakpoint now. Press ^D to leave.\n"
     setBreakpoint
-  _ -> errork "breakpoint: too many arguments given"
+

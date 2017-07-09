@@ -6,18 +6,14 @@ module HFish.Interpreter.Builtins.Bool (
 
 import HFish.Interpreter.Core
 import HFish.Interpreter.Status
+import HFish.Interpreter.Args
 
-import qualified Data.Text as T
 import System.Exit
 
 trueF :: Builtin
-trueF _ = \case
-  [] -> setStatus ExitSuccess
-  _ -> errork "true: too many arguments given"
+trueF _ = args0 $ setStatus ExitSuccess
 
 falseF :: Builtin
-falseF _  = \case
-  [] -> setStatus (ExitFailure 1)
-  _ -> errork "false: too many arguments given"
+falseF _  = args0 $ setStatus (ExitFailure 1)
 
 

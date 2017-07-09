@@ -7,6 +7,7 @@ import HFish.Interpreter.Core
 import HFish.Interpreter.IO
 import HFish.Interpreter.Status
 import HFish.Interpreter.Util
+import HFish.Interpreter.Args
 import qualified HFish.Interpreter.Stringy as Str
 import Fish.Lang
 
@@ -34,9 +35,8 @@ import Text.Printf
 
 
 printfF :: Builtin
-printfF _ = \case
-  [] -> errork "printf: too few arguments given"
-  t:ts -> printWorker t ts
+printfF _ = argsFrom 1 $ \(t:ts) ->
+  printWorker t ts
 
 printWorker :: Str -- ^ The format
   -> [Str] -- ^ Arguments

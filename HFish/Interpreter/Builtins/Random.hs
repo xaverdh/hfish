@@ -7,6 +7,7 @@ module HFish.Interpreter.Builtins.Random (
 import HFish.Interpreter.Core
 import HFish.Interpreter.IO
 import HFish.Interpreter.Status
+import HFish.Interpreter.Args
 
 import qualified Data.Text as T
 import Data.Functor
@@ -16,10 +17,10 @@ import System.Random
 import Data.Word (Word16)
 
 randomF :: Builtin
-randomF _ = \case
-  [] -> do
-    r :: Word16 <- liftIO randomIO
-    echo (T.pack $ show (div r 2))
-    -- we use Word16 and (div r 2) for fish compat.
-    ok
-  _ -> errork "random: too many arguments given"
+randomF _ = args0 $ do
+  r :: Word16 <- liftIO randomIO
+  echo (T.pack $ show (div r 2))
+  -- we use Word16 and (div r 2) for fish compat.
+  ok
+
+

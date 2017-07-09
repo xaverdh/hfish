@@ -153,7 +153,7 @@ instance HasFdTable Fish where
 
 stackTrace :: Fish String
 stackTrace =
-  L.intercalate "\n -> "
+  L.intercalate " <- "
   <$> view executionStack
 
 -- | Set a breakpoint.
@@ -183,7 +183,8 @@ errork :: String -> Fish a
 errork s = view errorK >>= \case
   [] -> do
     tr <- stackTrace
-    error $ s <> "\nhfish stack trace:\n" <> tr
+    errorWithoutStackTrace
+      $ s <> "\nhfish stack trace: " <> tr
   k:_ -> k s >> return undefined
 
 -- | Takes a lens to the error continuation stack,

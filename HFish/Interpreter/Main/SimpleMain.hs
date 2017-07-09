@@ -36,7 +36,8 @@ import Options.Applicative.Builder as OB
 import Options.Applicative.Help.Types (ParserHelp)
 
 import Fish.Pretty
-import Text.PrettyPrint.GenericPretty (doc)
+import qualified Text.PrettyPrint.GenericPretty as GP
+import qualified Text.PrettyPrint.ANSI.Leijen as PP
 
 
 main :: IO ()
@@ -107,7 +108,7 @@ hfishMain
           s' <- injectArgs (map Str.fromString args') r s
           exPath path (runProgram r s')
   where
-    printAST = print . doc
+    printAST = print . GP.doc
     
     execute = if isCommand then exDirect else exPaths
     
@@ -203,13 +204,18 @@ runProgram :: MonadIO io
 runProgram r s p =
   ( liftIO . try $ runFish (progA p) r s ) >>= \case
     Left e -> do
-      liftIO $ putStr (showError e)
+      liftIO $ PP.putDoc (showError e)
       return s
     Right s' -> return s'
   where
-    showError :: SomeException -> String
-    showError e = 
-      "~> Error:\n" <> show e
-      <> "\n~> Occured while evaluating:\n"
-      <> show (doc p) <> "\n"
+    showError :: SomeException -> PP.Doc
+    showError e = PP.vsep [ showErr e, showTr p ] <> PP.hardline
+    
+    showErr e = PP.hang 2 $ PP.vsep
+      [ PP.magenta "~> Error:"
+      , (PP.red . PP.string . show) e ]
+    
+    showTr p = PP.hang 2 $ PP.vsep
+      [ PP.magenta "~> Occured while evaluating:"
+      , (PP.yellow . PP.text . show) (GP.doc p) ]
 

@@ -10,6 +10,7 @@ import Data.NText as NText
 
 import qualified Data.Map as M
 import qualified Data.Set as S
+import qualified Data.List as L
 import qualified Data.Text as T
 import qualified Data.ByteString as B
 import Data.Sequence
@@ -23,6 +24,8 @@ import Control.Exception as E
 import System.Exit
 import System.Posix.Types (CPid)
 import System.Posix.Signals (Signal)
+import System.IO.Error
+
 
 -- | The Fish 'Monad', it holds both mutable and unmutable (reader)
 --   state.
@@ -42,6 +45,7 @@ newtype Fish a = Fish ((ReaderT FishReader) (StateT FishState (ContT FishState I
 runFish :: Fish a -> FishReader -> FishState -> IO FishState
 runFish (Fish f) r s =
   ((f `runReaderT` r) `execStateT` s) `runContT` return
+
 
 -- | Return an IO action, running the given fish action
 --   in the IO Monad with and returning the new / final state.
@@ -135,6 +139,7 @@ data FishReader = FishReader {
     ,_errorK :: [String -> Fish ()]
     ,_breakpoint :: Fish ()
     ,_fishCompatible :: Bool
+    ,_executionStack :: [String]
   }
 
 makeLenses ''Var
@@ -144,6 +149,12 @@ makeLenses ''FishState
 instance HasFdTable Fish where
   askFdTable = view fdTable
   localFdTable = local . (fdTable %~)
+
+
+stackTrace :: Fish String
+stackTrace =
+  L.intercalate "\n -> "
+  <$> view executionStack
 
 -- | Set a breakpoint.
 setBreakpoint :: Fish ()
@@ -170,7 +181,9 @@ setErrorK f = callCC (\k -> local (errorK %~ (k:)) f)
 --   Use this instead of 'error'
 errork :: String -> Fish a
 errork s = view errorK >>= \case
-  [] -> error s
+  [] -> do
+    tr <- stackTrace
+    error $ s <> "\nhfish stack trace:\n" <> tr
   k:_ -> k s >> return undefined
 
 -- | Takes a lens to the error continuation stack,
@@ -241,6 +254,12 @@ disallowK = local
     . ( errorK .~ repeat noA ) )
   where
     noA = const $ return ()
+
+guardIOFailure :: IO a -> Fish a
+guardIOFailure action =
+  liftIO (tryIOError action) >>= \case
+    Left e -> errork $ show e
+    Right res -> pure res
 
 
 -- | Throws an error(k) if the value is Left _

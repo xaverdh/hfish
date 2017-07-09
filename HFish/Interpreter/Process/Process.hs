@@ -1,4 +1,4 @@
-{-# language LambdaCase, OverloadedStrings #-}
+{-# language LambdaCase, OverloadedStrings, ScopedTypeVariables #-}
 module HFish.Interpreter.Process.Process (
   fishCreateProcess
   ,fishWaitForProcess
@@ -13,10 +13,12 @@ import Data.NText
 import System.Process
 import System.Posix.Process
 import System.Posix.Types
+import System.Posix.Files (fileAccess)
 import System.IO
 import System.IO.Error
-import System.Directory (setCurrentDirectory)
+import System.Directory (setCurrentDirectory,findExecutable)
 import Control.Monad
+import Control.Monad.Extra
 import Control.Monad.IO.Class
 import Control.Concurrent
 import Control.Concurrent.MVar
@@ -57,6 +59,7 @@ fishWaitForProcess name pid =
 
 fishCreateProcess :: String -> [String] -> Fish ProcessID
 fishCreateProcess name args = do
+  assertProgExecutable name
   getCWD >>= liftIO . setCurrentDirectory . Str.toString
   -- ^ This is necessary since the current working directory
   --   is separate from the environment passed to the process.
@@ -75,6 +78,7 @@ fishCreateProcess name args = do
 
 fishExec :: String -> [String] -> Fish a
 fishExec name args = do
+  assertProgExecutable name
   getCWD >>= liftIO . setCurrentDirectory . Str.toString
   -- ^ This is necessary since the current working directory
   --   is separate from the environment passed to the process.
@@ -83,11 +87,19 @@ fishExec name args = do
   --   automatically inherited when a child is spawned.
   env <- currentEnvironment
   realiseFileDescriptors
-  liftIO $ executeFile 
+  liftIO $ executeFile
     name
     True{-search path-}
     args
     ( Just env )
+
+assertProgExecutable :: FilePath -> Fish ()
+assertProgExecutable path =
+  liftIO (findExecutable path) >>= \case
+    Nothing -> errork $ path <> " could not be found."
+    Just path' -> unlessM
+      ( liftIO $ fileAccess path' False False True )
+      $ errork (path' <> " is not executable.")
 
 currentEnvironment :: Fish [(String,String)]
 currentEnvironment = 

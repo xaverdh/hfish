@@ -65,6 +65,7 @@ mkInitialFishReader atBreakpoint fishcompat =
     ,_errorK = []
     ,_breakpoint = atBreakpoint
     ,_fishCompatible = fishcompat
+    ,_executionStack = []
   }
   where
     warnB = error "No loop left to break."

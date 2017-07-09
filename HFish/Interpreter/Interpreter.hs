@@ -35,6 +35,7 @@ import Data.Bool
 import Control.Lens hiding ((:<))
 import Control.Monad
 import Control.Monad.State
+import Control.Monad.Reader
 import Control.Applicative
 import Control.Concurrent
 import Control.Concurrent.MVar
@@ -90,16 +91,17 @@ cmdStA mode (CmdIdent _ ident) args = do
   ts <- evalArgs args
   let ts' = F.toList ts
   let argStrings = map Str.toString ts'
-  bn <- views builtins (`Env.lookup` ident)
-  fn <- uses functions (`Env.lookup` ident)
-  case (bn,fn) of
-    (Just b,_) -> b (isFork mode) ts'
-    (_,Just f) -> setReturnK $ f ts
-    (Nothing,Nothing) -> do
-      pid <- fishCreateProcess identString argStrings
-      if isInOrder mode
-        then fishWaitForProcess identString pid
-        else return ()
+  local (executionStack %~ (identString:)) $ do
+    bn <- views builtins (`Env.lookup` ident)
+    fn <- uses functions (`Env.lookup` ident)
+    case (bn,fn) of
+      (Just b,_) -> b (isFork mode) ts'
+      (_,Just f) -> setReturnK $ f ts
+      (Nothing,Nothing) -> do
+        pid <- fishCreateProcess identString argStrings
+        if isInOrder mode
+          then fishWaitForProcess identString pid
+          else return ()
   where
     identString = T.unpack $ extractText ident
 

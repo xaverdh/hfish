@@ -1,4 +1,4 @@
-{-# language LambdaCase, OverloadedStrings #-} 
+{-# language LambdaCase, OverloadedStrings, Rank2Types #-} 
 module HFish.Interpreter.Builtins.Flow (
   continueF
   ,breakF
@@ -17,52 +17,27 @@ import Data.Monoid
 import Control.Lens
 import System.Exit
 
-mkInvalidErr e = errork $ e <> " invalid argument"
-mkNoLoopErr e = errork $ e <> " called outside of loop"
 
-jumpWith l e i
-  | i < 1 = mkInvalidErr e
-  | otherwise = do
-      ks <- view l
-      case drop (i-1) ks of
-        [] -> mkNoLoopErr e
-        k:_ -> k () >> return undefined
+jumpWith :: Lens' FishReader (() -> Fish ()) -> Fish a
+jumpWith lensK = (view lensK >>= ($()) ) >> pure undefined
+
+tooManyArgsErr :: String -> Fish a
+tooManyArgsErr name = errork $
+  name <> ": Too many arguments given."
 
 continueF :: Builtin
 continueF _ = \case
-  [] -> jump 1
-  args -> onMaybe
-    (Str.readStrMaybe $ mconcat args)
-    (mkInvalidErr "continue:")
-    jump
-  where
-    jump = jumpWith continueK "continue:"
-    
+  [] -> jumpWith continueK
+  _ -> tooManyArgsErr "continue"
 
 breakF :: Builtin
 breakF _ = \case
-  [] -> jump 1
-  args -> onMaybe
-    (Str.readStrMaybe $ mconcat args)
-    (mkInvalidErr "break:")
-    jump
-  where
-    jump = jumpWith breakK "break:"
+  [] -> jumpWith breakK
+  _ -> tooManyArgsErr "break"
 
 returnF :: Builtin
 returnF _ = \case
-  [] -> ret
-  [t] -> maybe
-           (noIntErr t)
-           (setStatus . toEnum)
-           (Str.readStrMaybe t)
-         >> ret
-  _ -> errork "return: too many arguments given"
-  where
-    noIntErr t = errork
-      $ "return: expected integer, got: "
-      <> Str.toString t
-    ret = view returnK >>= \case
-      [] -> errork "no function to return from"
-      k:_ -> k () >> return undefined
+  [] -> jumpWith returnK
+  _ -> tooManyArgsErr "return"
+
 

@@ -59,15 +59,15 @@ mkInitialFishReader atBreakpoint fishcompat =
   return FishReader {
     _fdTable = initialFdTable
     ,_builtins = allBuiltins
-    ,_breakK = [const warnB]
-    ,_continueK = [const warnC]
-    ,_returnK = [const warnR]
+    ,_breakK = const warnB
+    ,_continueK = const warnC
+    ,_returnK = const warnR
     ,_errorK = []
     ,_breakpoint = atBreakpoint
     ,_fishCompatible = fishcompat
   }
   where
-    warnB = error "no loop left to break"
-    warnC = error "no loop left to continue"
-    warnR = error "no function to return from"
+    warnB = error "No loop left to break."
+    warnC = error "No loop left to continue."
+    warnR = error "No function to return from."
 

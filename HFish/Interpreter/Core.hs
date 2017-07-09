@@ -129,9 +129,9 @@ type Builtin =
 data FishReader = FishReader {
     _fdTable :: FDT.FdTable
     ,_builtins :: Env Builtin
-    ,_breakK :: [() -> Fish ()]
-    ,_continueK :: [() -> Fish ()]
-    ,_returnK :: [() -> Fish ()]
+    ,_breakK :: () -> Fish ()
+    ,_continueK :: () -> Fish ()
+    ,_returnK :: () -> Fish ()
     ,_errorK :: [String -> Fish ()]
     ,_breakpoint :: Fish ()
     ,_fishCompatible :: Bool
@@ -152,15 +152,15 @@ setBreakpoint =
 
 -- | Sets a breakpoint which is jumped to by a call to /continue/.
 setContinueK :: Fish () -> Fish ()
-setContinueK f = callCC (\k -> local (continueK %~ (k:)) f)
+setContinueK f = callCC (\k -> local (continueK .~ k) f)
 
 -- | Sets a breakpoint which is jumped to by a call to /break/.
 setBreakK :: Fish () -> Fish ()
-setBreakK f = callCC (\k -> local (breakK %~ (k:)) f)
+setBreakK f = callCC (\k -> local (breakK .~ k) f)
 
 -- | Sets a breakpoint which is jumped to by a call to /return/.
 setReturnK :: Fish () -> Fish ()
-setReturnK f = callCC (\k -> local (returnK %~ (k:)) f)
+setReturnK f = callCC (\k -> local (returnK .~ k) f)
 
 -- | Sets a breakpoint which is jumped to by a call to 'errork'.
 setErrorK :: Fish String -> Fish String
@@ -173,12 +173,28 @@ errork s = view errorK >>= \case
   [] -> error s
   k:_ -> k s >> return undefined
 
--- | Takes a lens to one of the continuation stacks,
+-- | Takes a lens to the error continuation stack,
 --   an interrupt routine and a fish action.
 --
 --   It then executes this action and, should a jump occur,
 --   runs the interrupt routine before continuing the jump.
-interruptK :: Lens' FishReader [a -> Fish ()]
+interruptErrorK :: Lens' FishReader [a -> Fish ()]
+  -- ^ The lens to the continuation stack.
+  -> Fish b
+  -- ^ An interrupt routine, its return value gets ignored.
+  -> Fish ()
+  -- ^ The fish action to execute.
+  -> Fish ()
+interruptErrorK lensK interrupt f = 
+  callCC $ \k -> flip local f
+    ( lensK %~ map (\k' x -> interrupt >> k' x) )
+
+-- | Takes a lens to one of the continuations,
+--   an interrupt routine and a fish action.
+--
+--   It then executes this action and, should a jump occur,
+--   runs the interrupt routine before continuing the jump.
+interruptK :: Lens' FishReader (a -> Fish ())
   -- ^ The lens to the continuation stack.
   -> Fish b
   -- ^ An interrupt routine, its return value gets ignored.
@@ -187,7 +203,8 @@ interruptK :: Lens' FishReader [a -> Fish ()]
   -> Fish ()
 interruptK lensK interrupt f = 
   callCC $ \k -> flip local f
-    ( lensK %~ map (\k' x -> interrupt >> k' x) )
+    ( lensK %~ (\k' x -> interrupt >> k' x) )
+
 
 -- | Run cleanup even if jumping out of context via some
 --   continuation and resume the jump afterwards.
@@ -203,7 +220,7 @@ onContinuationFish f cleanup =
   ( interruptK continueK cleanup
   . interruptK breakK cleanup
   . interruptK returnK cleanup
-  . interruptK errorK cleanup ) f
+  . interruptErrorK errorK cleanup ) f
 
 -- | Make sure cleanup is run regardless of continuation jumping
 --   or errors (IO or pure).
@@ -218,12 +235,13 @@ finally f cleanup =
 --   calls to them will be silently ignored.
 disallowK :: Fish a -> Fish a
 disallowK = local
-    ( ( breakK .~ noA    )
-    . ( continueK .~ noA )
-    . ( returnK .~ noA   )
-    . ( errorK .~ noA    ) )
+    ( ( breakK .~ noA        )
+    . ( continueK .~ noA     )
+    . ( returnK .~ noA       )
+    . ( errorK .~ repeat noA ) )
   where
-    noA = repeat ( const $ return () )
+    noA = const $ return ()
+
 
 -- | Throws an error(k) if the value is Left _
 --   ,passes it into the monad if its a Right _ .

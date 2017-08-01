@@ -9,7 +9,7 @@ import Control.Monad.IO.Class
 import Control.Monad.State.Class
 import Control.Monad.Reader.Class
 import qualified Data.Sequence as Seq
-import Data.Monoid
+import Data.Semigroup
 import Data.Maybe
 import Data.List as L
 import Control.Exception (try)

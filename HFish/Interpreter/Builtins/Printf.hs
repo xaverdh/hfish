@@ -15,7 +15,7 @@ import qualified Data.Text as T
 import qualified Data.ByteString.Char8 as BC
 import Data.Text.IO as TextIO
 import Data.Functor
-import Data.Monoid
+import Data.Semigroup
 import Data.Bool
 import Data.Char (ord,chr)
 import Control.Lens

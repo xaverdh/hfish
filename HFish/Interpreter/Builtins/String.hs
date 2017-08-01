@@ -16,7 +16,7 @@ import System.Unix.IO
 import qualified Data.Text as T
 import Data.Functor
 import Data.Bifunctor
-import Data.Monoid
+import Data.Semigroup hiding (option)
 import Data.Maybe
 import Data.Char (isSpace)
 import Data.Bool

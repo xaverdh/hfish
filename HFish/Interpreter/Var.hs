@@ -15,7 +15,7 @@ import qualified Data.Text as T
 import qualified Data.Foldable as Fold
 import qualified Data.Sequence as Seq
 import Data.Sequence
-import Data.Monoid
+import Data.Semigroup
 import Data.Maybe
 import Data.Bool
 import Text.Read

@@ -10,7 +10,7 @@ import HFish.Interpreter.Status
 import qualified HFish.Interpreter.Stringy as Str
 
 import Data.Text.IO as TextIO
-import Data.Monoid
+import Data.Semigroup
 import Control.Lens
 import Control.Monad.IO.Class
 import Control.Monad

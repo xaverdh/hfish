@@ -13,11 +13,12 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as BC
 import Data.Text.Encoding (encodeUtf8,decodeUtf8)
 import Data.String (IsString(..))
+import Data.Semigroup
 import Text.Read
 
 type Stringy s = StringLike s Char
 
-class (Eq c,Eq s,Monoid s,IsString s) => StringLike s c | s -> c where
+class (Eq c,Eq s,Semigroup s,Monoid s,IsString s) => StringLike s c | s -> c where
   singleton :: c -> s
 
   toString :: s -> String

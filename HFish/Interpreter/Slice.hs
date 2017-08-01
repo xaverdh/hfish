@@ -18,7 +18,7 @@ import qualified Data.Foldable as F
 import qualified Data.Sequence as Seq
 import Data.Sequence
 import Data.Tuple
-import Data.Monoid
+import Data.Semigroup
 import Data.Bool
 import Data.Bifunctor
 import Control.Lens hiding ((:<))

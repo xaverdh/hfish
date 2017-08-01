@@ -29,7 +29,7 @@ import Control.Monad
 import Control.Applicative
 import Control.Monad.IO.Class
 import qualified Control.Exception as E
-import Data.Monoid
+import Data.Semigroup
 import Data.String (IsString(..))
 import Data.Bool
 import System.IO
@@ -136,7 +136,7 @@ writeTo fd text = do
 echo :: ToByteString Fish a => a -> Fish ()
 echo = writeTo L.Fd1
 
-echoLn :: (Monoid a,IsString a,ToByteString Fish a) => a -> Fish ()
+echoLn :: (Semigroup a,IsString a,ToByteString Fish a) => a -> Fish ()
 echoLn t = echo (t <> fromString "\n")
 
 -- | 'warn' bypasses the whole Fd passing machinery

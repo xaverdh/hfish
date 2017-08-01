@@ -9,11 +9,11 @@ import qualified Data.Foldable as F
 import qualified Data.Sequence as Seq
 import Data.Sequence
 
-import Data.Monoid
+import Data.Semigroup
 import Control.Monad.IO.Class
 
 
-mintcal :: (Foldable t,Monoid m) => m -> t m -> m
+mintcal :: (Foldable t,Semigroup m,Monoid m) => m -> t m -> m
 mintcal m ms = 
   if F.null ms then mempty else
   F.foldr1 (\x y -> x <> m <> y) ms

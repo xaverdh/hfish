@@ -9,7 +9,7 @@ import HFish.Interpreter.Util
 import HFish.Interpreter.Status
 import qualified HFish.Interpreter.Stringy as Str
 
-import Data.Monoid
+import Data.Semigroup
 import Data.Functor
 import Control.Applicative
 import Control.Monad

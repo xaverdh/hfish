@@ -14,7 +14,7 @@ where
 
 import HFish.Interpreter.Core
 
-import Data.Monoid
+import Data.Semigroup
 import qualified Data.List as L
 import qualified Data.IntSet as S
 

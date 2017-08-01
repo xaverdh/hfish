@@ -10,7 +10,7 @@ import System.Unix.ByteString.Class
 import System.Unix.IO.Lazy
 
 import Data.String (IsString(..))
-import Data.Monoid
+import Data.Semigroup
 import qualified System.Posix.Types as PT
 -- import qualified System.Posix.IO as P
 -- import qualified Data.Text as T
@@ -34,7 +34,7 @@ writeTo fd text = do
 echo :: ToLazyByteString Fish a => a -> Fish ()
 echo = writeTo L.Fd1
 
-echoLn :: (Monoid a,IsString a,ToLazyByteString Fish a) => a -> Fish ()
+echoLn :: (Semigroup a,IsString a,ToLazyByteString Fish a) => a -> Fish ()
 echoLn t = echo (t <> fromString "\n")
 
 

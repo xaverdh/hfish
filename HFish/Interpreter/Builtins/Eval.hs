@@ -12,7 +12,7 @@ import HFish.Interpreter.Process.Process (fishExec)
 import qualified HFish.Interpreter.Stringy as Str
 
 import qualified Data.Text as T
-import Data.Monoid
+import Data.Semigroup
 import Fish.Lang
 import System.Posix.Process
 import System.Exit

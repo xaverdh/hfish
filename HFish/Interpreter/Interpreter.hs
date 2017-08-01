@@ -29,7 +29,7 @@ import qualified Data.Foldable as F
 import qualified Data.Sequence as Seq
 import Data.Sequence
 import Data.NText
-import Data.Monoid
+import Data.Semigroup
 import Data.Maybe
 import Data.Bool
 import Control.Lens hiding ((:<))

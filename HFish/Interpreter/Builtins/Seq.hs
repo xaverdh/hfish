@@ -21,7 +21,7 @@ import qualified Data.ByteString.Builder.Prim as BP
 import qualified Data.ByteString.Builder as B
 import Text.Read
 import Data.Functor
-import Data.Monoid
+import Data.Semigroup
 import System.Exit
 import System.IO
 

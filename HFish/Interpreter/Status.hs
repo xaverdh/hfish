@@ -10,7 +10,7 @@ import qualified HFish.Interpreter.Stringy as Str
 import qualified Data.Text as T
 import qualified Data.Sequence as Seq
 import Data.Sequence
-import Data.Monoid
+import Data.Semigroup
 import Control.Lens
 import Control.Monad
 import System.Exit

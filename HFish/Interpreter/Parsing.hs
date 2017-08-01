@@ -19,7 +19,7 @@ import Control.Lens
 import Control.Monad
 import Control.Monad.Reader
 import Control.Monad.IO.Class
-import Data.Monoid
+import Data.Semigroup
 import qualified Data.Text as T
 import System.IO
 import qualified Data.ByteString as B

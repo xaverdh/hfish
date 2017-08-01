@@ -14,7 +14,7 @@ import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Sequence as Seq
 import Data.Sequence
-import Data.Monoid
+import Data.Semigroup
 
 
 import System.Posix.Signals

@@ -14,7 +14,7 @@ import qualified Data.List as L
 import qualified Data.Text as T
 import qualified Data.ByteString as B
 import Data.Sequence
-import Data.Monoid
+import Data.Semigroup
 import Control.Monad
 import Control.Monad.State
 import Control.Monad.Reader

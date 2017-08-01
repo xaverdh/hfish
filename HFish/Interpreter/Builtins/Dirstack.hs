@@ -15,7 +15,7 @@ import HFish.Interpreter.Args
 import qualified HFish.Interpreter.Stringy as Str
 
 import qualified Data.Text as T
-import Data.Monoid
+import Data.Semigroup
 import Data.Text.IO as TextIO
 import Control.Lens
 import Control.Monad.IO.Class

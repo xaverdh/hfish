@@ -19,7 +19,7 @@ import qualified Data.List.NonEmpty as NL
 import qualified Data.Sequence as Seq
 import Data.Sequence
 import Data.NText
-import Data.Monoid
+import Data.Semigroup
 import Data.Text.IO as TextIO
 import Control.Lens hiding ((:<))
 import Control.Monad

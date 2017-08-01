@@ -39,7 +39,7 @@ instance (Semigroup m,Monoid m) => Monoid (RE a m) where
 newtype Globbed = Globbed {
     unGlob :: Seq (Either Glob Str)
   }
-  deriving (Eq,Ord,Show,Monoid)
+  deriving (Eq,Ord,Show,Semigroup,Monoid)
 
 
 fromStr :: Str -> Globbed

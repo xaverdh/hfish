@@ -22,7 +22,7 @@ import Control.Monad.Trans
 import qualified Data.Sequence as Seq
 import Data.Sequence (Seq)
 import Data.Functor
-import Data.Monoid
+import Data.Semigroup
 import Data.Maybe
 import Data.Bool
 import qualified Data.List.NonEmpty as N

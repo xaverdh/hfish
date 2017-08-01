@@ -18,7 +18,7 @@ import qualified Data.Char as C
 import Data.Foldable (foldl')
 import qualified Data.Text as T
 import Data.Text.IO as TextIO
-import Data.Monoid
+import Data.Semigroup
 import Data.Bifunctor
 import Control.Lens
 import Control.Monad.IO.Class

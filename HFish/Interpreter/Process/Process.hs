@@ -8,7 +8,7 @@ module HFish.Interpreter.Process.Process (
 import qualified Data.Text as T
 import Data.Foldable
 import Data.Bifunctor
-import Data.Monoid
+import Data.Semigroup
 import Data.NText
 import System.Process
 import System.Posix.Process

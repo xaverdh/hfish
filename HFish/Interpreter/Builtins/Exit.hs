@@ -8,7 +8,7 @@ import HFish.Interpreter.Status
 import HFish.Interpreter.Args
 import qualified HFish.Interpreter.Stringy as Str
 
-import Data.Monoid
+import Data.Semigroup
 import Control.Monad.IO.Class
 import Text.Read
 import System.Exit

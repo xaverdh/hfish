@@ -11,6 +11,7 @@ import Control.Monad.Reader.Class
 import qualified Data.Sequence as Seq
 import Data.Semigroup
 import Data.Maybe
+import Data.Functor
 import Data.List as L
 import Control.Exception (try)
 import qualified Data.Text as T
@@ -66,8 +67,8 @@ main = execParserPure conf parser <$> getArgs
     versionOpt = flag' (putStrLn version)
       (short 'v' <> long "version" <> help "Show version")
 
+data ShowAst = ShowAst Bool | NoAst
 newtype NoExecute = NoExecute Bool
-newtype ShowAst = ShowAst Bool
 newtype IsCommand = IsCommand Bool
 newtype FishCompat = FishCompat Bool
 
@@ -75,8 +76,7 @@ hfishOptions :: O.Parser (IO ())
 hfishOptions = hfishMain
   <$> switchAs NoExecute (short 'n' <> long "no-execute"
     <> help "Do not execute, only parse")
-  <*> switchAs ShowAst (short 'a' <> long "ast"
-    <> help "Show the ast instead of executing")
+  <*> (astSwitch <|> fullAstSwitch <|> pure NoAst)
   <*> switchAs IsCommand (short 'c' <> long "command"
     <> help "Execute commands given on commandline")
   <*> switchAs FishCompat (short 'f' <> long "fish-compat"
@@ -84,6 +84,11 @@ hfishOptions = hfishMain
   <*> many (strArgument (metavar "ARGS"))
   where
     switchAs f = fmap f . switch
+
+    astSwitch = ShowAst False <$ switch ( short 'a'
+      <> long "ast" <> help "Show the ast instead of executing" )
+    fullAstSwitch = ShowAst True <$ switch ( long "full-ast"
+      <> help "Show the full (tagged) ast instead of executing" )
 
 hfishMain :: NoExecute
   -> ShowAst
@@ -93,12 +98,12 @@ hfishMain :: NoExecute
   -> IO ()
 hfishMain 
   (NoExecute noExecute)
-  (ShowAst showAst)
+  showAst
   (IsCommand isCommand)
   (FishCompat fishCompat)
   args
   | noExecute = execute args (const $ return ())
-  | showAst = execute args printAST
+  | ShowAst b <- showAst = execute args (printAST b)
   | otherwise = do
     r <- mkInitialFishReader atBreakpoint fishCompat
     s <- executeStartupFiles fishCompat r =<< mkInitialFishState
@@ -110,7 +115,7 @@ hfishMain
           s' <- injectArgs (map Str.fromString args') r s
           exPath path (runProgram r s')
   where
-    printAST = print . GP.doc
+    printAST full = print . if full then GP.doc else GP.doc . untag 
     
     execute = if isCommand then exDirect else exPaths
     

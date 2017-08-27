@@ -25,6 +25,9 @@ import HFish.Interpreter.Version (version)
 import HFish.Interpreter.Description (description)
 import qualified HFish.Interpreter.Stringy as Str
 import Fish.Lang
+import Fish.Untagged.Lang (RemovableTags(..))
+import Fish.Untagged.Pretty
+import Fish.Lang.Pretty
 
 import System.Console.Haskeline
 import System.Environment (getArgs)
@@ -35,7 +38,6 @@ import Options.Applicative as O
 import Options.Applicative.Builder as OB
 import Options.Applicative.Help.Types (ParserHelp)
 
-import Fish.Pretty
 import qualified Text.PrettyPrint.GenericPretty as GP
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
 
@@ -217,5 +219,5 @@ runProgram r s p =
     
     showTr p = PP.hang 2 $ PP.vsep
       [ PP.magenta "~> Occured while evaluating:"
-      , (PP.yellow . PP.text . show) (GP.doc p) ]
+      , (PP.yellow . PP.text . show) (GP.doc $ untag p) ]
 

@@ -1,4 +1,4 @@
-{-# language LambdaCase, FlexibleInstances #-}
+{-# language OverloadedStrings, FlexibleInstances #-}
 module HFish.Interpreter.Parsing where
 
 import Fish.Lang
@@ -11,9 +11,12 @@ import qualified Fish.Parser.Attoparsec as FAttoP
 import System.Unix.IO.Text (toUnicode)
 import qualified Text.Trifecta.Parser as Tri
 import qualified Text.Trifecta.Result as TriR
-import qualified Text.PrettyPrint.ANSI.Leijen as Pretty
+import qualified Text.PrettyPrint.ANSI.Leijen as PP
 import Data.Attoparsec.Text as Atto
 import Data.Attoparsec.ByteString as BAtto
+
+import qualified Text.PrettyPrint.GenericPretty as GP
+import qualified Text.PrettyPrint.ANSI.Leijen as PP
 
 import Control.Lens
 import Control.Monad
@@ -77,14 +80,18 @@ withProg :: MonadIO m
   -> m (Maybe a)
 withProg res f = case res of
   TriR.Success p -> Just <$> f p
-  TriR.Failure err -> do
-    liftIO . putStr $
-      "~> Error:\n"
-      ++ ( Pretty.displayS
-         . Pretty.renderPretty 0.8 80
-         $ TriR._errDoc err ) "" -- renderSmart
-      ++ "\n~> Occured while parsing interactive statement.\n"
-    return Nothing
+  TriR.Failure e -> do
+    liftIO $ PP.putDoc (showError e)
+    pure Nothing
+  where
+    showError e = PP.vsep [ showErr e, showTr ] <> PP.hardline
+    
+    showErr e = PP.hang 2 $ PP.vsep
+      [ PP.magenta "~> Error:"
+      , TriR._errDoc e ]
+
+    showTr = PP.hang 2 $ 
+      PP.magenta "~> Occured while parsing interactive statement."
 
 withProg' :: MonadIO m
   => TriR.Result (Prog T.Text ())

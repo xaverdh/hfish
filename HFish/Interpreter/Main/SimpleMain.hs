@@ -73,22 +73,40 @@ newtype IsCommand = IsCommand Bool
 newtype FishCompat = FishCompat Bool
 
 hfishOptions :: O.Parser (IO ())
-hfishOptions = hfishMain
-  <$> switchAs NoExecute (short 'n' <> long "no-execute"
-    <> help "Do not execute, only parse")
-  <*> (astFlag <|> fullAstFlag <|> pure NoAst)
-  <*> switchAs IsCommand (short 'c' <> long "command"
-    <> help "Execute commands given on commandline")
-  <*> switchAs FishCompat (short 'f' <> long "fish-compat"
-    <> help "Try to be more fish compatible")
-  <*> many (strArgument (metavar "ARGS"))
+hfishOptions = pure hfishMain
+  <*> noExecSwitch
+  <*> ( astFlag <|> fullAstFlag <|> pure NoAst )
+  <*> cmdSwitch
+  <*> compatSwitch
+  <*> passedArgs
   where
     switchAs f = fmap f . switch
 
-    astFlag = flag' (ShowAst False) ( short 'a'
-      <> long "ast" <> help "Show the ast instead of executing" )
-    fullAstFlag = flag' (ShowAst True) ( long "full-ast"
-      <> help "Show the full (tagged) ast instead of executing" )
+    astFlag = flag' (ShowAst False)
+      ( short 'a'
+        <> long "ast"
+        <> help "Show the ast instead of executing" )
+    
+    fullAstFlag = flag' (ShowAst True)
+      ( long "full-ast"
+        <> help "Show the full (tagged) ast instead of executing" )
+
+    noExecSwitch = switchAs NoExecute
+      ( short 'n'
+        <> long "no-execute"
+        <> help "Do not execute, only parse" )
+
+    cmdSwitch = switchAs IsCommand
+      ( short 'c'
+        <> long "command"
+        <> help "Execute commands given on commandline" )
+
+    compatSwitch = switchAs FishCompat
+      ( short 'f'
+        <> long "fish-compat"
+        <> help "Try to be more fish compatible" )
+
+    passedArgs = many $ strArgument $ metavar "ARGS"
 
 hfishMain :: NoExecute
   -> ShowAst

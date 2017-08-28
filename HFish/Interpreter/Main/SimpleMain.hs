@@ -104,7 +104,7 @@ hfishMain
   args
   | noExecute = execute args (const $ return ())
   | ShowAst b <- showAst = execute args (printAST b)
-  | otherwise = do
+  | NoAst <- showAst = do
     r <- mkInitialFishReader atBreakpoint fishCompat
     s <- executeStartupFiles fishCompat r =<< mkInitialFishState
     if isCommand

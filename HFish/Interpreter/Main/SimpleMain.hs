@@ -76,7 +76,7 @@ hfishOptions :: O.Parser (IO ())
 hfishOptions = hfishMain
   <$> switchAs NoExecute (short 'n' <> long "no-execute"
     <> help "Do not execute, only parse")
-  <*> (astSwitch <|> fullAstSwitch <|> pure NoAst)
+  <*> (astFlag <|> fullAstFlag <|> pure NoAst)
   <*> switchAs IsCommand (short 'c' <> long "command"
     <> help "Execute commands given on commandline")
   <*> switchAs FishCompat (short 'f' <> long "fish-compat"
@@ -85,9 +85,9 @@ hfishOptions = hfishMain
   where
     switchAs f = fmap f . switch
 
-    astSwitch = ShowAst False <$ switch ( short 'a'
+    astFlag = flag' (ShowAst False) ( short 'a'
       <> long "ast" <> help "Show the ast instead of executing" )
-    fullAstSwitch = ShowAst True <$ switch ( long "full-ast"
+    fullAstFlag = flag' (ShowAst True) ( long "full-ast"
       <> help "Show the full (tagged) ast instead of executing" )
 
 hfishMain :: NoExecute

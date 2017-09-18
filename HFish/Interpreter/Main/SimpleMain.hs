@@ -26,8 +26,8 @@ import HFish.Interpreter.Version (version)
 import HFish.Interpreter.Description (description)
 import qualified HFish.Interpreter.Stringy as Str
 import Fish.Lang
-import Fish.Untagged.Lang (RemovableTags(..))
-import Fish.Untagged.Pretty
+import Fish.Lang.Unit
+import Fish.Lang.Base
 import Fish.Lang.Pretty
 
 import System.Console.Haskeline
@@ -133,7 +133,7 @@ hfishMain
           s' <- injectArgs (map Str.fromString args') r s
           exPath path (runProgram r s')
   where
-    printAST full = print . if full then GP.doc else GP.doc . untag 
+    printAST full = print . if full then GP.doc else GP.doc . toBase
     
     execute = if isCommand then exDirect else exPaths
     
@@ -242,5 +242,5 @@ runProgram r s p =
     
     showTr p = PP.hang 2 $ PP.vsep
       [ PP.magenta "~> Occured while evaluating:"
-      , (PP.yellow . PP.text . show) (GP.doc $ untag p) ]
+      , (PP.yellow . PP.text . show) (GP.doc $ toBase p) ]
 

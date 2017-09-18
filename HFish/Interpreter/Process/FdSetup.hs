@@ -86,7 +86,7 @@ withFileDescriptorsSetup :: (IO () -> Fish a) -> Fish a
 withFileDescriptorsSetup k = do
   max_num_fds <- getMaxNumFds
   FdTable fdescs closed <- askFdTable
-  map fromEnum ( M.fold (:) [] fdescs ) & \used ->
+  map fromEnum ( M.foldr' (:) [] fdescs ) & \used ->
     k $ do
       -- weakly close all fds marked closed:
       forM_ closed fdWeakClose

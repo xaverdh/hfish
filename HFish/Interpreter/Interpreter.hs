@@ -1,4 +1,4 @@
-{-# language LambdaCase, OverloadedStrings #-}
+{-# language ScopedTypeVariables, LambdaCase, OverloadedStrings #-}
 module HFish.Interpreter.Interpreter where
 
 import Fish.Lang hiding (Scope)
@@ -217,13 +217,13 @@ notStA :: Stmt T.Text t -> Fish ()
 notStA st = 
   simpleStmtA st >> invertStatus
 
-redirectedStmtA :: Fish () -> [Redirect T.Text t] -> Fish ()
+redirectedStmtA :: Fish () -> [Redirect (Expr T.Text t)] -> Fish ()
 redirectedStmtA f redirects = void (setupAll f)
   where
     setupAll :: Fish () -> Fish ()
     setupAll = foldr ((.) . setup) id redirects
 
-    -- setup :: Redirect T.Text t1 -> Fish () -> Fish ()
+    setup :: Redirect (Expr T.Text t) -> Fish () -> Fish ()
     setup red f = red & \case
       RedirectClose fd -> close fd f
       RedirectIn fd t -> t & \case

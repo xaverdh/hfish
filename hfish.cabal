@@ -13,8 +13,59 @@ cabal-version:       >=1.10
 
 executable hfish
   main-is:             Main.hs
-  -- other-modules:       
+  other-modules:       HFish.Interpreter.Args
+  other-modules:       HFish.Interpreter.Builtins
+  other-modules:       HFish.Interpreter.Builtins.Bool
+  other-modules:       HFish.Interpreter.Builtins.Breakpoint
+  other-modules:       HFish.Interpreter.Builtins.Cd
+  other-modules:       HFish.Interpreter.Builtins.Contains
+  other-modules:       HFish.Interpreter.Builtins.Count
+  other-modules:       HFish.Interpreter.Builtins.Debug
+  other-modules:       HFish.Interpreter.Builtins.Dirstack
+  other-modules:       HFish.Interpreter.Builtins.Echo
+  other-modules:       HFish.Interpreter.Builtins.Emit
+  other-modules:       HFish.Interpreter.Builtins.Eval
+  other-modules:       HFish.Interpreter.Builtins.Exit
+  other-modules:       HFish.Interpreter.Builtins.Flow
+  other-modules:       HFish.Interpreter.Builtins.Functions
+  other-modules:       HFish.Interpreter.Builtins.Math
+  other-modules:       HFish.Interpreter.Builtins.Printf
+  other-modules:       HFish.Interpreter.Builtins.Random
+  other-modules:       HFish.Interpreter.Builtins.Read
+  other-modules:       HFish.Interpreter.Builtins.Seq
+  other-modules:       HFish.Interpreter.Builtins.Source
+  other-modules:       HFish.Interpreter.Builtins.String
+  other-modules:       HFish.Interpreter.Builtins.Test
+  other-modules:       HFish.Interpreter.Concurrent
+  other-modules:       HFish.Interpreter.Core
+  other-modules:       HFish.Interpreter.Cwd
+  other-modules:       HFish.Interpreter.Description
+  other-modules:       HFish.Interpreter.Env
+  other-modules:       HFish.Interpreter.Events
+  other-modules:       HFish.Interpreter.ExMode
+  other-modules:       HFish.Interpreter.FdTable
+  other-modules:       HFish.Interpreter.FuncSt
+  other-modules:       HFish.Interpreter.Globbed
+  other-modules:       HFish.Interpreter.IO
+  other-modules:       HFish.Interpreter.IO.Lazy
+  other-modules:       HFish.Interpreter.Init
+  other-modules:       HFish.Interpreter.Interpreter
+  other-modules:       HFish.Interpreter.Main.SimpleMain
+  other-modules:       HFish.Interpreter.Parsing
+  other-modules:       HFish.Interpreter.Process.FdSetup
+  other-modules:       HFish.Interpreter.Process.Pid
+  other-modules:       HFish.Interpreter.Process.Process
+  other-modules:       HFish.Interpreter.Scope
+  other-modules:       HFish.Interpreter.SetCmd
+  other-modules:       HFish.Interpreter.Slice
+  other-modules:       HFish.Interpreter.Status
+  other-modules:       HFish.Interpreter.Stringy
+  other-modules:       HFish.Interpreter.Util
+  other-modules:       HFish.Interpreter.Var
+  other-modules:       HFish.Interpreter.Version
+
   other-extensions:    TemplateHaskell, RankNTypes, GeneralizedNewtypeDeriving, LambdaCase, OverloadedStrings
+
   build-depends:       base                 >=4.9 && <4.11
   build-depends:       text                 >=1.2 && <1.3
   build-depends:       containers           >=0.5 && <0.6

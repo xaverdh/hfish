@@ -13,7 +13,7 @@ import Control.Lens
 
 
 jumpWith :: Lens' FishReader (() -> Fish ()) -> Fish a
-jumpWith lensK = (view lensK >>= ($()) ) >> pure undefined
+jumpWith lensK = (view lensK >>= ($()) ) *> pure undefined
 
 
 continueF :: Builtin

@@ -38,8 +38,8 @@ seqFWorker fork = \case
     Nothing -> errork "seq: invalid argument(s) given"
     Just (a,b,c) -> do
       if fork
-        then forkFish (writeList a b c) >> ok
-        else writeList a b c >> ok
+        then forkFish (writeList a b c) *> ok
+        else writeList a b c *> ok
 
 writeList :: Int -> Int -> Int -> Fish ()
 writeList a b c

@@ -96,7 +96,7 @@ funcWorker progA
         -- would be more natural but break fish compat
         ident:idents -> 
           setFLocal ident (pure arg)
-          >> assignLoop args idents
+          *> assignLoop args idents
 
     setFLocal ident vs = (Var UnExport vs)
       & setVarSafe FLocalScope ident

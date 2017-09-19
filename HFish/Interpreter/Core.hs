@@ -185,7 +185,7 @@ errork s = view errorK >>= \case
     tr <- stackTrace
     errorWithoutStackTrace
       $ s <> "\nhfish stack trace: " <> tr
-  k:_ -> k s >> pure undefined
+  k:_ -> k s *> pure undefined
 
 -- | Takes a lens to the error continuation stack,
 --   an interrupt routine and a fish action.
@@ -201,7 +201,7 @@ interruptErrorK :: Lens' FishReader [a -> Fish ()]
   -> Fish ()
 interruptErrorK lensK interrupt f = 
   callCC $ \k -> flip local f
-    ( lensK %~ map (\k' x -> interrupt >> k' x) )
+    ( lensK %~ map (\k' x -> interrupt *> k' x) )
 
 -- | Takes a lens to one of the continuations,
 --   an interrupt routine and a fish action.
@@ -217,7 +217,7 @@ interruptK :: Lens' FishReader (a -> Fish ())
   -> Fish ()
 interruptK lensK interrupt f = 
   callCC $ \k -> flip local f
-    ( lensK %~ (\k' x -> interrupt >> k' x) )
+    ( lensK %~ (\k' x -> interrupt *> k' x) )
 
 
 -- | Run cleanup even if jumping out of context via some
@@ -225,7 +225,7 @@ interruptK lensK interrupt f =
 finallyFish :: Fish () -> Fish b  -> Fish ()
 finallyFish f cleanup = 
   (f `onContinuationFish` cleanup)
-  >> void cleanup
+  *> void cleanup
 
 -- | Like 'finallyFish' but only run cleanup if a
 --   continuation is called

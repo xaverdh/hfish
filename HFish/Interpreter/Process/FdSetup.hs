@@ -104,7 +104,7 @@ withFileDescriptorsSetup k = do
 forkWithFileDescriptors :: IO () -> Fish PT.ProcessID
 forkWithFileDescriptors action =
   withFileDescriptorsSetup $ \setup ->
-    (liftIO . forkProcess) (setup >> action)
+    (liftIO . forkProcess) (setup *> action)
 
 
 -- Realise Fd setup in the current process (used by fishExec).

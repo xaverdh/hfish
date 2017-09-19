@@ -8,6 +8,8 @@ module HFish.Interpreter.Builtins.Flow (
 import HFish.Interpreter.Core
 import HFish.Interpreter.Util
 import HFish.Interpreter.Args
+import HFish.Interpreter.Stringy (readStrMaybe)
+import HFish.Interpreter.Status
 
 import Control.Lens
 
@@ -23,6 +25,8 @@ breakF :: Builtin
 breakF _ = args0 $ jumpWith breakK
 
 returnF :: Builtin
-returnF _ = args0 $ jumpWith returnK
+returnF _ = args1 $ \s -> case readStrMaybe s of
+  Nothing -> errork "return: called with invalid argument"
+  Just n -> setStatus (toEnum n) *> jumpWith returnK
 
 

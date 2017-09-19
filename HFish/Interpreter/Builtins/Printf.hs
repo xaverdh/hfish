@@ -97,7 +97,7 @@ specifiers t = either onErr finish
   where
     finish xs = do
       -- liftIO $ print xs -- for debugging
-      return $ xs ++ [Left SpecEnd]
+      pure $ xs ++ [Left SpecEnd]
     
     onErr _ = errork $
       "printf: malformed escape sequence"
@@ -132,7 +132,7 @@ plain = takeWhile1 (\c -> c /= '\\' && c /= '%')
         ,hex
         ,uni16
         ,uni32
-        ,return "\\" ]
+        ,pure "\\" ]
   where    
     escaped = choice
       [ string "\\"
@@ -146,7 +146,7 @@ plain = takeWhile1 (\c -> c /= '\\' && c /= '%')
         ,char 't' $> "\t"
         ,char 'v' $> "\v" ]
     
-    cancel = char 'c' *> takeLazyByteString *> return ""
+    cancel = char 'c' *> takeLazyByteString *> pure ""
     
     oct = try $ fromDigits 8 <$> count 3 octDigit
     

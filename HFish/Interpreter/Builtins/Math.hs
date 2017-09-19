@@ -38,7 +38,7 @@ import Data.Attoparsec.ByteString.Char8
 mathF :: Builtin
 mathF _ = argsFrom 1 $ \args ->
   compMath (Str.unwords args)
-  >>= (return . ser)
+  >>= (pure . ser)
   >>= echo
 
 ser :: Scientific -> Str
@@ -50,7 +50,7 @@ compMath ex = parseMath ex >>= eval
 
 eval :: Math -> Fish Scientific
 eval = \case
-  Sfc a -> return a
+  Sfc a -> pure a
   Neg a -> negate <$> eval a
   Abs a -> abs <$> eval a
   Signum a -> signum <$> eval a
@@ -108,11 +108,11 @@ intArith :: (Integer -> Integer -> Integer)
 intArith f a b = do
   i <- castInt a
   j <- castInt b
-  return . fromInteger $ f i j
+  pure . fromInteger $ f i j
   where
     castInt a = either
       (const . errork $ "math: expected integer, got " <> show a)
-      return
+      pure
       (floatingOrInteger a)
 
 imprecise :: (Double -> Double -> Double)
@@ -146,7 +146,7 @@ math :: Parser Math
 math = skipSpace *> buildExpressionParser opTable term
 
 parseMath :: Str -> Fish Math
-parseMath t = either onErr return
+parseMath t = either onErr pure
   $ parseOnly (math <* endOfInput) t
   where
     onErr err = errork

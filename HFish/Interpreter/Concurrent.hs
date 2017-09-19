@@ -27,7 +27,7 @@ createHandleMVarPair =
     mvar <- newEmptyMVar
     forkIO ( fdGetContents rE >>= putMVar mvar )
     -- forkIO ( P.fdToHandle rE >>= B.hGetContents >>= putMVar mvar )
-    return (mvar,wE)
+    pure (mvar,wE)
 
 forkFish :: Fish () -> Fish (MVar FishState)
 forkFish f = do
@@ -40,6 +40,6 @@ forkFish f = do
     forkIO $ do
       s' <- runFish f r s
       putMVar mvar s'
-    return mvar
+    pure mvar
 
 

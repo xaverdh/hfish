@@ -120,7 +120,7 @@ hfishMain
   (IsCommand isCommand)
   (FishCompat fishCompat)
   args
-  | noExecute = execute args (const $ return ())
+  | noExecute = execute args (const $ pure ())
   | ShowAst b <- showAst = execute args (printAST b)
   | NoAst <- showAst = do
     r <- mkInitialFishReader atBreakpoint fishCompat
@@ -182,9 +182,9 @@ executeStartupFiles fishCompat r s = do
     tryExecute :: FishState -> FilePath -> IO FishState
     tryExecute s path = try (parseFile fishCompat path)
       >>= \case
-        Left (e::IOException) -> return s
+        Left (e::IOException) -> pure s
         Right res -> withProg res (runProgram r s)
-          >>= return . fromMaybe s
+          >>= pure . fromMaybe s
     
     
     
@@ -214,7 +214,7 @@ interpreterLoop :: Bool
   -> FishReader -> FishState -> InputT IO ()
 interpreterLoop fishCompat prompt r s =
   getInputLine (prompt s) >>= \case
-    Nothing -> return () -- ctrl-d
+    Nothing -> pure () -- ctrl-d
     Just l -> do
       ms' <- withProg
         (parseInteractive fishCompat $ l ++ "\n")
@@ -230,8 +230,8 @@ runProgram r s p =
   ( liftIO . try $ runFish (progA p) r s ) >>= \case
     Left e -> do
       liftIO $ PP.putDoc (showError e)
-      return s
-    Right s' -> return s'
+      pure s
+    Right s' -> pure s'
   where
     showError :: SomeException -> PP.Doc
     showError e = PP.vsep [ showErr e, showTr p ] <> PP.hardline

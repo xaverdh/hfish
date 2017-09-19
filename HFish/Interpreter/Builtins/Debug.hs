@@ -13,5 +13,5 @@ import Control.Monad.IO.Class
 debugF :: Builtin
 debugF _ = \case
   "fdtable":_ -> askFdTable >>= (liftIO . print)
-  _ -> return ()
+  _ -> pure ()
   

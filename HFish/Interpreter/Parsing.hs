@@ -72,7 +72,7 @@ parseFishInteractive :: TriParsable s
   => s -> Fish ( TriR.Result (Prog T.Text ()) )
 parseFishInteractive s = do
   compat <- view fishCompatible
-  return $ parseInteractive compat s
+  pure $ parseInteractive compat s
 
 withProg :: MonadIO m
   => TriR.Result (Prog T.Text ())

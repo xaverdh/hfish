@@ -74,7 +74,7 @@ fishCreateProcess name args = do
       args
       ( Just env )
   lastPid .= Just pid
-  return pid
+  pure pid
 
 fishExec :: String -> [String] -> Fish a
 fishExec name args = do

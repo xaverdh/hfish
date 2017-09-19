@@ -128,8 +128,8 @@ queryVars mlscope mexport args = do
     isNotSetIn :: Scope -> NText -> Fish Bool
     isNotSetIn scp ident =
       uses (asLens scp) (`Env.lookup` ident) >>= \mv ->
-      onMaybe mv (return True) $ \(Var ex _) -> 
-        return $ case mexport of
+      onMaybe mv (pure True) $ \(Var ex _) -> 
+        pure $ case mexport of
           Nothing -> False
           Just ex' -> ex /= ex'
 
@@ -146,7 +146,7 @@ eraseVars evalRef mlscope argsData =
       (eraseWithScope d)
     
     eraseNoScope d =
-      let f b scp = if b then return b else eraseVarIn scp d
+      let f b scp = if b then pure b else eraseVarIn scp d
        in foldM f False scopes >>= bool bad ok
     
     eraseWithScope d scope =
@@ -157,7 +157,7 @@ eraseVars evalRef mlscope argsData =
     -- eraseVarIn :: _
     eraseVarIn scp (ident,ref) = do
       mv <- uses (asLens scp) (`Env.lookup` ident)
-      onMaybe mv (return False) $ \var -> True <$ do
+      onMaybe mv (pure False) $ \var -> True <$ do
         indices <- evalRef ref
         if Seq.null indices 
           then delVarSafe scp ident

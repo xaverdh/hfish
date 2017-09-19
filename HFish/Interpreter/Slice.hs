@@ -58,7 +58,7 @@ readIndices indices (Var _ xs) = do
     f :: (Bool, (Int, Int)) -> Seq Str -> Maybe (Seq Str)
     f (b,(i,j)) acc = do
       (_,ys,_) <- triSplit i j xs
-      return $ mbRev b ys <> acc
+      pure $ mbRev b ys <> acc
     err = "readIndices: something went wrong..."
     
 
@@ -68,7 +68,7 @@ writeIndices indices (Var ex xs) ys = do
   slcs <- makeSlices (Seq.length xs) indices
   (xs',ys') <- eitherToFish $ F.foldlM f (xs,ys) slcs
   if Seq.null ys'
-    then return $ Var ex xs'
+    then pure $ Var ex xs'
     else errork tooManyErr
   where
     f :: (Seq Str,Seq Str)
@@ -79,7 +79,7 @@ writeIndices indices (Var ex xs) ys = do
         `maybeToEither` err
       (rs,ys') <- splitAtMaybe (j-i+1) ys
         `maybeToEither` tooFewErr
-      return (hs <> mbRev b rs <> ts, ys')
+      pure (hs <> mbRev b rs <> ts, ys')
     
     tooFewErr = "Too few values to write."
     tooManyErr = "Too many values to write."
@@ -91,7 +91,7 @@ dropIndices indices (Var ex xs) = do
   slcs <- makeSlices (Seq.length xs) indices
     <$$> sortOn (fst . snd)
   ys <- maybeToFish err (work 0 slcs xs)
-  return $ Var ex ys
+  pure $ Var ex ys
   where
     sortOn f = Seq.unstableSortBy $ \x y -> compare (f x) (f y)
     

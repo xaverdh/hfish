@@ -66,14 +66,14 @@ showGlobbed = F.fold . fmap f . unGlob
 globExpand :: Globbed -> Fish (Seq Str)
 globExpand globbed = 
   case optimisticCast globbed of
-    Just s -> return (pure s)
+    Just s -> pure (pure s)
     Nothing -> do
       wdir <- use cwdir
       paths <- getMatches
         <$> recurseDirRel True (Str.toString wdir)
       if Seq.null paths
         then noMatchErr globbed
-        else return . fmap Str.fromString $ paths
+        else pure . fmap Str.fromString $ paths
   where
     parser = genParser globbed
     getMatches = Seq.filter $ isJust . (=~ parser)
@@ -125,7 +125,7 @@ recurseDirRel :: Bool -> FilePath -> Fish (Seq FilePath)
 recurseDirRel b p = do
   wdir <- use cwdir
   paths <- liftIO (recurseDir b p)
-  return $ fmap (makeRelative $ Str.toString wdir) paths
+  pure $ fmap (makeRelative $ Str.toString wdir) paths
 
 
 recurseDir :: Bool -> FilePath -> IO (Seq FilePath)
@@ -135,7 +135,7 @@ recurseDir ignoreHidden p = do
     . Prelude.filter (not . isHidden)
     <$> listDirectory p -- todo catch errors
   mpaths <- forM content continue
-  return $ content <> F.foldr catf mempty mpaths
+  pure $ content <> F.foldr catf mempty mpaths
   where
     catf mx pths = case mx of
       Just x -> x <> pths
@@ -146,8 +146,8 @@ recurseDir ignoreHidden p = do
       doesDirectoryExist p >>= \case
         True -> do
           files <- recurseDir ignoreHidden p
-          return $ Just files
-        False -> return Nothing
+          pure $ Just files
+        False -> pure Nothing
     
     isHidden p = case takeFileName p of
       '.' : _ -> True

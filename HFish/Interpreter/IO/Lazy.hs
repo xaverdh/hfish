@@ -40,7 +40,7 @@ echoLn t = echo (t <> fromString "\n")
 
 lookupFd' :: L.Fd -> Fish PT.Fd
 lookupFd' fd = lookupFd fd >>=
-  maybe (notOpenErr fd) return
+  maybe (notOpenErr fd) pure
 
 -- Errors:
 

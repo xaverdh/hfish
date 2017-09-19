@@ -59,7 +59,7 @@ echoWorker :: Bool -- ^ Interpret escapes
 echoWorker esc noSpace noNewl args =
   Str.intercalate (bool " " "" noSpace) args
   & bool pure escape esc
-  >>= \t -> bool echoLn echo noNewl t >> ok
+  >>= \t -> bool echoLn echo noNewl t *> ok
 
 
 escape :: Str -> Fish Str

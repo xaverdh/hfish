@@ -120,7 +120,7 @@ whileStA st prog = setBreakK loop
     loop = do
       simpleStmtA st
       ifOk ( setContinueK body
-             >> loop )
+             *> loop )
 
 forStA :: VarIdent T.Text t -> Args T.Text t -> Prog T.Text t -> Fish ()
 forStA (VarIdent _ varIdent) args prog = do
@@ -132,12 +132,12 @@ forStA (VarIdent _ varIdent) args prog = do
         LocalScope
         varIdent
         (mkVar $ pure x)
-      >> f
+      *> f
     
     body = progA prog
     
     loop =
-      let f x m = lbind x (setContinueK body) >> m
+      let f x m = lbind x (setContinueK body) *> m
        in F.foldr f $ pure ()
 
 ifStA :: [(Stmt T.Text t,Prog T.Text t)] -> Maybe (Prog T.Text t) -> Fish ()
@@ -147,7 +147,7 @@ ifStA ((st,prog):blks) elblk = do
   simpleStmtA st
   onStatus
     (const $ ifStA blks elblk)
-    (progA prog >> ok)
+    (progA prog *> ok)
 
 switchStA :: Expr T.Text t -> [(Expr T.Text t,Prog T.Text t)] -> Fish ()
 switchStA e brnchs = view fishCompatible >>=
@@ -215,7 +215,7 @@ orStA st = unlessOk $ simpleStmtA st
 
 notStA :: Stmt T.Text t -> Fish ()
 notStA st = 
-  simpleStmtA st >> invertStatus
+  simpleStmtA st *> invertStatus
 
 redirectedStmtA :: Fish () -> [Redirect (Expr T.Text t)] -> Fish ()
 redirectedStmtA f redirects = void (setupAll f)

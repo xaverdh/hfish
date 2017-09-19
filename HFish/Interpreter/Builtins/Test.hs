@@ -38,7 +38,7 @@ testF _ ts = do
     -- IO errors get mapped to False. This is usually
     -- what you want and agrees with the fish implementation.
     onIOErr :: IOException -> IO Bool
-    onIOErr = const (return False)
+    onIOErr = const (pure False)
     
 
 {- File Operations -}
@@ -98,7 +98,7 @@ fileE = file1E <|> file2E <|> file3E <|> file4E
     file4E = do
       f <- sym "-L" $> isSymbolicLink
       p <- file
-      return (f <$> getSymbolicLinkStatus p)
+      pure (f <$> getSymbolicLinkStatus p)
 
     file1E = do
       f <- choice
@@ -111,7 +111,7 @@ fileE = file1E <|> file2E <|> file3E <|> file4E
          ,sym "-s" $> fmap (>0) fileSize
          ]
       p <- file
-      return (f <$> getFileStatus p)
+      pure (f <$> getFileStatus p)
      
     file2E = do
       f <- choice
@@ -120,17 +120,17 @@ fileE = file1E <|> file2E <|> file3E <|> file4E
          ,sym "-w" $> isWriteable
          ,sym "-x" $> isExecutable ]
       p <- file
-      return (f p)
+      pure (f p)
 
     file3E = do
       f <- choice
-        [ sym "-g" $> (return . hasGidSet)
-         ,sym "-u" $> (return . hasUidSet)
+        [ sym "-g" $> (pure . hasGidSet)
+         ,sym "-u" $> (pure . hasUidSet)
          ,sym "-G" $> isUserGroup
          ,sym "-O" $> isUserOwned
          ]
       p <- file
-      return (f =<< getFileStatus p)
+      pure (f =<< getFileStatus p)
 
 strE :: Parser Bool
 strE = strUnary <|> strBinary
@@ -153,7 +153,7 @@ strE = strUnary <|> strBinary
 
 ttyTestE :: Parser (IO Bool)
 ttyTestE = "-t" *> int
-  >>= (return . isTtyFd)
+  >>= (pure . isTtyFd)
 
 numE :: Parser Bool
 numE = do
@@ -181,9 +181,9 @@ opTable =
 term :: Parser (IO Bool)
 term =
   ( bracketed
-    <|> (return <$> numE)
+    <|> (pure <$> numE)
     <|> fileE
-    <|> (return <$> strE) )
+    <|> (pure <$> strE) )
   <* skipSpace
   where
   bracketed = char '(' *> testE <* char ')'
@@ -192,7 +192,7 @@ testE :: Parser (IO Bool)
 testE = skipSpace *> buildExpressionParser opTable term
 
 parseTestE :: Str -> Fish (IO Bool)
-parseTestE t = either onErr return
+parseTestE t = either onErr pure
   $ parseOnly (testE <* endOfInput) t
   where
     onErr r = errork $ "test: malformed expression"

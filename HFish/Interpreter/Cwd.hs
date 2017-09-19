@@ -28,8 +28,8 @@ setCWD dir = do
       cwdir .= d
       readOnlyEnv %= Env.adjust
         (value .~ pure d) "PWD"
-      return ExitSuccess
-    False -> return $ ExitFailure 1
+      pure ExitSuccess
+    False -> pure $ ExitFailure 1
   where
     makeAbsoluteStr :: Str -> IO Str
     makeAbsoluteStr = fmap Str.fromString . makeAbsolute . Str.toString
@@ -48,8 +48,8 @@ pushCWD dir = do
 
 popCWD :: Fish (Maybe Str)
 popCWD = use dirstack >>= \case
-  [] -> return Nothing
+  [] -> pure Nothing
   (dir:dirs) -> do
     dirstack .= dirs
-    return (Just dir)
+    pure (Just dir)
 

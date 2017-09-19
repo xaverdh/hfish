@@ -58,12 +58,12 @@ echoWorker :: Bool -- ^ Interpret escapes
   -> Fish ()
 echoWorker esc noSpace noNewl args =
   Str.intercalate (bool " " "" noSpace) args
-  & bool return escape esc
+  & bool pure escape esc
   >>= \t -> bool echoLn echo noNewl t >> ok
 
 
 escape :: Str -> Fish Str
-escape t = either onErr return
+escape t = either onErr pure
   $ parseOnly (escaper <* endOfInput) t
   where
     onErr _ = errork $
@@ -74,11 +74,11 @@ escaper = do
   t1 <- takeTill (=='\\')
   end <- atEnd
   if end
-    then return t1
+    then pure t1
     else do
       t2 <- char '\\' *> ( escaped <|> cancel <|> oct <|> hex )
       t3 <- escaper
-      return $ t1 <> t2 <> t3
+      pure $ t1 <> t2 <> t3
   where
     escaped = choice
       [ string "\\"
@@ -91,18 +91,18 @@ escaper = do
         ,char 't' $> "\t"
         ,char 'v' $> "\v" ]
     
-    cancel = char 'c' *> takeLazyByteString *> return ""
+    cancel = char 'c' *> takeLazyByteString *> pure ""
     
     oct = char '0' *> do
       d1 <- octDigit
       d2 <- octDigit
       d3 <- octDigit
-      return $ compChar 8 $ map ctoi [d1,d2,d3]
+      pure $ compChar 8 $ map ctoi [d1,d2,d3]
     
     hex = char 'x' *> do
       d1 <- hexDigit
       d2 <- hexDigit
-      return $ compChar 16 $ map ctoi [d1,d2]
+      pure $ compChar 16 $ map ctoi [d1,d2]
     
     ctoi c = ord c - 48
     

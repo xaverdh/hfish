@@ -57,8 +57,8 @@ setupSignalHandler sigspec h = do
 
 parseSigSpec :: T.Text -> Fish Signal
 parseSigSpec sigspec
-  | Just i <- readTextMaybe sigspec = return i
-  | Just sig <- sigFromName sigspec = return sig
+  | Just i <- readTextMaybe sigspec = pure i
+  | Just sig <- sigFromName sigspec = pure sig
   | otherwise = errork
     $ "unknown signal: "
     <> Str.toString sigspec

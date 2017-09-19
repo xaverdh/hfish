@@ -31,7 +31,7 @@ mkInitialFishState = do
   wdir <- Str.fromString <$> getCurrentDirectory
   inherited <- map (bimap Str.fromString (mkVarXp . pure . Str.fromString)) <$> getEnvironment
   teeVars inherited & \(ro,rw) ->
-    return $ emptyFishState {
+    pure $ emptyFishState {
       _functions = Env.empty
       ,_globalEnv = Env.fromTextList rw
       ,_readOnlyEnv = (initStatus . incShlvl . Env.fromTextList) ro
@@ -56,7 +56,7 @@ mkInitialFishState = do
 
 mkInitialFishReader :: Fish () -> Bool -> IO FishReader
 mkInitialFishReader atBreakpoint fishcompat =
-  return FishReader {
+  pure FishReader {
     _fdTable = initialFdTable
     ,_builtins = allBuiltins
     ,_breakK = const warnB

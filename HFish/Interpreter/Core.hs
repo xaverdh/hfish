@@ -44,7 +44,7 @@ newtype Fish a = Fish ((ReaderT FishReader) (StateT FishState (ContT FishState I
 --   the final state.
 runFish :: Fish a -> FishReader -> FishState -> IO FishState
 runFish (Fish f) r s =
-  ((f `runReaderT` r) `execStateT` s) `runContT` return
+  ((f `runReaderT` r) `execStateT` s) `runContT` pure
 
 
 -- | Return an IO action, running the given fish action
@@ -59,7 +59,7 @@ projectIO :: Fish () -> Fish (IO FishState)
 projectIO f = do
   r <- ask
   s <- get
-  return (runFish f r s)
+  pure (runFish f r s)
 
 -- | Takes a fish action and a continuation and passes an IO
 --
@@ -114,7 +114,7 @@ localise l f = do
   memory <- use l
   r <- f
   modify (l .~ memory)
-  return r
+  pure r
 
 
 -- | The type of a builtin.
@@ -185,7 +185,7 @@ errork s = view errorK >>= \case
     tr <- stackTrace
     errorWithoutStackTrace
       $ s <> "\nhfish stack trace: " <> tr
-  k:_ -> k s >> return undefined
+  k:_ -> k s >> pure undefined
 
 -- | Takes a lens to the error continuation stack,
 --   an interrupt routine and a fish action.
@@ -254,7 +254,7 @@ disallowK = local
     . ( returnK .~ noA       )
     . ( errorK .~ repeat noA ) )
   where
-    noA = const $ return ()
+    noA = const $ pure ()
 
 guardIOFailure :: IO a -> Fish a
 guardIOFailure action =
@@ -266,12 +266,12 @@ guardIOFailure action =
 -- | Throws an error(k) if the value is Left _
 --   ,passes it into the monad if its a Right _ .
 eitherToFish :: Either String a -> Fish a
-eitherToFish = either errork return
+eitherToFish = either errork pure
 
 -- | Throws given error(k) if the value is Nothing
 --   ,passes it into the monad otherwise.
 maybeToFish :: String -> Maybe a -> Fish a
-maybeToFish err = maybe (errork err) return
+maybeToFish err = maybe (errork err) pure
 
 -- | An empty FishState
 emptyFishState :: FishState

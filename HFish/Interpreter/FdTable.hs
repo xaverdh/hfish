@@ -45,7 +45,7 @@ withFdTable = (askFdTable >>=)
 --   (if any) in the current 'FdTable'.
 lookupFd :: HasFdTable m => L.Fd -> m (Maybe PT.Fd)
 lookupFd fd = do
-  withFdTable (return . (^. mainTable . at fd))
+  withFdTable (pure . (^. mainTable . at fd))
 
 -- | Insert an (abstract fd,OS fd) pair into the 'FdTable'.
 insert :: HasFdTable m => L.Fd -> PT.Fd -> m a -> m a
@@ -80,7 +80,7 @@ close fd k = lookupFd fd >>= \case
 -- | Close an OS Fd, ignoring any errors
 fdWeakClose :: PT.Fd -> IO ()
 fdWeakClose pfd = E.catch (P.closeFd pfd)
-  (\e -> return $ const () (e::E.IOException) )
+  (\e -> pure $ const () (e::E.IOException) )
 
 -- | The initial FdTable stdin / -out / -err.
 --

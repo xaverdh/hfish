@@ -22,7 +22,7 @@ getPID = \case
   "self" -> toSeq <$> liftIO getProcessID
   "last" ->
     use lastPid >>= \case
-      Just pid -> return $ toSeq pid
+      Just pid -> pure $ toSeq pid
       Nothing -> errork "Cannot obtain pid of last process."
   x -> case Str.readStrMaybe x of
     Just i -> toSeq <$> liftIO (getProcessGroupIDOf i)

@@ -94,7 +94,7 @@ withFileW fpath mode fd k =
     case mpfd of
       Just pfd -> insert fd pfd
         ( k `finally` P.closeFd pfd )
-      Nothing -> return ()
+      Nothing -> pure ()
   where
     accessMode = 
       foldr unionFileModes nullFileMode
@@ -105,12 +105,12 @@ withFileW fpath mode fd k =
       ( E.tryJust 
         ( bool Nothing (Just ()) . IOE.isAlreadyExistsError ) f )
       >>= \case
-        Right pfd -> return (Just pfd)
+        Right pfd -> pure (Just pfd)
         Left () -> do
           writeTo L.Fd2
             $ "File \"" <> fpath <> "\" aready exists.\n"
           bad
-          return Nothing
+          pure Nothing
     
     {-
     mkErr err = errork
@@ -147,7 +147,7 @@ warn = liftIO . hPutStrLn stderr
 
 lookupFd' :: L.Fd -> Fish PT.Fd
 lookupFd' fd = lookupFd fd >>=
-  maybe (notOpenErr fd) return
+  maybe (notOpenErr fd) pure
 
 -- Errors:
 

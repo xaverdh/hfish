@@ -91,7 +91,7 @@ funcWorker progA
     assignLoop vs = case viewl vs of
       EmptyL -> \idents -> forM_ idents $ flip setFLocal mempty
       arg :< args -> \case
-        [] -> return ()
+        [] -> pure ()
         -- [ident] -> setFLocal ident vs
         -- would be more natural but break fish compat
         ident:idents -> 

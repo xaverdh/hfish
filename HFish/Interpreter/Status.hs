@@ -58,8 +58,8 @@ onStatus onErr onSucc =
 
 isOk :: Fish Bool
 isOk = onStatus
-  (const $ return False)
-  (return True)
+  (const $ pure False)
+  (pure True)
 
 bad :: Fish ()
 bad = setStatus (ExitFailure 1)

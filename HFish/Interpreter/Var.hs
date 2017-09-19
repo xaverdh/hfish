@@ -55,7 +55,7 @@ getOccurs ident =
   where
     look scp = do
       mv <- uses (asLens scp) (`Env.lookup` ident)
-      return (scp,mv)
+      pure (scp,mv)
     check scp mv = (scp,) <$> mv
 
 
@@ -65,7 +65,7 @@ getVarMaybe ident =
 
 getVar :: NText -> Fish Var
 getVar ident = getVarMaybe ident >>= \case
-  Just v -> return v
+  Just v -> pure v
   Nothing -> errork
     $ "Lookup of variable "
     <> Str.toString (extractText ident)
@@ -74,12 +74,12 @@ getVar ident = getVarMaybe ident >>= \case
 getVarValue :: NText -> Fish (Seq Str)
 getVarValue t = do
   v <- getVar t
-  return (v ^. value)
+  pure (v ^. value)
 
 allVars :: Fish [(NText,Var)]
 allVars = do
   envs <- forM scopes (use . asLens)
-  return (join . map Env.toList $ envs)
+  pure (join . map Env.toList $ envs)
 
 exportVars :: Fish [(NText,Var)]
 exportVars = Prelude.filter (isExport . snd) <$> allVars

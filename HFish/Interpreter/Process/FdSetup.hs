@@ -58,7 +58,7 @@ getUnusedFd = do
     r:_ -> do
       fdsInUse %= S.insert r
       allocIndex .= r-1
-      return (toEnum r)
+      pure (toEnum r)
 
 -- | Ensure that the given OS fd can be safely overwritten.
 save :: PT.Fd -> FdSetupMonad ()
@@ -78,7 +78,7 @@ setupFds = forM_ [0..9] setupFd
           used <- uses fdsInUse (S.member i)
           when used (save $ toEnum i)
           lift $ P.dupTo pfd (toEnum i)
-          return ()
+          pure ()
 
 -- | Takes a continuation which gets passed
 --   an IO action for properly setting up the file descriptors.

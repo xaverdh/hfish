@@ -31,9 +31,10 @@ import Fish.Lang.Base
 import Fish.Lang.Pretty
 
 import System.Console.Haskeline
-import System.Environment (getArgs)
+import System.Environment (getArgs,getProgName)
 import System.Directory (listDirectory)
 import System.FilePath (takeExtensions,(</>))
+import System.Exit (exitSuccess)
 
 import Options.Applicative as O
 import Options.Applicative.Builder as OB
@@ -48,6 +49,11 @@ main = execParserPure conf parser <$> getArgs
   >>= \case
     Success a -> a
     Failure e -> showError e
+    CompletionInvoked compl -> do
+      progn <- getProgName
+      msg <- execCompletion compl progn
+      putStr msg
+      exitSuccess
   where
     showError :: ParserFailure ParserHelp -> IO ()
     showError e = putStrLn . fst

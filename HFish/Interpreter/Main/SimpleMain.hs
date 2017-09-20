@@ -1,4 +1,5 @@
-{-# language LambdaCase, OverloadedStrings, FlexibleInstances, ScopedTypeVariables #-}
+{-# language LambdaCase, OverloadedStrings #-}
+{-# language FlexibleInstances, ScopedTypeVariables #-}
 module HFish.Interpreter.Main.SimpleMain where
 
 import Debug.Trace
@@ -8,12 +9,12 @@ import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.State.Class
 import Control.Monad.Reader.Class
+import Control.Exception as E
 import qualified Data.Sequence as Seq
 import Data.Semigroup
 import Data.Maybe
 import Data.Functor
 import Data.List as L
-import Control.Exception (try)
 import qualified Data.Text as T
 import HFish.Interpreter.Util
 import HFish.Interpreter.Interpreter
@@ -219,7 +220,7 @@ interpreterLoop :: Bool
   -> (FishState -> String) -- the prompt
   -> FishReader -> FishState -> InputT IO ()
 interpreterLoop fishCompat prompt r s =
-  getInputLine (prompt s) >>= \case
+  getInputLineIgnoreSigInt (prompt s) >>= \case
     Nothing -> pure () -- ctrl-d
     Just l -> do
       ms' <- withProg
@@ -227,18 +228,33 @@ interpreterLoop fishCompat prompt r s =
         (runProgram r s)
       interpreterLoop fishCompat prompt r (fromMaybe s ms')
 
+
+getInputLineIgnoreSigInt :: String -> InputT IO (Maybe String)
+getInputLineIgnoreSigInt p = withInterrupt loop
+  where
+    loop = handleInterrupt handleSigInt (getInputLine p)
+    handleSigInt = loop
+
 runProgram :: MonadIO io
   => FishReader
   -> FishState
   -> Prog T.Text ()
   -> io FishState
-runProgram r s p =
-  ( liftIO . try $ runFish (progA p) r s ) >>= \case
-    Left e -> do
+runProgram r s p = liftIO
+  $ E.catches ( runFish (progA p) r s )
+  [ E.Handler handleAsyncException
+  , E.Handler handleOtherException ]
+  where
+    handleAsyncException :: AsyncException -> IO FishState
+    handleAsyncException = \case
+      UserInterrupt -> pure s
+      e -> E.throwIO e
+    
+    handleOtherException :: SomeException -> IO FishState
+    handleOtherException e = do
       liftIO $ PP.putDoc (showError e)
       pure s
-    Right s' -> pure s'
-  where
+
     showError :: SomeException -> PP.Doc
     showError e = PP.vsep [ showErr e, showTr p ] <> PP.hardline
     
@@ -249,4 +265,5 @@ runProgram r s p =
     showTr p = PP.hang 2 $ PP.vsep
       [ PP.magenta "~> Occured while evaluating:"
       , (PP.yellow . PP.text . show) (GP.doc $ toBase p) ]
+
 

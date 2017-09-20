@@ -9,7 +9,6 @@ Refer to the [Syntax](#syntax) section for details on the differences.
 ## Prerequisites and Dependencies
   * A unix / posix system (linux for example)
   * A recent cabal / ghc
-  * The icu (International Components for Unicode) library
   * Tons of haskell library dependencies (cabal install should take care of them), they are listed in the [cabal file][hfish-cabal-file].
 
 

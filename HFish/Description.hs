@@ -1,7 +1,6 @@
 {-# language OverloadedStrings #-}
-module HFish.Interpreter.Description (
+module HFish.Description (
   description
-  ,setCommandHelp
 ) where
 
 import Prelude hiding ((<$>))
@@ -32,5 +31,3 @@ cmd = ""
 
 -- "-c / --command"
 
-setCommandHelp :: T.Text
-setCommandHelp = "The set command.\n"

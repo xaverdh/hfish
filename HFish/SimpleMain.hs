@@ -1,6 +1,6 @@
 {-# language LambdaCase, OverloadedStrings #-}
 {-# language FlexibleInstances, ScopedTypeVariables #-}
-module HFish.Interpreter.Main.SimpleMain where
+module HFish.SimpleMain where
 
 import Debug.Trace
 
@@ -25,7 +25,7 @@ import HFish.Interpreter.Init
 import HFish.Interpreter.Parsing
 import HFish.Interpreter.Var
 import HFish.Interpreter.Version (version)
-import HFish.Interpreter.Description (description)
+import HFish.Description (description)
 import qualified HFish.Interpreter.Stringy as Str
 import Fish.Lang
 import Fish.Lang.Unit

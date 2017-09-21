@@ -1,5 +1,5 @@
 {-# language TemplateHaskell #-}
-module HFish.Interpreter.Version where
+module HFish.Version where
 
 import Development.GitRev
 

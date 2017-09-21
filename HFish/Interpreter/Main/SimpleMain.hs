@@ -14,6 +14,7 @@ import qualified Data.Sequence as Seq
 import Data.Semigroup
 import Data.Maybe
 import Data.Functor
+import Data.String (IsString)
 import Data.List as L
 import qualified Data.Text as T
 import HFish.Interpreter.Util
@@ -35,7 +36,7 @@ import System.Console.Haskeline
 import System.Environment (getArgs,getProgName)
 import System.Directory (listDirectory)
 import System.FilePath (takeExtensions,(</>))
-import System.Exit (exitSuccess)
+import System.Exit
 
 import Options.Applicative as O
 import Options.Applicative.Builder as OB
@@ -201,11 +202,13 @@ executeStartupFiles fishCompat r s = do
     funcDir = "/etc/hfish/functions"
 
 mkPrompt :: Bool -> FishState -> String
-mkPrompt isbrkpt s
-  | isbrkpt = insStatus <> ": "
-  | otherwise = "~" <> insStatus <> "> "
+mkPrompt isbrkpt s = show $ case isbrkpt of
+  True -> insStatus <> PP.blue ": "
+  False -> PP.blue "~" <> insStatus <> PP.blue "> "
   where
-    insStatus = (show . fromEnum) (s ^. status)
+    insStatus = case s ^. status of
+      ExitSuccess -> PP.blue $ PP.int 0
+      ExitFailure i -> PP.red $ PP.int i
 
 runInterpreterLoop :: Bool
   -> Bool

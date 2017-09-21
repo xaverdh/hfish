@@ -149,7 +149,8 @@ hfishMain
     if isCommand
       then exDirect args (runProgram r s)
       else case args of
-        [] -> runInterpreterLoop fishCompat False r s
+        [] -> runInterpreterLoop fishCompat False
+                  ( r & interactive .~ True ) s
         path:args' -> do
           s' <- injectArgs (map Str.fromString args') r s
           exPath path (runProgram r s')

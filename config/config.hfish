@@ -8,6 +8,8 @@ function ll
   /usr/bin/ls --color --classify -l $argv
 end
 
-echo "This is hfish, version:"
-hfish --version
+if status is-interactive
+  echo "This is hfish, version:"
+  hfish --version
+end
 

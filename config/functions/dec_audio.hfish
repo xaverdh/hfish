@@ -1,0 +1,9 @@
+function dec_audio
+  set vol (ponymix decrease 5)
+  switch (tty)
+    case /dev/tty*
+      echo $vol
+    case **
+      notify-send -t 1 "Vol: <span foreground = \"cyan\">"$vol"</span>"
+  end
+end

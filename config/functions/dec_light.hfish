@@ -1,0 +1,10 @@
+function dec_light
+  light -U 5
+  set lvl (light -G)
+  switch (tty)
+    case /dev/tty*
+      echo $lvl
+    case **
+      notify-send -t 1 "Brightness: <span foreground = \"yellow\">"$lvl"</span>"
+  end
+end

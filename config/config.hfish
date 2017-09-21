@@ -1,0 +1,12 @@
+function ls
+  /usr/bin/ls --color --classify $argv
+end
+function la
+  /usr/bin/ls --color --classify --all $argv
+end
+function ll
+  /usr/bin/ls --color --classify -l $argv
+end
+
+echo "This is hfish, version: " (hfish --version)
+

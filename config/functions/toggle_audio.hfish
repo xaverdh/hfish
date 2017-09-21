@@ -1,0 +1,10 @@
+function toggle_audio
+  ponymix toggle > /dev/null
+  set state (ponymix is-muted ; and echo Off ; or echo On)
+  switch (tty)
+    case /dev/tty*
+      echo $state
+    case **
+      notify-send "audio: <span foreground = \"cyan\">"$state"</span>"
+  end
+end

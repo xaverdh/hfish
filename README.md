@@ -17,15 +17,16 @@ Refer to the [Syntax](#syntax) section for details on the differences.
 For now I recommend doing the following in a fresh directory:
 
 ```sh
+git clone https://gitlab.com/hfish-shell/hfish
+cd hfish
 git clone https://gitlab.com/hfish-shell/posix-fd-io
 git clone https://gitlab.com/hfish-shell/nfc-text
-git clone https://gitlab.com/hfish-shell/hfish
+git clone https://gitlab.com/hfish-shell/hfish-interpreter
 git clone https://gitlab.com/hfish-shell/hfish-parser
 git clone https://gitlab.com/hfish-shell/fish-parser
 git clone https://gitlab.com/hfish-shell/fish-lang
-cd hfish
 cabal sandbox init
-cabal sandbox add-source ../posix-fd-io ../nfc-text ../fish-lang ../fish-parser ../hfish-parser
+cabal sandbox add-source posix-fd-io nfc-text fish-lang fish-parser hfish-parser hfish-interpreter
 cabal install --ghc-option=-threaded
 ```
 

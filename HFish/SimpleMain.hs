@@ -24,7 +24,12 @@ import HFish.Interpreter.Core
 import HFish.Interpreter.Init
 import HFish.Interpreter.Parsing
 import HFish.Interpreter.Var
-import HFish.Interpreter.Version (version)
+import qualified HFish.Interpreter.Version as IV
+import qualified HFish.Version as V
+import qualified Fish.Lang.Version as LV
+import qualified Fish.Parser.Version as FPV
+import qualified HFish.Parser.Version as HFPV
+
 import HFish.Description (description)
 import qualified HFish.Interpreter.Stringy as Str
 import Fish.Lang
@@ -72,8 +77,15 @@ main = execParserPure conf parser <$> getArgs
         <> progDescDoc (Just description)
         <> failureCode 1)
     
-    versionOpt = flag' (putStrLn version)
+    versionOpt = flag' (PP.putDoc versionInfo)
       (short 'v' <> long "version" <> help "Show version")
+
+    versionInfo = PP.vsep
+      [ "Main: " <> PP.string V.version
+      , "Interpreter: " <> PP.string IV.version
+      , "Parser: " <> PP.string HFP.version
+      , "Parser (fish-compat): " <> PP.string FP.version
+      , "Lang: " <> PP.string L.version ]
 
 data ShowAst = ShowAst Bool | NoAst
 newtype NoExecute = NoExecute Bool

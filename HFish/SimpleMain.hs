@@ -8,11 +8,13 @@ import Control.Lens
 import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.State.Class
+import Control.Monad.State
 import Control.Monad.Reader.Class
 import Control.Exception as E
 import qualified Data.Sequence as Seq
 import Data.Semigroup
 import Data.Maybe
+import Data.Bifunctor
 import Data.Functor
 import Data.String (IsString)
 import Data.List as L
@@ -146,20 +148,33 @@ hfishMain
   | NoAst <- showAst = do
     r <- mkInitialFishReader atBreakpoint fishCompat
     s <- mkInitialFishState
-    if isCommand
-      then do
-        s' <- executeStartupFiles fishCompat r s
-        exDirect args (runProgram r s')
-      else case args of
+    flip evalStateT (r,s) $ case isCommand of
+      True -> do
+        doStartup
+        withState runProgram $ exDirect args
+      False -> case args of
         [] -> do
-          let r' = r & interactive .~ True
-          s' <- executeStartupFiles fishCompat r' s
-          runInterpreterLoop fishCompat False r' s'
+          setInteractive
+          doStartup
+          withStateId $ runInterpreterLoop fishCompat False
         path:args' -> do
-          s' <- executeStartupFiles fishCompat r s >>= 
-                injectArgs (map Str.fromString args') r
-          exPath path (runProgram r s')
+          doStartup
+          withStateId $ injectArgs $ map Str.fromString args'
+          withState runProgram $ exPath path
   where
+    withState :: ( FishReader -> FishState -> b )
+              -> ( b -> IO c )
+              -> StateT (FishReader, FishState) IO c
+    withState f k = get >>= liftIO . k . uncurry f
+    withStateId = flip withState id
+
+    doStartup = do
+      s' <- withStateId $ executeStartupFiles fishCompat
+      _2 .= s'
+    
+    setInteractive = modify $ first ( interactive .~ True )
+
+
     printAST full = print . if full then GP.doc else GP.doc . toBase
     
     execute = if isCommand then exDirect else exPaths

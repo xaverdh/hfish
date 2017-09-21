@@ -86,6 +86,7 @@ main = execParserPure conf parser <$> getArgs
       , "Parser: " <> PP.string HFPV.version
       , "Parser (fish-compat): " <> PP.string FPV.version
       , "Lang: " <> PP.string LV.version ]
+      <> PP.hardline
 
 data ShowAst = ShowAst Bool | NoAst
 newtype NoExecute = NoExecute Bool

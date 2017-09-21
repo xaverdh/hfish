@@ -148,15 +148,15 @@ hfishMain
     s <- mkInitialFishState
     if isCommand
       then do
-        s' <- executeStartupFiles fishCompat r
+        s' <- executeStartupFiles fishCompat r s
         exDirect args (runProgram r s')
       else case args of
         [] -> do
           let r' = r & interactive .~ True
-          s' <- executeStartupFiles fishCompat r'
+          s' <- executeStartupFiles fishCompat r' s
           runInterpreterLoop fishCompat False r' s'
         path:args' -> do
-          s' <- executeStartupFiles fishCompat r >>= 
+          s' <- executeStartupFiles fishCompat r s >>= 
                 injectArgs (map Str.fromString args') r
           exPath path (runProgram r s')
   where

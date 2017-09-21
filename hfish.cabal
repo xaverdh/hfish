@@ -15,7 +15,11 @@ executable hfish
   main-is:             Main.hs
   other-modules:       HFish.Version
   other-modules:       HFish.Description
-  other-modules:       HFish.SimpleMain
+  other-modules:       HFish.Main
+  other-modules:       HFish.Main.Interactive
+  other-modules:       HFish.Startup
+  other-modules:       HFish.Types
+  other-modules:       HFish.Dispatch
 
   other-extensions:    TemplateHaskell
   other-extensions:    FlexibleInstances

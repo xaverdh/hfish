@@ -1,6 +1,4 @@
 {-# language LambdaCase, OverloadedStrings #-}
-{-# language FlexibleInstances, ScopedTypeVariables #-}
-{-# language FlexibleContexts #-}
 module HFish.Main.Interactive
   ( runInterpreterLoop
   , runProgram )
@@ -16,43 +14,22 @@ import Control.Monad.State.Class
 import Control.Monad.State
 import Control.Monad.Reader.Class
 import Control.Exception as E
-import qualified Data.Sequence as Seq
+
 import Data.Semigroup
-import Data.Maybe
-import Data.Bifunctor
-import Data.Functor
-import Data.String (IsString)
-import Data.List as L
 import qualified Data.Text as T
-import HFish.Interpreter.Util
+
 import HFish.Interpreter.Interpreter
-import HFish.Interpreter.Scope
 import HFish.Interpreter.Core
-import HFish.Interpreter.Init
 import HFish.Interpreter.Parsing
-import HFish.Interpreter.Var
-import qualified HFish.Interpreter.Version as IV
-import qualified HFish.Version as V
-import qualified Fish.Lang.Version as LV
-import qualified Fish.Parser.Version as FPV
-import qualified HFish.Parser.Version as HFPV
-import HFish.Description (description)
 import HFish.Types
-import qualified HFish.Interpreter.Stringy as Str
+
 import Fish.Lang
 import Fish.Lang.Unit
 import Fish.Lang.Base
 import Fish.Lang.Pretty
 
 import System.Console.Haskeline
-import System.Environment (getArgs,getProgName)
-import System.Directory (listDirectory)
-import System.FilePath (takeExtensions,(</>))
 import System.Exit
-
-import Options.Applicative as O
-import Options.Applicative.Builder as OB
-import Options.Applicative.Help.Types (ParserHelp)
 
 import qualified Text.PrettyPrint.GenericPretty as GP
 import qualified Text.PrettyPrint.ANSI.Leijen as PP

@@ -1,6 +1,4 @@
 {-# language LambdaCase, OverloadedStrings #-}
-{-# language FlexibleInstances, ScopedTypeVariables #-}
-{-# language FlexibleContexts #-}
 module HFish.Main where
 
 import Control.Lens

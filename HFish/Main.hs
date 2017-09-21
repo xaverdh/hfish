@@ -86,7 +86,7 @@ dispatch isCommand args = do
                     $ IsBreakPoint False
       path:args' -> do
         doStartup
-        onStateId $ injectArgs $ map Str.fromString args'
+        injectArgs $ map Str.fromString args'
         onState runProgram $ exPath fcompat path
 
 
@@ -117,9 +117,10 @@ doStartup = do
   dState .= s
  
 
-injectArgs :: MonadIO io
-  => [Str] -> FishReader -> FishState -> io FishState
-injectArgs xs r = liftIO . runFish inj r
+injectArgs :: [Str] -> Dispatch ()
+injectArgs xs = do
+  s <- onState (runFish inj) liftIO
+  dState .= s
   where
     inj = setVar FLocalScope "argv"
           ( mkVar $ Seq.fromList xs )

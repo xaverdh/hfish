@@ -83,9 +83,9 @@ main = execParserPure conf parser <$> getArgs
     versionInfo = PP.vsep
       [ "Main: " <> PP.string V.version
       , "Interpreter: " <> PP.string IV.version
-      , "Parser: " <> PP.string HFP.version
-      , "Parser (fish-compat): " <> PP.string FP.version
-      , "Lang: " <> PP.string L.version ]
+      , "Parser: " <> PP.string HFPV.version
+      , "Parser (fish-compat): " <> PP.string FPV.version
+      , "Lang: " <> PP.string LV.version ]
 
 data ShowAst = ShowAst Bool | NoAst
 newtype NoExecute = NoExecute Bool

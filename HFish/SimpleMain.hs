@@ -145,14 +145,19 @@ hfishMain
   | ShowAst b <- showAst = execute args (printAST b)
   | NoAst <- showAst = do
     r <- mkInitialFishReader atBreakpoint fishCompat
-    s <- executeStartupFiles fishCompat r =<< mkInitialFishState
+    s <- mkInitialFishState
     if isCommand
-      then exDirect args (runProgram r s)
+      then do
+        s' <- executeStartupFiles fishCompat r
+        exDirect args (runProgram r s')
       else case args of
-        [] -> runInterpreterLoop fishCompat False
-                  ( r & interactive .~ True ) s
+        [] -> do
+          let r' = r & interactive .~ True
+          s' <- executeStartupFiles fishCompat r'
+          runInterpreterLoop fishCompat False r' s'
         path:args' -> do
-          s' <- injectArgs (map Str.fromString args') r s
+          s' <- executeStartupFiles fishCompat r >>= 
+                injectArgs (map Str.fromString args') r
           exPath path (runProgram r s')
   where
     printAST full = print . if full then GP.doc else GP.doc . toBase

@@ -1,7 +1,6 @@
 {-# language LambdaCase, OverloadedStrings #-}
 module HFish.Main.Interactive
-  ( runInterpreterLoop
-  , runProgramInteractive )
+  ( runInterpreterLoop )
 where
 
 import Debug.Trace
@@ -20,6 +19,7 @@ import qualified Data.Text as T
 
 import HFish.Interpreter.Interpreter
 import HFish.Interpreter.Core
+import HFish.Interpreter.IO (echo)
 import HFish.Interpreter.Parsing
 import HFish.Types
 import HFish.Dispatch
@@ -83,11 +83,10 @@ getInputLineIgnoreSigInt p = withInterrupt loop
 
 runProgramInteractive :: Prog T.Text () -> Dispatch FishState
 runProgramInteractive p = do
+  setInteractiveErrorK p
   run <- getRunProgram p
   s <- use dState
-  liftIO $ E.catches run
-    [ E.Handler $ handleAsyncException s
-    , E.Handler $ handleOtherException s ]
+  liftIO $ E.catch run $ handleAsyncException s
   where 
 
     handleAsyncException :: FishState
@@ -96,21 +95,23 @@ runProgramInteractive p = do
       UserInterrupt -> pure s
       e -> E.throwIO e
     
-    handleOtherException :: FishState
-      -> SomeException -> IO FishState
-    handleOtherException s e = do
-      liftIO $ PP.putDoc (showError e)
-      pure s
 
-    showError :: SomeException -> PP.Doc
-    showError e = PP.vsep [ showErr e, showTr p ] <> PP.hardline
-    
-    showErr e = PP.hang 2 $ PP.vsep
-      [ PP.magenta "~> Error:"
-      , (PP.red . PP.string . show) e ]
+setInteractiveErrorK :: Prog T.Text () -> Dispatch ()
+setInteractiveErrorK p = dOnError .= Just handle
+  where
+    handle :: String -> Fish ()
+    handle e = echo . show $
+      showErr e <> showTr p <> PP.hardline
     
     showTr p = PP.hang 2 $ PP.vsep
       [ PP.magenta "~> Occured while evaluating:"
       , (PP.yellow . PP.text . show) (GP.doc $ toBase p) ]
+
+    showErr e = PP.hang 2 $ PP.vsep
+      [ PP.magenta "~> Error:"
+      , (PP.red . PP.string) e ]
+
+
+
 
 

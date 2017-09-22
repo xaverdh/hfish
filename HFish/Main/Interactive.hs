@@ -35,7 +35,6 @@ import qualified Text.PrettyPrint.GenericPretty as GP
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
 
 
-
 mkPrompt :: Bool -> FishState -> String
 mkPrompt isbrkpt s = show $ case isbrkpt of
   True -> insStatus <> PP.blue ": "
@@ -44,6 +43,7 @@ mkPrompt isbrkpt s = show $ case isbrkpt of
     insStatus = case s ^. status of
       ExitSuccess -> PP.blue $ PP.int 0
       ExitFailure i -> PP.red $ PP.int i
+
 
 runInterpreterLoop :: MonadIO io
   => FishCompat

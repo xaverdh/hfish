@@ -23,7 +23,7 @@ import HFish.Interpreter.Var
 import HFish.Main.Interactive
 import HFish.Types
 import HFish.Dispatch
-import HFish.Startup
+import HFish.Startup (doStartup,setFileErrorK)
 import qualified HFish.Interpreter.Stringy as Str
 
 import Fish.Lang
@@ -52,7 +52,7 @@ hfishMain
   | noExecute = execute args ( const $ pure () )
   | ShowAst b <- showAst = execute args (printAST b)
   | NoAst <- showAst = do
-    r <- mkInitialFishReader atBreakpoint fcompat
+    r <- mkInitialFishReader atBreakpoint fcompat 
     s <- mkInitialFishState
     flip evalDispatch
       ( DispatchState r s fishCompat )
@@ -67,7 +67,7 @@ hfishMain
       s <- get
       liftIO $ runInterpreterLoop fishCompat
                 ( IsBreakPoint True ) r s
-
+    
 
 dispatch :: Bool -> [String] -> Dispatch ()
 dispatch isCommand args = do
@@ -85,6 +85,7 @@ dispatch isCommand args = do
       path:args' -> do
         doStartup
         injectArgs $ map Str.fromString args'
+        setFileErrorK path
         onState runProgram $ exPath fcompat path
 
 
@@ -108,12 +109,6 @@ exPath fcompat path f = do
 setInteractive :: Dispatch ()
 setInteractive = modify $ dReader . interactive .~ True
 
-doStartup :: Dispatch ()
-doStartup = do
-  fishCompat <- use dCompat
-  s <- onStateId $ executeStartupFiles fishCompat
-  dState .= s
- 
 
 injectArgs :: [Str] -> Dispatch ()
 injectArgs xs = do

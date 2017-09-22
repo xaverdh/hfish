@@ -56,9 +56,8 @@ interpreterLoop :: ( FishState -> String ) -- the prompt
   -> InputT Dispatch ()
 interpreterLoop prompt = loop
   where
-    loop = loop <*
-      whenJustM{- die on ctrl-d -}
-        getInput ( lift . runInput )
+    loop = whenJustM{- die on ctrl-d -} getInput
+      $ \input -> ( lift $ runInput input ) *> loop
     
     runInput :: String -> Dispatch ()
     runInput input = do

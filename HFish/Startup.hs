@@ -27,7 +27,7 @@ import qualified Text.PrettyPrint.ANSI.Leijen as PP
 
 
 setFileErrorK :: FilePath -> Dispatch ()
-setFileErrorK fpath = dReader . errorK .= [handle]
+setFileErrorK fpath = dOnError .= Just handle
   where
     handle :: String -> Fish ()
     handle e = echo . show $
@@ -63,7 +63,7 @@ tryExecute path = do
   whenJustM ( liftIO $ tryParse fcompat )
     $ \res -> do
       setFileErrorK path
-      whenJustM ( onState runProgram $ withProg res )
+      whenJustM ( withProg res $ runProgram )
         (dState .=)
   where
     tryParse fcompat = 

@@ -4,35 +4,34 @@ module HFish.Dispatch where
 import HFish.Interpreter.Core
 import HFish.Types
 import Control.Monad.IO.Class
-import Control.Monad.State
+import Control.Monad.State.Strict
 import Control.Lens
+import System.Console.Haskeline.MonadException
 
 data DispatchState = DispatchState
   { _dReader :: FishReader
   , _dState :: FishState
+  , _dOnError :: Maybe ( HFishError -> Fish () )
   , _dCompat :: FishCompat }
 makeLenses ''DispatchState
 
-newtype Dispatch a = Dispatch ( StateT DispatchState IO a )
+newtype Dispatch a = Dispatch
+  { getDispatch :: StateT DispatchState IO a }
   deriving ( Functor
            , Applicative
            , Monad
            , MonadIO
            , MonadState DispatchState )
 
+instance MonadException Dispatch where
+  controlIO k = 
+    let f (RunIO runio) = RunIO $
+          fmap Dispatch . runio . getDispatch
+     in Dispatch $ controlIO $ fmap getDispatch . k . f
+
+
 evalDispatch :: Dispatch a -> DispatchState -> IO a
 evalDispatch (Dispatch m) = evalStateT m
-
-
-onState :: ( FishReader -> FishState -> a )
-          -> ( a -> Dispatch b ) -> Dispatch b
-onState f k = do
-  r <- use dReader
-  s <- use dState
-  k $ f r s
-
-onStateId :: (FishReader -> FishState -> Dispatch a) -> Dispatch a
-onStateId = flip onState id
 
 
 

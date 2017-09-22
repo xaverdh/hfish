@@ -1,37 +1,35 @@
 {-# language LambdaCase #-}
 module HFish.Main.NonInteractive
-  ( runProgram )
+  ( runProgram
+  , getRunProgram )
 where
 
 
+import Control.Lens
+import Control.Monad
+import Control.Monad.Extra
 import Control.Monad.IO.Class
 -- import Control.Exception as E
 import qualified Data.Text as T
 import HFish.Interpreter.Interpreter
 import HFish.Interpreter.Core
+import HFish.Dispatch
 import Fish.Lang
 import Fish.Lang.Base
 import Fish.Lang.Unit
 
-runProgram :: MonadIO io
-  => FishReader
-  -> FishState
-  -> Prog T.Text ()
-  -> io FishState
-runProgram r s p = liftIO $ runFish (progA p) r s
+runProgram :: Prog T.Text () -> Dispatch FishState
+runProgram p = getRunProgram p >>= liftIO
 
-{-
-runProgram :: MonadIO io
-  => FishReader
-  -> FishState
-  -> Prog T.Text ()
-  -> io FishState
-runProgram r s p = liftIO
-  $ E.catch ( runFish (progA p) r s )
-  handleAsyncException
+getRunProgram :: Prog T.Text () -> Dispatch (IO FishState)
+getRunProgram p =
+  pure runFish
+  <*> getAction p
+  <*> use dReader
+  <*> use dState
+
+getAction :: Prog T.Text () -> Dispatch (Fish ())
+getAction p = maybeM (pure $ progA p) action' (use dOnError)
   where
-    handleAsyncException :: AsyncException -> IO FishState
-    handleAsyncException = \case
-      UserInterrupt -> pure s
-      e -> E.throwIO e
--}
+    action' k = pure $ setErrorK (progA p) >>= flip whenJust k
+

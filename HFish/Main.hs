@@ -58,7 +58,7 @@ hfishMain
     r <- mkInitialFishReader atBreakpoint fcompat 
     s <- mkInitialFishState
     flip evalDispatch
-      ( DispatchState r s fishCompat )
+      ( DispatchState r s Nothing fishCompat )
       ( dispatch isCommand args )
   where
     execute :: [String] -> (Prog T.Text () -> IO a) -> IO ()
@@ -67,17 +67,21 @@ hfishMain
       | otherwise = exPaths
     
     exPaths xs = forM_ xs . flip (exPath fcompat)
-    
-    atBreakpoint :: Fish ()
-    atBreakpoint = do
-      r <- ask
-      s <- get
-      liftIO $ runInterpreterLoop fishCompat
-                ( IsBreakPoint True ) r s
+
+
+atBreakpoint :: Fish ()
+atBreakpoint = do
+  r <- ask
+  s <- get
+  let fishCompat = FishCompat $ r ^. fishCompatible
+  liftIO $ flip evalDispatch
+    ( DispatchState r s Nothing fishCompat )
+    ( runInterpreterLoop $ IsBreakPoint True )
 
 
 mkCommand :: [String] -> String
 mkCommand args = L.unwords args <> "\n"
+
 
 dispatch :: Bool -> [String] -> Dispatch ()
 dispatch isCommand args = do
@@ -87,21 +91,21 @@ dispatch isCommand args = do
       let cmd = mkCommand args
       doStartup
       setCmdErrorK cmd
-      onState runProgram $ exDirect fcompat cmd
+      exDirect fcompat cmd runProgram
     False -> case args of
       [] -> do
         setInteractive
         doStartup
-        onStateId $ runInterpreterLoop fishCompat
-                    $ IsBreakPoint False
+        runInterpreterLoop $ IsBreakPoint False
       path:args' -> do
         doStartup
         injectArgs $ map Str.fromString args'
         setFileErrorK path
-        onState runProgram $ exPath fcompat path
+        exPath fcompat path runProgram
+
 
 setCmdErrorK :: String -> Dispatch ()
-setCmdErrorK cmd = dReader . errorK .= [handle]
+setCmdErrorK cmd = dOnError .= Just handle
   where
     handle :: String -> Fish ()
     handle e = echo . show $
@@ -134,7 +138,7 @@ setInteractive = modify $ dReader . interactive .~ True
 
 injectArgs :: [Str] -> Dispatch ()
 injectArgs xs = do
-  s <- onState (runFish inj) liftIO
+  s <- liftIO =<< ( runFish inj <$> use dReader <*> use dState )
   dState .= s
   where
     inj = setVar FLocalScope "argv"

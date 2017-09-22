@@ -22,6 +22,8 @@ import HFish.Interpreter.Interpreter
 import HFish.Interpreter.Core
 import HFish.Interpreter.Parsing
 import HFish.Types
+import HFish.Dispatch
+import HFish.Main.NonInteractive (getRunProgram)
 
 import Fish.Lang
 import Fish.Lang.Unit
@@ -45,56 +47,59 @@ mkPrompt isbrkpt s = show $ case isbrkpt of
       ExitFailure i -> PP.red $ PP.int i
 
 
-runInterpreterLoop :: MonadIO io
-  => FishCompat
-  -> IsBreakPoint
-  -> FishReader
-  -> FishState
-  -> io ()
-runInterpreterLoop
-  (FishCompat fishCompat)
-  (IsBreakPoint isbrkpt) r s =
-  liftIO $ runInputT defaultSettings loop
-  where
-    loop = interpreterLoop fishCompat (mkPrompt isbrkpt) r s
+runInterpreterLoop :: IsBreakPoint -> Dispatch ()
+runInterpreterLoop (IsBreakPoint isbrkpt) = do
+  let loop = interpreterLoop $ mkPrompt isbrkpt 
+  runInputT defaultSettings loop
 
-interpreterLoop :: Bool
-  -> ( FishState -> String ) -- the prompt
-  -> FishReader -> FishState -> InputT IO ()
-interpreterLoop fishCompat prompt r = loop
+interpreterLoop :: ( FishState -> String ) -- the prompt
+  -> InputT Dispatch ()
+interpreterLoop prompt = loop
   where
-    loop :: FishState -> InputT IO ()
-    loop s = whenJustM{- die on ctrl-d -} (getInput s)
-      $ \input -> maybeM (loop s) loop
-        $ withProg
-          ( parseInteractive fishCompat $ input ++ "\n" )
-          ( runProgramInteractive r s )
+    loop = loop <*
+      whenJustM{- die on ctrl-d -}
+        getInput ( lift . runInput )
     
-    getInput = getInputLineIgnoreSigInt . prompt
+    runInput :: String -> Dispatch ()
+    runInput input = do
+      FishCompat fcompat <- use dCompat
+      let res = parseInteractive fcompat input
+      withProg' res $ \p ->
+        runProgramInteractive p >>= (dState .=)
 
-getInputLineIgnoreSigInt :: String -> InputT IO (Maybe String)
+    getInput :: InputT Dispatch (Maybe String)
+    getInput = do
+      s <- lift $ use dState
+      fmap (<>"\n") <$> getInputLineIgnoreSigInt (prompt s)
+
+
+
+getInputLineIgnoreSigInt :: String
+  -> InputT Dispatch (Maybe String)
 getInputLineIgnoreSigInt p = withInterrupt loop
   where
     loop = handleInterrupt handleSigInt (getInputLine p)
     handleSigInt = loop
 
-runProgramInteractive :: MonadIO io
-  => FishReader
-  -> FishState
-  -> Prog T.Text ()
-  -> io FishState
-runProgramInteractive r s p = liftIO
-  $ E.catches ( runFish (progA p) r s )
-  [ E.Handler handleAsyncException
-  , E.Handler handleOtherException ]
-  where
-    handleAsyncException :: AsyncException -> IO FishState
-    handleAsyncException = \case
+
+runProgramInteractive :: Prog T.Text () -> Dispatch FishState
+runProgramInteractive p = do
+  run <- getRunProgram p
+  s <- use dState
+  liftIO $ E.catches run
+    [ E.Handler $ handleAsyncException s
+    , E.Handler $ handleOtherException s ]
+  where 
+
+    handleAsyncException :: FishState
+      -> AsyncException -> IO FishState
+    handleAsyncException s = \case
       UserInterrupt -> pure s
       e -> E.throwIO e
     
-    handleOtherException :: SomeException -> IO FishState
-    handleOtherException e = do
+    handleOtherException :: FishState
+      -> SomeException -> IO FishState
+    handleOtherException s e = do
       liftIO $ PP.putDoc (showError e)
       pure s
 

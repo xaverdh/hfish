@@ -1,4 +1,5 @@
-{-# language LambdaCase, OverloadedStrings #-}
+{-# language LambdaCase, ScopedTypeVariables #-}
+{-# language OverloadedStrings #-}
 module HFish.Main where
 
 import Control.Lens
@@ -19,8 +20,10 @@ import HFish.Interpreter.Core
 import HFish.Interpreter.Init
 import HFish.Interpreter.Parsing
 import HFish.Interpreter.Var
+import HFish.Interpreter.IO (echo)
 
 import HFish.Main.Interactive
+import HFish.Main.NonInteractive
 import HFish.Types
 import HFish.Dispatch
 import HFish.Startup (doStartup,setFileErrorK)
@@ -58,7 +61,11 @@ hfishMain
       ( DispatchState r s fishCompat )
       ( dispatch isCommand args )
   where
-    execute = if isCommand then exDirect fcompat else exPaths
+    execute :: [String] -> (Prog T.Text () -> IO a) -> IO ()
+    execute
+      | isCommand = exDirect fcompat . mkCommand
+      | otherwise = exPaths
+    
     exPaths xs = forM_ xs . flip (exPath fcompat)
     
     atBreakpoint :: Fish ()
@@ -67,15 +74,20 @@ hfishMain
       s <- get
       liftIO $ runInterpreterLoop fishCompat
                 ( IsBreakPoint True ) r s
-    
+
+
+mkCommand :: [String] -> String
+mkCommand args = L.unwords args <> "\n"
 
 dispatch :: Bool -> [String] -> Dispatch ()
 dispatch isCommand args = do
   fishCompat@(FishCompat fcompat) <- use dCompat
   case isCommand of
     True -> do
+      let cmd = mkCommand args
       doStartup
-      onState runProgram $ exDirect fcompat args
+      setCmdErrorK cmd
+      onState runProgram $ exDirect fcompat cmd
     False -> case args of
       [] -> do
         setInteractive
@@ -88,14 +100,24 @@ dispatch isCommand args = do
         setFileErrorK path
         onState runProgram $ exPath fcompat path
 
+setCmdErrorK :: String -> Dispatch ()
+setCmdErrorK cmd = dReader . errorK .= [handle]
+  where
+    handle :: String -> Fish ()
+    handle e = echo . show $
+      showErr e <> PP.hardline
+      <> "~> Ocurred in command: " <> PP.string cmd
+      <> PP.hardline
+
+    showErr e = PP.hang 2 $ PP.vsep
+      [ PP.magenta "~> Error:"
+      , (PP.red . PP.string) e ]
 
 exDirect :: MonadIO io
-  => Bool -> [String]
+  => Bool -> String
   -> ( Prog T.Text () -> io a ) -> io ()
-exDirect fcompat xs = do
-  withProg' $ parseInteractive fcompat input
-  where
-    input = L.unwords xs <> "\n"
+exDirect fcompat cmd = do
+  withProg' $ parseInteractive fcompat cmd
 
 
 exPath :: MonadIO io

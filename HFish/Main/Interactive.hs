@@ -1,7 +1,7 @@
 {-# language LambdaCase, OverloadedStrings #-}
 module HFish.Main.Interactive
   ( runInterpreterLoop
-  , runProgram )
+  , runProgramInteractive )
 where
 
 import Debug.Trace
@@ -68,7 +68,7 @@ interpreterLoop fishCompat prompt r = loop
       $ \input -> maybeM (loop s) loop
         $ withProg
           ( parseInteractive fishCompat $ input ++ "\n" )
-          ( runProgram r s )
+          ( runProgramInteractive r s )
     
     getInput = getInputLineIgnoreSigInt . prompt
 
@@ -78,12 +78,12 @@ getInputLineIgnoreSigInt p = withInterrupt loop
     loop = handleInterrupt handleSigInt (getInputLine p)
     handleSigInt = loop
 
-runProgram :: MonadIO io
+runProgramInteractive :: MonadIO io
   => FishReader
   -> FishState
   -> Prog T.Text ()
   -> io FishState
-runProgram r s p = liftIO
+runProgramInteractive r s p = liftIO
   $ E.catches ( runFish (progA p) r s )
   [ E.Handler handleAsyncException
   , E.Handler handleOtherException ]

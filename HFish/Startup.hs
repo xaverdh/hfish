@@ -10,7 +10,7 @@ import HFish.Interpreter.IO (echo)
 import HFish.Types
 import HFish.Utils
 import HFish.Dispatch
-import HFish.Main.Interactive (runProgram)
+import HFish.Main.NonInteractive (runProgram)
 
 import Control.Lens
 import Control.Applicative

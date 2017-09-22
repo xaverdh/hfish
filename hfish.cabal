@@ -17,6 +17,7 @@ executable hfish
   other-modules:       HFish.Description
   other-modules:       HFish.Main
   other-modules:       HFish.Main.Interactive
+  other-modules:       HFish.Main.NonInteractive
   other-modules:       HFish.Startup
   other-modules:       HFish.Types
   other-modules:       HFish.Utils

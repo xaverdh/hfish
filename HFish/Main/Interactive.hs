@@ -101,7 +101,8 @@ setInteractiveErrorK p = dOnError .= Just handle
   where
     handle :: String -> Fish ()
     handle e = echo . show $
-      showErr e <> showTr p <> PP.hardline
+      showErr e <> PP.hardline
+      <> showTr p <> PP.hardline
     
     showTr p = PP.hang 2 $ PP.vsep
       [ PP.magenta "~> Occured while evaluating:"

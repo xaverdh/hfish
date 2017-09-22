@@ -32,7 +32,7 @@ setFileErrorK fpath = dReader . errorK .= [handle]
     handle :: String -> Fish ()
     handle e = echo . show $
       showErr e <> PP.hardline
-      <> "~> Ocurred in file: " <> PP.string fpath
+      <> PP.magenta "~> Ocurred in file: " <> PP.string fpath
       <> PP.hardline
 
     showErr e = PP.hang 2 $ PP.vsep

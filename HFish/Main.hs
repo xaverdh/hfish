@@ -106,7 +106,7 @@ setCmdErrorK cmd = dReader . errorK .= [handle]
     handle :: String -> Fish ()
     handle e = echo . show $
       showErr e <> PP.hardline
-      <> "~> Ocurred in command: " <> PP.string cmd
+      <> PP.magenta "~> Ocurred in command: " <> PP.string cmd
       <> PP.hardline
 
     showErr e = PP.hang 2 $ PP.vsep

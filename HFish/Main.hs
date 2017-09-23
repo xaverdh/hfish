@@ -63,7 +63,7 @@ hfishMain
     s <- mkInitialFishState
     flip evalDispatch
       ( DispatchState r s Nothing fishCompat mempty )
-      ( dispatch isCommand args )
+      ( dispatch isCommand dflags args )
   where
     execute :: [String] -> (Prog T.Text () -> IO a) -> IO ()
     execute
@@ -87,8 +87,9 @@ mkCommand :: [String] -> String
 mkCommand args = L.unwords args <> "\n"
 
 
-dispatch :: Bool -> [String] -> Dispatch ()
-dispatch isCommand args = do
+dispatch :: Bool -> [Debug] -> [String] -> Dispatch ()
+dispatch isCommand dflags args = do
+  setDebugFlags dflags
   fishCompat@(FishCompat fcompat) <- use dCompat
   case isCommand of
     True -> do

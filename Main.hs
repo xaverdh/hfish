@@ -3,6 +3,7 @@ module Main where
 
 import HFish.Main (hfishMain)
 import HFish.Types
+import HFish.Debug
 
 import qualified HFish.Interpreter.Version as IV
 import qualified HFish.Version as V
@@ -35,10 +36,10 @@ main = execParserPure conf parser <$> getArgs
     showError e = putStrLn . fst
       $ renderFailure e "hfish"
 
-    conf = OB.defaultPrefs {
-      prefDisambiguate = True
-      ,prefShowHelpOnError = True
-    }
+    conf = OB.defaultPrefs
+      { prefDisambiguate = True
+      , prefShowHelpOnError = True
+      , prefMultiSuffix = ".." }
 
     parser = info (helper <*> (versionOpt <|> hfishOptions))
       (fullDesc
@@ -65,6 +66,7 @@ hfishOptions = pure hfishMain
   <*> ( astFlag <|> fullAstFlag <|> pure NoAst )
   <*> cmdSwitch
   <*> compatSwitch
+  <*> many debugFlag
   <*> passedArgs
   where
     switchAs f = fmap f . switch
@@ -92,6 +94,12 @@ hfishOptions = pure hfishMain
       ( short 'f'
         <> long "fish-compat"
         <> help "Try to be more fish compatible" )
+
+    debugFlag = OB.option ( maybeReader readDebug )
+      ( short 'd'
+        <> long "debug"
+        <> help "Toggle debug flag on"
+        <> metavar "DEBUG_FLAG" )
 
     passedArgs = many $ strArgument $ metavar "ARGS"
 

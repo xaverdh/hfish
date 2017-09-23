@@ -17,7 +17,6 @@ import Control.Exception as E
 import Data.Semigroup
 import qualified Data.Set as S
 import qualified Data.Text as T
-import Numeric.Natural
 
 import HFish.Interpreter.Interpreter
 import HFish.Interpreter.Core

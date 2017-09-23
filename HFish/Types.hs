@@ -1,6 +1,16 @@
-module HFish.Types where
+module HFish.Types
+  ( DebugFlag(..)
+  , DebugMain(..)
+  , Debug(..)
+  , IsBreakPoint(..)
+  , FishCompat(..)
+  , IsCommand(..)
+  , NoExecute(..)
+  , ShowAst(..) )
+where
 
-import HFish.Interpreter.Core (DebugFlag)
+import HFish.Interpreter.Core (DebugFlag(..))
+
 
 data ShowAst = ShowAst Bool | NoAst
 newtype NoExecute = NoExecute Bool

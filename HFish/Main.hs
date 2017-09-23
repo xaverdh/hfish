@@ -13,7 +13,6 @@ import qualified Data.Sequence as Seq
 import Data.Semigroup
 import Data.List as L
 import qualified Data.Text as T
-import Numeric.Natural
 
 import HFish.Interpreter.Interpreter
 import HFish.Interpreter.Scope
@@ -26,6 +25,7 @@ import HFish.Interpreter.IO (echo)
 import HFish.Main.Interactive
 import HFish.Main.NonInteractive
 import HFish.Types
+import HFish.Debug
 import HFish.Dispatch
 import HFish.Startup (doStartup,setFileErrorK)
 import qualified HFish.Interpreter.Stringy as Str
@@ -45,6 +45,7 @@ hfishMain :: NoExecute
   -> ShowAst
   -> IsCommand
   -> FishCompat
+  -> [Debug]
   -> [String]
   -> IO ()
 hfishMain 
@@ -52,6 +53,7 @@ hfishMain
   showAst
   (IsCommand isCommand)
   (fishCompat@(FishCompat fcompat))
+  dflags
   args
   | noExecute = execute args ( const $ pure () )
   | ShowAst b <- showAst = execute args (printAST b)

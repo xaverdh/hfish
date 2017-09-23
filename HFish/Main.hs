@@ -13,6 +13,7 @@ import qualified Data.Sequence as Seq
 import Data.Semigroup
 import Data.List as L
 import qualified Data.Text as T
+import Numeric.Natural
 
 import HFish.Interpreter.Interpreter
 import HFish.Interpreter.Scope
@@ -135,6 +136,8 @@ exPath fcompat path f = do
 setInteractive :: Dispatch ()
 setInteractive = modify $ dReader . interactive .~ True
 
+setDebugLevel :: Natural -> Dispatch ()
+setDebugLevel n = modify $ dReader . debugLevel .~ n
 
 injectArgs :: [Str] -> Dispatch ()
 injectArgs xs = do

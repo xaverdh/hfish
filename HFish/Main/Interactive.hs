@@ -16,6 +16,7 @@ import Control.Exception as E
 
 import Data.Semigroup
 import qualified Data.Text as T
+import Numeric.Natural
 
 import HFish.Interpreter.Interpreter
 import HFish.Interpreter.Core
@@ -97,12 +98,14 @@ runProgramInteractive p = do
     
 
 setInteractiveErrorK :: Prog T.Text () -> Dispatch ()
-setInteractiveErrorK p = dOnError .= Just handle
+setInteractiveErrorK p = do
+  debug <- use (dReader . debugLevel)
+  dOnError .= Just (handle debug)
   where
-    handle :: String -> Fish ()
-    handle e = echo . show $
+    handle :: Natural -> String -> Fish ()
+    handle d e = echo . show $
       showErr e <> PP.hardline
-      <> showTr p <> PP.hardline
+      <> if d > 0 then showTr p <> PP.hardline else mempty
     
     showTr p = PP.hang 2 $ PP.vsep
       [ PP.magenta "~> Occured while evaluating:"

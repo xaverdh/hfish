@@ -11,7 +11,8 @@ import Control.Monad.Reader.Class
 
 import qualified Data.Sequence as Seq
 import Data.Semigroup
-import Data.List as L
+import qualified Data.List as L
+import qualified Data.Set as S
 import qualified Data.Text as T
 
 import HFish.Interpreter.Interpreter
@@ -139,7 +140,14 @@ setInteractive :: Dispatch ()
 setInteractive = modify $ dReader . interactive .~ True
 
 setDebugFlags :: [Debug] -> Dispatch ()
-setDebugFlags dflags = error "not implemented"
+setDebugFlags = mapM_ setDFlag
+  where
+    setDFlag :: Debug -> Dispatch ()
+    setDFlag dflag
+      | DebugLib d <- dflag = 
+        dReader . debugFlags %= S.insert d
+      | DebugMain d <- dflag = dDebug %= S.insert d
+      
 
 injectArgs :: [Str] -> Dispatch ()
 injectArgs xs = do

@@ -41,6 +41,10 @@ Build time from scratch is ~10min on a i5-4200U with -j4 so I suggest that you g
 
 TODO
 
+## Bugs
+
+Many. A non-exhaustive list can be found in the bug tracker.
+
 ## Legal
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by

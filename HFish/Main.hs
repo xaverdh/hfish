@@ -59,7 +59,7 @@ hfishMain
     r <- mkInitialFishReader atBreakpoint fcompat 
     s <- mkInitialFishState
     flip evalDispatch
-      ( DispatchState r s Nothing fishCompat )
+      ( DispatchState r s Nothing fishCompat mempty )
       ( dispatch isCommand args )
   where
     execute :: [String] -> (Prog T.Text () -> IO a) -> IO ()
@@ -76,7 +76,7 @@ atBreakpoint = do
   s <- get
   let fishCompat = FishCompat $ r ^. fishCompatible
   liftIO $ flip evalDispatch
-    ( DispatchState r s Nothing fishCompat )
+    ( DispatchState r s Nothing fishCompat mempty )
     ( runInterpreterLoop $ IsBreakPoint True )
 
 
@@ -136,8 +136,8 @@ exPath fcompat path f = do
 setInteractive :: Dispatch ()
 setInteractive = modify $ dReader . interactive .~ True
 
-setDebugLevel :: Natural -> Dispatch ()
-setDebugLevel n = modify $ dReader . debugLevel .~ n
+setDebugFlags :: [Debug] -> Dispatch ()
+setDebugFlags dflags = error "not implemented"
 
 injectArgs :: [Str] -> Dispatch ()
 injectArgs xs = do

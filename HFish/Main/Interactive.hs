@@ -15,6 +15,7 @@ import Control.Monad.Reader.Class
 import Control.Exception as E
 
 import Data.Semigroup
+import qualified Data.Set as S
 import qualified Data.Text as T
 import Numeric.Natural
 
@@ -99,13 +100,13 @@ runProgramInteractive p = do
 
 setInteractiveErrorK :: Prog T.Text () -> Dispatch ()
 setInteractiveErrorK p = do
-  debug <- use (dReader . debugLevel)
-  dOnError .= Just (handle debug)
+  d <- uses dDebug $ S.member DebugMainShowAstOnError
+  dOnError .= Just (handle d)
   where
-    handle :: Natural -> String -> Fish ()
+    handle :: Bool -> String -> Fish ()
     handle d e = echo . show $
       showErr e <> PP.hardline
-      <> if d > 0 then showTr p <> PP.hardline else mempty
+      <> if d then showTr p <> PP.hardline else mempty
     
     showTr p = PP.hang 2 $ PP.vsep
       [ PP.magenta "~> Occured while evaluating:"

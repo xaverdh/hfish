@@ -1,0 +1,16 @@
+#!/bin/sh
+
+git clone https://gitlab.com/hfish-shell/hfish
+cd hfish
+git clone https://gitlab.com/hfish-shell/posix-fd-io
+git clone https://gitlab.com/hfish-shell/nfc-text
+git clone https://gitlab.com/hfish-shell/hfish-parser
+git clone https://gitlab.com/hfish-shell/hfish-interpreter
+git clone https://gitlab.com/hfish-shell/fish-parser
+git clone https://gitlab.com/hfish-shell/fish-lang
+cabal sandbox init
+cabal sandbox add-source posix-fd-io nfc-text fish-lang fish-parser hfish-parser hfish-interpreter
+command -v nproc > /dev/null \
+  && cabal install --with-compiler=/usr/share/ghc-pristine/bin/ghc --bindir . --ghc-options="-threaded -j$(nproc)" \
+  || cabal install --with-compiler=/usr/share/ghc-pristine/bin/ghc --bindir . --ghc-option=-threaded
+

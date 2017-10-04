@@ -40,6 +40,7 @@ Build time from scratch is ~10min on a i5-4200U with -j4 so I suggest that you g
 ## Building on Arch Linux with [pristine ghc][ghc-pristine]
 
 For Arch Linux users that want a statically linked executable, there is the [ghc-pristine build script][hfish-build-static-script].
+This assumes you have ghc-static and ghc-pristine (AUR) installed.
 
 ## Syntax
 

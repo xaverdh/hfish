@@ -37,6 +37,10 @@ wget -O - https://gitlab.com/hfish-shell/hfish/raw/master/build | sh
 
 Build time from scratch is ~10min on a i5-4200U with -j4 so I suggest that you get yourself a cup of tea.
 
+## Building on Arch Linux with [pristine ghc][ghc-pristine]
+
+For Arch Linux users that want a statically linked executable, there is the [ghc-pristine build script][hfish-build-static-script].
+
 ## Syntax
 
 TODO
@@ -55,5 +59,13 @@ Many. A non-exhaustive list can be found in the bug tracker.
 
 
 [hfish-cabal-file]: https://gitlab.com/hfish-shell/hfish/blob/master/hfish.cabal
+
 [hfish-build-script]: https://gitlab.com/hfish-shell/hfish/blob/master/build
+
+[hfish-build-static-script]: https://gitlab.com/hfish-shell/hfish/blob/master/build-static
+
 [fish-shell]: https://github.com/fish-shell/fish-shell/
+
+[ghc-pristine]: https://aur.archlinux.org/packages/ghc-pristine/
+
+

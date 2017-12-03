@@ -29,6 +29,8 @@ executable hfish
   other-extensions:    ScopedTypeVariables
   other-extensions:    LambdaCase
   other-extensions:    OverloadedStrings
+  
+  ghc-options:         -threaded
 
   build-depends:       base                 >=4.9 && <4.11
   build-depends:       text                 >=1.2 && <1.3

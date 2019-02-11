@@ -29,7 +29,7 @@ import HFish.Types
 import HFish.Debug
 import HFish.Dispatch
 import HFish.Startup (doStartup,setFileErrorK)
-import qualified HFish.Interpreter.Stringy as Str
+import qualified HFish.Interpreter.Str as Str
 
 import Fish.Lang
 import Fish.Lang.Unit
@@ -150,7 +150,7 @@ setDebugFlags = mapM_ setDFlag
       | DebugMain d <- dflag = dDebug %= S.insert d
       
 
-injectArgs :: [Str] -> Dispatch ()
+injectArgs :: [Str.Str] -> Dispatch ()
 injectArgs xs = do
   s <- liftIO =<< ( runFish inj <$> use dReader <*> use dState )
   dState .= s

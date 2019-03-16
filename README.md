@@ -56,7 +56,7 @@ Many. A non-exhaustive list can be found in the bug tracker.
     the Free Software Foundation, either version 3 of the License, or
     any later version.
     
-    See LICENSE for more details.
+See [LICENSE](LICENSE) for more details.
 
 
 [hfish-cabal-file]: https://gitlab.com/hfish-shell/hfish/blob/master/hfish.cabal
